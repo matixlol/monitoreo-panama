@@ -9,6 +9,7 @@
     "@types/bun": "latest"
   },
   "dependencies": {
+    "p-map": "^7.0.4",
     "zod": "^4.1.13"
   }
 }
