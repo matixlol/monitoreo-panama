@@ -2,6 +2,7 @@ import { readFile, mkdir, writeFile } from "fs/promises";
 import { existsSync } from "fs";
 import { join } from "path";
 import { z } from "zod";
+import pMap from "p-map";
 
 // Disable SSL verification for this government site with certificate issues
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
@@ -44,6 +45,8 @@ const AffidavitSummarySchema = z
       .passthrough(),
   })
   .passthrough();
+
+export type AffidavitSummary = z.infer<typeof AffidavitSummarySchema>;
 
 const AffidavitDetailSchema = z
   .object({
@@ -230,7 +233,7 @@ await mkdir(join(DATA_DIR, "entries"), { recursive: true });
 
 console.log("Fetching list of all entries...");
 
-let allEntries;
+let allEntries: AffidavitSummary[];
 if (existsSync(join(DATA_DIR, "all_entries.json"))) {
   allEntries = JSON.parse(
     await readFile(join(DATA_DIR, "all_entries.json"), "utf8")
@@ -263,12 +266,16 @@ console.log(
   `Found ${allEntries.length} total entries, ${entries.length} to scrape`
 );
 
-for (const entry of entries) {
-  try {
-    await scrapeEntry(entry.id);
-  } catch (err) {
-    console.error(`Failed to scrape entry ${entry.id}:`, err);
-  }
-}
+await pMap(
+  entries,
+  async (entry) => {
+    try {
+      await scrapeEntry(entry.id);
+    } catch (err) {
+      console.error(`Failed to scrape entry ${entry.id}:`, err);
+    }
+  },
+  { concurrency: 10 }
+);
 
 console.log("Done!");
