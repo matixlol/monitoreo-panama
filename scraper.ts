@@ -1,4 +1,5 @@
-import { mkdir, writeFile, exists } from "fs/promises";
+import { readFile, mkdir, writeFile } from "fs/promises";
+import { existsSync } from "fs";
 import { join } from "path";
 import { z } from "zod";
 
@@ -24,11 +25,21 @@ const AffidavitSummarySchema = z
     id: z.string(),
     candidateId: z.string(),
     status: z.string(),
+    isProclaimed: z.boolean(),
     Candidate: z
       .object({
         firstName: z.string().nullable(),
         lastName: z.string().nullable(),
         documentId: z.string().nullable(),
+      })
+      .passthrough(),
+    Postulation: z
+      .object({
+        Position: z
+          .object({
+            name: z.string(),
+          })
+          .passthrough(),
       })
       .passthrough(),
   })
@@ -67,10 +78,6 @@ const PaginatedResponseSchema = <T extends z.ZodTypeAny>(itemSchema: T) =>
 
 // Generic record schema that passes through everything
 const RecordSchema = z.record(z.string(), z.any());
-
-type AffidavitSummary = z.infer<typeof AffidavitSummarySchema>;
-type AffidavitDetail = z.infer<typeof AffidavitDetailSchema>;
-type AffidavitDocument = z.infer<typeof AffidavitDocumentSchema>;
 
 async function fetchJson<T>(url: string, schema: z.ZodType<T>): Promise<T> {
   const res = await fetch(url);
@@ -116,7 +123,7 @@ async function downloadPdf(url: string, destPath: string): Promise<void> {
 
 async function isEntryComplete(entryDir: string): Promise<boolean> {
   const metaPath = join(entryDir, "_complete.json");
-  return exists(metaPath);
+  return existsSync(metaPath);
 }
 
 async function markEntryComplete(entryDir: string): Promise<void> {
@@ -223,18 +230,37 @@ await mkdir(join(DATA_DIR, "entries"), { recursive: true });
 
 console.log("Fetching list of all entries...");
 
-// Fetch all entries
-const entries = await fetchAllPages(
-  `${BASE_URL}/affidavit?sortKey=Candidate.firstName|Candidate.lastName&sortOrder=asc`,
-  AffidavitSummarySchema
-);
+let allEntries;
+if (existsSync(join(DATA_DIR, "all_entries.json"))) {
+  allEntries = JSON.parse(
+    await readFile(join(DATA_DIR, "all_entries.json"), "utf8")
+  );
+} else {
+  allEntries = await fetchAllPages(
+    `${BASE_URL}/affidavit?sortKey=Candidate.firstName|Candidate.lastName&sortOrder=asc`,
+    AffidavitSummarySchema
+  );
+  await writeFile(
+    join(DATA_DIR, "all_entries.json"),
+    JSON.stringify(allEntries)
+  );
+}
 
-console.log(`Found ${entries.length} total entries`);
+const entries = allEntries.filter((entry) => {
+  const proclaimed = entry.isProclaimed;
+  const position = entry.Postulation?.Position?.name.toLowerCase();
+  if (
+    position !== "alcalde" &&
+    position !== "diputado(a)" &&
+    position !== "presidente"
+  )
+    return false;
+  if (proclaimed || position === "presidente") return true;
+  return false;
+});
 
-// Save the full list
-await writeFile(
-  join(DATA_DIR, "all_entries.json"),
-  JSON.stringify(entries, null, 2)
+console.log(
+  `Found ${allEntries.length} total entries, ${entries.length} to scrape`
 );
 
 for (const entry of entries) {
