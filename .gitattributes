@@ -1,0 +1,2 @@
+embeds/data/*.csv filter=lfs diff=lfs merge=lfs -text
+modal-scripts/data/*.csv filter=lfs diff=lfs merge=lfs -text
