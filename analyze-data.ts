@@ -42,6 +42,7 @@ async function analyzeData() {
           await readFile(ingressPath, "utf8")
         ) as IngressRecord[];
         if (ingressData && ingressData.length > 0) {
+          console.log(`Ingress data found for entry ${entryId}`);
           entriesWithIngress++;
           totalIngressRecords += ingressData.length;
           const sum = ingressData.reduce(
@@ -61,6 +62,22 @@ async function analyzeData() {
           await readFile(egressPath, "utf8")
         ) as EgressRecord[];
         if (egressData && egressData.length > 0) {
+          // Check for PDFs
+          let hasPdfs = false;
+          try {
+            const pdfsDir = join(entryDir, "pdfs");
+            const pdfFiles = await readdir(pdfsDir);
+            hasPdfs = pdfFiles.some((file) =>
+              file.toLowerCase().endsWith(".pdf")
+            );
+          } catch (err) {
+            // PDFs directory doesn't exist or can't be read
+          }
+          console.log(
+            `Egress data found for entry ${entryId} - PDFs: ${
+              hasPdfs ? "Yes" : "No"
+            }`
+          );
           entriesWithEgress++;
           totalEgressRecords += egressData.length;
           const sum = egressData.reduce(
