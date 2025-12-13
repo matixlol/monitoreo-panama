@@ -150,6 +150,11 @@ ${JSON.stringify(jsonSchema)}`;
         model: MODEL,
         messages: [
           {
+            role: "system",
+            content:
+              "You are a helpful assistant that extracts financial data from PDFs in JSON format.",
+          },
+          {
             role: "user",
             content: [
               {
