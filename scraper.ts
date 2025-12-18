@@ -36,6 +36,21 @@ const AffidavitSummarySchema = z
       .passthrough(),
     Postulation: z
       .object({
+        Event: z
+          .object({
+            Period: z
+              .object({
+                startYear: z.number(),
+                endYear: z.number(),
+              })
+              .passthrough(),
+            EventCategory: z
+              .object({
+                name: z.string(),
+              })
+              .passthrough(),
+          })
+          .passthrough(),
         Position: z
           .object({
             name: z.string(),
@@ -252,6 +267,11 @@ if (existsSync(join(DATA_DIR, "all_entries.json"))) {
 const entries = allEntries.filter((entry) => {
   const proclaimed = entry.isProclaimed;
   const position = entry.Postulation?.Position?.name.toLowerCase();
+
+  if (entry.Postulation.Event.EventCategory.name !== "Elección General")
+    return false;
+  if (entry.Postulation.Event.Period.startYear !== 2022) return false;
+  if (entry.Postulation.Event.Period.endYear !== 2024) return false;
 
   // Include: 71 elected deputies, 81 elected mayors, 8 presidential candidates
   if (position === "presidente") {
