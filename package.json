@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "scrape": "bun run scraper.ts"
+    "scrape": "bun run scraper.ts",
+    "preview": "bun run index.html",
+    "process-pdf": "bun run process-pdf.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"
