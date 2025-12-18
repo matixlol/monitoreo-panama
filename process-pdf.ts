@@ -4,14 +4,37 @@ import z from "zod";
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
-const MODEL = "google/gemini-2.5-flash";
+const MODEL = "google/gemini-3-flash-preview";
 
-if (!OPENROUTER_API_KEY) {
-  console.error("Error: OPENROUTER_API_KEY environment variable is not set");
-  process.exit(1);
+const getOpenRouterHeaders = (
+  includeContentType = false
+): Record<string, string> => {
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+    "HTTP-Referer": "https://github.com/matixlol/monitoreo-panama",
+    "X-Title": "Monitoreo Panama",
+  };
+  if (includeContentType) {
+    headers["Content-Type"] = "application/json";
+  }
+  return headers;
+};
+
+async function fetchOrThrow(
+  url: string,
+  init?: RequestInit
+): Promise<Response> {
+  const response = await fetch(url, init);
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `API request failed with status ${response.status}: ${errorText}`
+    );
+  }
+  return response;
 }
 
-const IngresoRowSchema = z.object({
+export const IngresoRowSchema = z.object({
   fecha: z.string().nullish(),
   reciboNumero: z.string(),
   contribuyenteNombre: z.string().nullish(),
@@ -28,7 +51,7 @@ const IngresoRowSchema = z.object({
   total: z.number().nullish(),
 });
 
-const EgresoRowSchema = z.object({
+export const EgresoRowSchema = z.object({
   // INFORME DE GASTOS / EGRESOS (Formulario Pre-18)
   fecha: z.string().nullish(),
   numeroFacturaRecibo: z.string(),
@@ -47,7 +70,7 @@ const EgresoRowSchema = z.object({
   comidaBrindis: z.coerce.number().nullish(),
   alquilerLocalServiciosBasicos: z.coerce.number().nullish(),
   cargosBancarios: z.coerce.number().nullish(),
-  totalOtrosGastos: z.coerce.number().nullish(),
+  totalGastosCampania: z.coerce.number().nullish(),
 
   // Gastos de Propaganda
   personalizacionArticulosPromocionales: z.coerce.number().nullish(),
@@ -58,11 +81,20 @@ const EgresoRowSchema = z.object({
   totalGeneral: z.coerce.number().nullish(),
 });
 
-const ResponseSchema = z.object({
+export const ResponseSchema = z.object({
   ingress: z.array(IngresoRowSchema),
   egress: z.array(EgresoRowSchema),
 });
 const jsonSchema = z.toJSONSchema(ResponseSchema);
+
+export type IngresoRow = z.infer<typeof IngresoRowSchema>;
+export type EgresoRow = z.infer<typeof EgresoRowSchema>;
+export type ExtractedData = z.infer<typeof ResponseSchema>;
+
+export interface ExtractionResult {
+  data: ExtractedData;
+  cost: number | null; // Cost in USD
+}
 
 async function encodePDFToBase64(pdfPath: string): Promise<string> {
   const pdfBuffer = await readFile(pdfPath);
@@ -70,15 +102,30 @@ async function encodePDFToBase64(pdfPath: string): Promise<string> {
   return `data:application/pdf;base64,${base64PDF}`;
 }
 
-async function processPDF(pdfPath: string): Promise<void> {
-  if (!existsSync(pdfPath)) {
-    throw new Error(`Error: PDF file not found: ${pdfPath}`);
+async function getGenerationCost(generationId: string): Promise<number | null> {
+  try {
+    const response = await fetchOrThrow(
+      `https://openrouter.ai/api/v1/generation?id=${generationId}`,
+      { headers: getOpenRouterHeaders() }
+    );
+
+    const stats = await response.json();
+    return stats.total_cost ?? null;
+  } catch (error) {
+    console.warn("Failed to fetch generation cost:", error);
+    return null;
   }
-  console.log(`Reading PDF: ${pdfPath}`);
+}
+
+export async function extractDataFromPDF(
+  pdfPath: string
+): Promise<ExtractionResult> {
+  if (!existsSync(pdfPath)) {
+    throw new Error(`PDF file not found: ${pdfPath}`);
+  }
+
   const base64PDF = await encodePDFToBase64(pdfPath);
   const filename = pdfPath.split("/").pop();
-
-  console.log("Sending PDF to OpenRouter...");
 
   const prompt = `This PDF contains financial reports from Panama's Electoral Tribunal (Tribunal Electoral).
 
@@ -137,114 +184,117 @@ The "INFORME DE GASTOS" / "INFORME DE EGRESOS" table (Formulario Pre-18) has the
 Here's the full JSON schema for the response:
 ${JSON.stringify(jsonSchema)}`;
 
-  try {
-    const response = await fetch(OPENROUTER_API_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://github.com/matixlol/monitoreo-panama",
-        "X-Title": "Monitoreo Panama",
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are a helpful assistant that extracts financial data from PDFs in JSON format.",
-          },
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: prompt,
-              },
-              {
-                type: "file",
-                file: {
-                  filename: filename,
-                  file_data: base64PDF,
-                },
-              },
-            ],
-          },
-        ],
-        plugins: [
-          { id: "response-healing" },
-          {
-            id: "file-parser",
-            pdf: {
-              engine: "native",
-            },
-          },
-        ],
-        response_format: {
-          type: "json_schema",
-          json_schema: jsonSchema,
+  const response = await fetchOrThrow(OPENROUTER_API_URL, {
+    method: "POST",
+    headers: getOpenRouterHeaders(true),
+    body: JSON.stringify({
+      model: MODEL,
+      temperature: 0,
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a helpful assistant that extracts financial data from PDFs in JSON format.",
         },
-      }),
-    });
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: prompt,
+            },
+            {
+              type: "file",
+              file: {
+                filename: filename,
+                file_data: base64PDF,
+              },
+            },
+          ],
+        },
+      ],
+      plugins: [
+        { id: "response-healing" },
+        {
+          id: "file-parser",
+          pdf: {
+            engine: "native",
+          },
+        },
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: jsonSchema,
+      },
+    }),
+  });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Error: API request failed with status ${response.status}`);
-      console.error(errorText);
-      process.exit(1);
-    }
+  const data = await response.json();
 
-    const data = await response.json();
+  if (!data.choices || data.choices.length === 0) {
+    throw new Error(`No response from API: ${JSON.stringify(data, null, 2)}`);
+  }
 
-    if (!data.choices || data.choices.length === 0) {
-      console.error("Error: No response from API");
-      console.error(JSON.stringify(data, null, 2));
-      process.exit(1);
-    }
+  let content = data.choices[0].message.content.trim();
+  if (content.startsWith("```json")) content = content.substring(7).trim();
+  if (content.endsWith("```"))
+    content = content.substring(0, content.length - 3).trim();
 
-    let content = data.choices[0].message.content.trim();
-    if (content.startsWith("```json")) content = content.substring(7).trim();
-    if (content.endsWith("```"))
-      content = content.substring(0, content.length - 3).trim();
+  const cost = data.id ? await getGenerationCost(data.id) : null;
 
-    console.log("Content:", content);
-    const result = ResponseSchema.parse(JSON.parse(content));
+  return {
+    data: ResponseSchema.parse(JSON.parse(content)),
+    cost,
+  };
+}
+
+async function processPDF(pdfPath: string): Promise<void> {
+  console.log(`Reading PDF: ${pdfPath}`);
+  console.log("Sending PDF to OpenRouter...");
+
+  try {
+    const { data, cost } = await extractDataFromPDF(pdfPath);
 
     // Output the result
     console.log("\n=== EXTRACTED DATA ===\n");
-    console.log(JSON.stringify(result, null, 2));
+    console.log(JSON.stringify(data, null, 2));
 
     // Also save to files
-    if (result.ingress && Array.isArray(result.ingress)) {
-      await Bun.write("ingress.json", JSON.stringify(result.ingress, null, 2));
+    if (data.ingress && Array.isArray(data.ingress)) {
+      await Bun.write("ingress.json", JSON.stringify(data.ingress, null, 2));
       console.log(
-        `\n✓ Saved ${result.ingress.length} ingress records to ingress.json`
+        `\n✓ Saved ${data.ingress.length} ingress records to ingress.json`
       );
     }
 
-    if (result.egress && Array.isArray(result.egress)) {
-      await Bun.write("egress.json", JSON.stringify(result.egress, null, 2));
+    if (data.egress && Array.isArray(data.egress)) {
+      await Bun.write("egress.json", JSON.stringify(data.egress, null, 2));
       console.log(
-        `\n✓ Saved ${result.egress.length} egress records to egress.json`
+        `\n✓ Saved ${data.egress.length} egress records to egress.json`
       );
     }
 
     console.log("\n=== SUMMARY ===");
-    console.log(`Ingress records: ${result.ingress?.length || 0}`);
-    console.log(`Egress records: ${result.egress?.length || 0}`);
+    console.log(`Ingress records: ${data.ingress?.length || 0}`);
+    console.log(`Egress records: ${data.egress?.length || 0}`);
+    if (cost !== null) {
+      console.log(`Cost: $${cost.toFixed(6)}`);
+    }
   } catch (error) {
     console.error("Error processing PDF:", error);
     process.exit(1);
   }
 }
 
-// Main execution
-const pdfPath = process.argv[2];
+// Main execution - only run when executed directly
+if (import.meta.main) {
+  const pdfPath = process.argv[2];
 
-if (!pdfPath) {
-  console.error("Usage: bun run process-pdf.ts <path-to-pdf>");
-  console.error("Example: bun run process-pdf.ts document.pdf");
-  process.exit(1);
+  if (!pdfPath) {
+    console.error("Usage: bun run process-pdf.ts <path-to-pdf>");
+    console.error("Example: bun run process-pdf.ts document.pdf");
+    process.exit(1);
+  }
+
+  await processPDF(pdfPath);
 }
-
-await processPDF(pdfPath);
