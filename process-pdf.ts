@@ -12,9 +12,9 @@ if (!OPENROUTER_API_KEY) {
 }
 
 const IngresoRowSchema = z.object({
-  fecha: z.string(),
+  fecha: z.string().nullish(),
   reciboNumero: z.string(),
-  contribuyenteNombre: z.string(),
+  contribuyenteNombre: z.string().nullish(),
   representanteLegal: z.string().nullish(),
   cedulaRuc: z.string().nullish(),
   direccion: z.string().nullish(),
@@ -30,10 +30,10 @@ const IngresoRowSchema = z.object({
 
 const EgresoRowSchema = z.object({
   // INFORME DE GASTOS / EGRESOS (Formulario Pre-18)
-  fecha: z.string(),
+  fecha: z.string().nullish(),
   numeroFacturaRecibo: z.string(),
   cedulaRuc: z.string().nullish(),
-  proveedorNombre: z.string(),
+  proveedorNombre: z.string().nullish(),
   detalleGasto: z.string().nullish(),
   // This column is a label like: "Efectivo", "Especie", "Cheque", etc.
   pagoTipo: z.enum(["Efectivo", "Especie", "Cheque"]).nullish(),
