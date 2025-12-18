@@ -5,7 +5,8 @@
   "scripts": {
     "scrape": "bun run scraper.ts",
     "preview": "bun run index.html",
-    "process-pdf": "bun run process-pdf.ts"
+    "process-pdf": "bun run process-pdf.ts",
+    "evals": "bun run evals/run-evals.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"
