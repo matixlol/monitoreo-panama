@@ -129,11 +129,13 @@ export async function extractDataFromPDF(
 
   const prompt = `This PDF contains financial reports from Panama's Electoral Tribunal (Tribunal Electoral).
 
-IMPORTANT: Look for tables titled "INFORME DE INGRESOS" (income report) and "INFORME DE EGRESOS" or "GASTOS" (expense report). These tables contain MULTIPLE ROWS - extract EACH ROW as a separate record. Do NOT just extract summary totals.
+Look for tables titled "INFORME DE INGRESOS" (income report) and "INFORME DE GASTOS" (expense report). These tables contain MULTIPLE ROWS - extract EACH ROW as a separate record. Do NOT extract summary totals for the whole table. 
 
-The "INFORME DE INGRESOS" table has these columns in order (left to right):
+The table may span across multiple pages. Process the entire table, not just the first page.
+
+The "INFORME DE INGRESOS" table (Formulario Pre-17) has these columns in order (left to right):
 1. Fecha
-2. Recibo No,
+2. Recibo No.
 3. Nombre del Contribuyente
 4. Representante Legal
 5. Cédula/RUC
@@ -147,20 +149,7 @@ The "INFORME DE INGRESOS" table has these columns in order (left to right):
 13. Recursos Propios - Especie (column 13)
 14. TOTAL
 
-CRITICAL: For each row, check WHICH COLUMN contains the monetary amount. The amount could be in:
-- Column 9 (Donaciones Privadas - Efectivo)
-- Column 10 (Donaciones Privadas - Cheque/ACH)  
-- Column 11 (Donaciones Privadas - Especie)
-- Column 12 (Recursos Propios - Efectivo/Cheque)
-- Column 13 (Recursos Propios - Especie)
-
-Extract EVERY ROW from these tables (not just totals). Return a JSON object:
-{
-  "ingress": [...],  // One object per row in INFORME DE INGRESOS
-  "egress": [...]    // One object per row in INFORME DE EGRESOS
-}
-
-The "INFORME DE GASTOS" / "INFORME DE EGRESOS" table (Formulario Pre-18) has these columns in order (left to right):
+The "INFORME DE GASTOS" table (Formulario Pre-18) has these columns in order (left to right):
 1. Fecha
 2. No. de Factura/Recibo
 3. Cédula/RUC
@@ -180,6 +169,12 @@ The "INFORME DE GASTOS" / "INFORME DE EGRESOS" table (Formulario Pre-18) has the
 17. Propaganda Electoral
 18. Total de Gastos de Propaganda
 19. Total General
+
+Extract every row from these tables. Return a minified JSON object:
+{
+  "ingress": [...],  // One object per row in INFORME DE INGRESOS
+  "egress": [...]    // One object per row in INFORME DE GASTOS
+}
   
 Here's the full JSON schema for the response:
 ${JSON.stringify(jsonSchema)}`;
