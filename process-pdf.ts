@@ -1,38 +1,10 @@
 import { readFile } from "fs/promises";
 import { existsSync } from "fs";
 import z from "zod";
+import { GoogleGenAI } from "@google/genai";
 
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
-const MODEL = "google/gemini-3-flash-preview";
-
-const getOpenRouterHeaders = (
-  includeContentType = false
-): Record<string, string> => {
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-    "HTTP-Referer": "https://github.com/matixlol/monitoreo-panama",
-    "X-Title": "Monitoreo Panama",
-  };
-  if (includeContentType) {
-    headers["Content-Type"] = "application/json";
-  }
-  return headers;
-};
-
-async function fetchOrThrow(
-  url: string,
-  init?: RequestInit
-): Promise<Response> {
-  const response = await fetch(url, init);
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `API request failed with status ${response.status}: ${errorText}`
-    );
-  }
-  return response;
-}
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const MODEL = "gemini-3-flash-preview";
 
 export const IngresoRowSchema = z.object({
   fecha: z.string().nullish(),
@@ -85,7 +57,6 @@ export const ResponseSchema = z.object({
   ingress: z.array(IngresoRowSchema),
   egress: z.array(EgresoRowSchema),
 });
-const jsonSchema = z.toJSONSchema(ResponseSchema);
 
 export type IngresoRow = z.infer<typeof IngresoRowSchema>;
 export type EgresoRow = z.infer<typeof EgresoRowSchema>;
@@ -93,29 +64,10 @@ export type ExtractedData = z.infer<typeof ResponseSchema>;
 
 export interface ExtractionResult {
   data: ExtractedData;
-  cost: number | null; // Cost in USD
+  usageMetadata?: any;
 }
 
-async function encodePDFToBase64(pdfPath: string): Promise<string> {
-  const pdfBuffer = await readFile(pdfPath);
-  const base64PDF = pdfBuffer.toString("base64");
-  return `data:application/pdf;base64,${base64PDF}`;
-}
-
-async function getGenerationCost(generationId: string): Promise<number | null> {
-  try {
-    const response = await fetchOrThrow(
-      `https://openrouter.ai/api/v1/generation?id=${generationId}`,
-      { headers: getOpenRouterHeaders() }
-    );
-
-    const stats = await response.json();
-    return stats.total_cost ?? null;
-  } catch (error) {
-    console.warn("Failed to fetch generation cost:", error);
-    return null;
-  }
-}
+const responseJsonSchema = z.toJSONSchema(ResponseSchema);
 
 export async function extractDataFromPDF(
   pdfPath: string
@@ -124,8 +76,12 @@ export async function extractDataFromPDF(
     throw new Error(`PDF file not found: ${pdfPath}`);
   }
 
-  const base64PDF = await encodePDFToBase64(pdfPath);
-  const filename = pdfPath.split("/").pop();
+  const pdfBuffer = await readFile(pdfPath);
+  const base64PDF = pdfBuffer.toString("base64");
+
+  const ai = new GoogleGenAI({
+    apiKey: GEMINI_API_KEY,
+  });
 
   const prompt = `This PDF contains financial reports from Panama's Electoral Tribunal (Tribunal Electoral).
 
@@ -170,85 +126,49 @@ The "INFORME DE GASTOS" table (Formulario Pre-18) has these columns in order (le
 18. Total de Gastos de Propaganda
 19. Total General
 
-Extract every row from these tables. Return a minified JSON object:
-{
-  "ingress": [...],  // One object per row in INFORME DE INGRESOS
-  "egress": [...]    // One object per row in INFORME DE GASTOS
-}
-  
-Here's the full JSON schema for the response:
-${JSON.stringify(jsonSchema)}`;
+Extract every row from these tables.`;
 
-  const response = await fetchOrThrow(OPENROUTER_API_URL, {
-    method: "POST",
-    headers: getOpenRouterHeaders(true),
-    body: JSON.stringify({
-      model: MODEL,
-      temperature: 0,
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a helpful assistant that extracts financial data from PDFs in JSON format.",
-        },
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: prompt,
+  const response = await ai.models.generateContent({
+    model: MODEL,
+    contents: [
+      {
+        role: "user",
+        parts: [
+          { text: prompt },
+          {
+            inlineData: {
+              mimeType: "application/pdf",
+              data: base64PDF,
             },
-            {
-              type: "file",
-              file: {
-                filename: filename,
-                file_data: base64PDF,
-              },
-            },
-          ],
-        },
-      ],
-      plugins: [
-        { id: "response-healing" },
-        {
-          id: "file-parser",
-          pdf: {
-            engine: "native",
           },
-        },
-      ],
-      response_format: {
-        type: "json_schema",
-        json_schema: jsonSchema,
+        ],
       },
-    }),
+    ],
+    config: {
+      temperature: 0,
+      responseMimeType: "application/json",
+      responseJsonSchema,
+    },
   });
 
-  const data = await response.json();
 
-  if (!data.choices || data.choices.length === 0) {
-    throw new Error(`No response from API: ${JSON.stringify(data, null, 2)}`);
+  const content = response.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!content) {
+    throw new Error(`No content in response: ${JSON.stringify(response, null, 2)}`);
   }
-
-  let content = data.choices[0].message.content.trim();
-  if (content.startsWith("```json")) content = content.substring(7).trim();
-  if (content.endsWith("```"))
-    content = content.substring(0, content.length - 3).trim();
-
-  const cost = data.id ? await getGenerationCost(data.id) : null;
 
   return {
     data: ResponseSchema.parse(JSON.parse(content)),
-    cost,
+    usageMetadata: response.usageMetadata,
   };
 }
 
 async function processPDF(pdfPath: string): Promise<void> {
   console.log(`Reading PDF: ${pdfPath}`);
-  console.log("Sending PDF to OpenRouter...");
+  console.log("Sending PDF to Gemini...");
 
   try {
-    const { data, cost } = await extractDataFromPDF(pdfPath);
+    const { data, usageMetadata } = await extractDataFromPDF(pdfPath);
 
     // Output the result
     console.log("\n=== EXTRACTED DATA ===\n");
@@ -272,8 +192,8 @@ async function processPDF(pdfPath: string): Promise<void> {
     console.log("\n=== SUMMARY ===");
     console.log(`Ingress records: ${data.ingress?.length || 0}`);
     console.log(`Egress records: ${data.egress?.length || 0}`);
-    if (cost !== null) {
-      console.log(`Cost: $${cost.toFixed(6)}`);
+    if (usageMetadata) {
+      console.log(`Usage: ${JSON.stringify(usageMetadata)}`);
     }
   } catch (error) {
     console.error("Error processing PDF:", error);
@@ -293,3 +213,4 @@ if (import.meta.main) {
 
   await processPDF(pdfPath);
 }
+
