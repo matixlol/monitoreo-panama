@@ -16,7 +16,7 @@ interface EvalResult {
   ingress: ComparisonResult;
   egress: ComparisonResult;
   passed: boolean;
-  cost: number | null;
+  usageMetadata?: any;
   error?: string;
 }
 
@@ -176,7 +176,7 @@ async function runEval(dirPath: string): Promise<EvalResult> {
         namesMismatched: 0,
       },
       passed: false,
-      cost: null,
+      usageMetadata: null,
       error: "No PDF file found",
     };
   }
@@ -200,7 +200,7 @@ async function runEval(dirPath: string): Promise<EvalResult> {
 
   try {
     // Extract data from PDF
-    const { data: extracted, cost } = await extractDataFromPDF(pdfPath);
+    const { data: extracted, usageMetadata } = await extractDataFromPDF(pdfPath);
 
     // Compare
     const ingressResult = compareRows(
@@ -220,7 +220,7 @@ async function runEval(dirPath: string): Promise<EvalResult> {
       ingress: ingressResult,
       egress: egressResult,
       passed: isPassing(ingressResult) && isPassing(egressResult),
-      cost,
+      usageMetadata,
     };
   } catch (err) {
     return {
@@ -241,7 +241,7 @@ async function runEval(dirPath: string): Promise<EvalResult> {
         namesMismatched: 0,
       },
       passed: false,
-      cost: null,
+      usageMetadata: null,
       error: err instanceof Error ? err.message : String(err),
     };
   }
@@ -251,8 +251,8 @@ function printResult(result: EvalResult): void {
   const status = result.passed ? "✅ PASS" : "❌ FAIL";
   console.log(`\n${"=".repeat(60)}`);
   console.log(`${status} - ${result.dirName}`);
-  if (result.cost !== null) {
-    console.log(`  Cost: $${result.cost.toFixed(6)}`);
+  if (result.usageMetadata) {
+    console.log(`  Usage: ${JSON.stringify(result.usageMetadata)}`);
   }
   console.log(`${"=".repeat(60)}`);
 
@@ -352,12 +352,10 @@ async function main() {
   // Summary
   const passed = results.filter((r) => r.passed).length;
   const failed = results.length - passed;
-  const totalCost = results.reduce((sum, r) => sum + (r.cost ?? 0), 0);
   console.log(`\n${"=".repeat(60)}`);
   console.log(
     `SUMMARY: ${passed} passed, ${failed} failed out of ${results.length} total`
   );
-  console.log(`Total cost: $${totalCost.toFixed(6)}`);
   console.log(`${"=".repeat(60)}`);
 
   if (failed > 0) {
