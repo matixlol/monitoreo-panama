@@ -12,9 +12,13 @@
     "@types/bun": "latest"
   },
   "dependencies": {
+    "@ai-sdk/google": "^2.0.51",
     "@google/genai": "^1.34.0",
+    "@openrouter/ai-sdk-provider": "^1.5.4",
+    "ai": "^5.0.115",
     "mime": "^4.1.0",
     "p-map": "^7.0.4",
+    "pdf-lib": "^1.17.1",
     "zod": "^4.1.13"
   }
 }

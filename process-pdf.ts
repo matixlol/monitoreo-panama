@@ -1,10 +1,15 @@
 import { readFile } from "fs/promises";
 import { existsSync } from "fs";
 import z from "zod";
-import { GoogleGenAI } from "@google/genai";
+import { generateObject } from "ai";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { PDFDocument } from "pdf-lib";
+import pMap from "p-map";
+import { openrouter } from "@openrouter/ai-sdk-provider";
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const MODEL = "gemini-3-flash-preview";
+
+const google = createGoogleGenerativeAI({});
 
 export const IngresoRowSchema = z.object({
   fecha: z.string().nullish(),
@@ -15,25 +20,21 @@ export const IngresoRowSchema = z.object({
   direccion: z.string().nullish(),
   telefono: z.string().nullish(),
   correoElectronico: z.string().nullish(),
-  donacionesPrivadasEfectivo: z.number().nullish(),
-  donacionesPrivadasChequeAch: z.number().nullish(),
-  donacionesPrivadasEspecie: z.number().nullish(),
-  recursosPropiosEfectivoCheque: z.number().nullish(),
-  recursosPropiosEspecie: z.number().nullish(),
-  total: z.number().nullish(),
+  donacionesPrivadasEfectivo: z.coerce.number().nullish(),
+  donacionesPrivadasChequeAch: z.coerce.number().nullish(),
+  donacionesPrivadasEspecie: z.coerce.number().nullish(),
+  recursosPropiosEfectivoCheque: z.coerce.number().nullish(),
+  recursosPropiosEspecie: z.coerce.number().nullish(),
+  total: z.coerce.number().nullish(),
 });
 
 export const EgresoRowSchema = z.object({
-  // INFORME DE GASTOS / EGRESOS (Formulario Pre-18)
   fecha: z.string().nullish(),
   numeroFacturaRecibo: z.string(),
   cedulaRuc: z.string().nullish(),
   proveedorNombre: z.string().nullish(),
   detalleGasto: z.string().nullish(),
-  // This column is a label like: "Efectivo", "Especie", "Cheque", etc.
   pagoTipo: z.enum(["Efectivo", "Especie", "Cheque"]).nullish(),
-
-  // Otros Gastos de Campaña
   movilizacion: z.coerce.number().nullish(),
   combustible: z.coerce.number().nullish(),
   hospedaje: z.coerce.number().nullish(),
@@ -43,13 +44,9 @@ export const EgresoRowSchema = z.object({
   alquilerLocalServiciosBasicos: z.coerce.number().nullish(),
   cargosBancarios: z.coerce.number().nullish(),
   totalGastosCampania: z.coerce.number().nullish(),
-
-  // Gastos de Propaganda
   personalizacionArticulosPromocionales: z.coerce.number().nullish(),
   propagandaElectoral: z.coerce.number().nullish(),
   totalGastosPropaganda: z.coerce.number().nullish(),
-
-  // Total General (right-most column)
   totalGeneral: z.coerce.number().nullish(),
 });
 
@@ -67,8 +64,6 @@ export interface ExtractionResult {
   usageMetadata?: any;
 }
 
-const responseJsonSchema = z.toJSONSchema(ResponseSchema);
-
 export async function extractDataFromPDF(
   pdfPath: string
 ): Promise<ExtractionResult> {
@@ -77,89 +72,106 @@ export async function extractDataFromPDF(
   }
 
   const pdfBuffer = await readFile(pdfPath);
-  const base64PDF = pdfBuffer.toString("base64");
+  const pdfDoc = await PDFDocument.load(pdfBuffer);
+  const totalPages = pdfDoc.getPageCount();
+  const BATCH_SIZE = 2;
 
-  const ai = new GoogleGenAI({
-    apiKey: GEMINI_API_KEY,
-  });
+  console.log(
+    `[Batching] Total pages: ${totalPages}. Processing in batches of ${BATCH_SIZE}.`
+  );
 
-  const prompt = `This PDF contains financial reports from Panama's Electoral Tribunal (Tribunal Electoral).
+  const accumulatedData: ExtractedData = {
+    ingress: [],
+    egress: [],
+  };
 
-Look for tables titled "INFORME DE INGRESOS" (income report) and "INFORME DE GASTOS" (expense report). These tables contain MULTIPLE ROWS - extract EACH ROW as a separate record. Do NOT extract summary totals for the whole table. 
+  const batches: number[][] = [];
+  for (let i = 0; i < totalPages; i += BATCH_SIZE) {
+    const batch = [];
+    for (let j = i; j < Math.min(i + BATCH_SIZE, totalPages); j++) {
+      batch.push(j);
+    }
+    batches.push(batch);
+  }
 
-The table may span across multiple pages. Process the entire table, not just the first page.
+  const processBatch = async (pageIndices: number[], batchIndex: number) => {
+    console.log(
+      `[Batch ${batchIndex + 1}/${batches.length}] Processing pages ${
+        pageIndices[0] + 1
+      }-${pageIndices[pageIndices.length - 1] + 1}...`
+    );
 
-The "INFORME DE INGRESOS" table (Formulario Pre-17) has these columns in order (left to right):
-1. Fecha
-2. Recibo No.
-3. Nombre del Contribuyente
-4. Representante Legal
-5. Cédula/RUC
-6. Dirección
-7. Teléfono
-8. Correo Electrónico
-9. Donaciones Privadas - Efectivo (column 9)
-10. Donaciones Privadas - Cheque/ACH (column 10)
-11. Donaciones Privadas - Especie (column 11)
-12. Recursos Propios - Efectivo/Cheque (column 12)
-13. Recursos Propios - Especie (column 13)
-14. TOTAL
+    // Create a new PDF with just the batch pages
+    const subPdfDoc = await PDFDocument.create();
+    const copiedPages = await subPdfDoc.copyPages(pdfDoc, pageIndices);
+    copiedPages.forEach((page) => subPdfDoc.addPage(page));
+    const subPdfBytes = await subPdfDoc.save();
 
-The "INFORME DE GASTOS" table (Formulario Pre-18) has these columns in order (left to right):
-1. Fecha
-2. No. de Factura/Recibo
-3. Cédula/RUC
-4. Nombre del Proveedor
-5. Detalle del Gasto
-6. Pago en Efectivo, Especie o Cheque (a label, NOT an amount)
-7. Movilización
-8. Combustible
-9. Hospedaje
-10. Activistas
-11. Caravana y concentraciones
-12. Comida y Brindis
-13. Alquiler de Local / servicios básicos
-14. Cargos Bancarios
-15. Total de Otros Gastos
-16. Personalización de artículos promocionales
-17. Propaganda Electoral
-18. Total de Gastos de Propaganda
-19. Total General
+    const { object, usage } = await generateObject({
+      model: openrouter.chat("google/gemini-3-flash-preview", {
+        provider: {
+          order: ["google-ai-studio"],
+          allow_fallbacks: true,
+        },
+      }),
+      schema: ResponseSchema,
+      messages: [
+        {
+          role: "user" as const,
+          content: [
+            {
+              type: "text",
+              text: `This PDF segment contains financial reports from Panama's Electoral Tribunal (Tribunal Electoral).
+      Extract rows from "INFORME DE INGRESOS" and "INFORME DE GASTOS" tables.
+      
+      "INFORME DE INGRESOS" (Formulario Pre-17) columns:
+      1. Fecha, 2. Recibo No., 3. Nombre del Contribuyente, 4. Representante Legal, 5. Cédula/RUC, 6. Dirección, 7. Teléfono, 8. Correo Electrónico, 9. Donaciones Privadas - Efectivo, 10. Donaciones Privadas - Cheque/ACH, 11. Donaciones Privadas - Especie, 12. Recursos Propios - Efectivo/Cheque, 13. Recursos Propios - Especie, 14. TOTAL
 
-Extract every row from these tables.`;
-
-  const response = await ai.models.generateContent({
-    model: MODEL,
-    contents: [
-      {
-        role: "user",
-        parts: [
-          { text: prompt },
-          {
-            inlineData: {
-              mimeType: "application/pdf",
-              data: base64PDF,
+      "INFORME DE GASTOS" (Formulario Pre-18) columns:
+      1. Fecha, 2. No. de Factura/Recibo, 3. Cédula/RUC, 4. Nombre del Proveedor, 5. Detalle del Gasto, 6. Pago en Efectivo, Especie o Cheque, 7. Movilización, 8. Combustible, 9. Hospedaje, 10. Activistas, 11. Caravana y concentraciones, 12. Comida y Brindis, 13. Alquiler de Local / servicios básicos, 14. Cargos Bancarios, 15. Total de Otros Gastos, 16. Personalización de artículos promocionales, 17. Propaganda Electoral, 18. Total de Gastos de Propaganda, 19. Total General`,
             },
-          },
-        ],
-      },
-    ],
-    config: {
-      temperature: 0,
-      responseMimeType: "application/json",
-      responseJsonSchema,
-    },
-  });
+            {
+              type: "file" as const,
+              data: subPdfBytes,
+              mediaType: "application/pdf",
+            },
+          ],
+        },
+      ],
+    });
 
+    console.log(
+      `[Batch ${batchIndex + 1}] Extracted ${
+        object.ingress.length
+      } ingress and ${object.egress.length} egress rows.`
+    );
+    return { object, usage };
+  };
 
-  const content = response.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!content) {
-    throw new Error(`No content in response: ${JSON.stringify(response, null, 2)}`);
+  const results = await pMap(
+    batches,
+    (batch, index) => processBatch(batch, index),
+    {
+      concurrency: 20,
+    }
+  );
+
+  let totalUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
+
+  for (const result of results) {
+    accumulatedData.ingress.push(...result.object.ingress);
+    accumulatedData.egress.push(...result.object.egress);
+    if (result.usage) {
+      totalUsage.promptTokens += (result.usage as any).promptTokens || 0;
+      totalUsage.completionTokens +=
+        (result.usage as any).completionTokens || 0;
+      totalUsage.totalTokens += (result.usage as any).totalTokens || 0;
+    }
   }
 
   return {
-    data: ResponseSchema.parse(JSON.parse(content)),
-    usageMetadata: response.usageMetadata,
+    data: accumulatedData,
+    usageMetadata: totalUsage,
   };
 }
 
@@ -213,4 +225,3 @@ if (import.meta.main) {
 
   await processPDF(pdfPath);
 }
-
