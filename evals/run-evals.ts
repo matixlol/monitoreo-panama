@@ -16,7 +16,6 @@ interface EvalResult {
   ingress: ComparisonResult;
   egress: ComparisonResult;
   passed: boolean;
-  usageMetadata?: any;
   error?: string;
 }
 
@@ -176,7 +175,6 @@ async function runEval(dirPath: string): Promise<EvalResult> {
         namesMismatched: 0,
       },
       passed: false,
-      usageMetadata: null,
       error: "No PDF file found",
     };
   }
@@ -220,7 +218,6 @@ async function runEval(dirPath: string): Promise<EvalResult> {
       ingress: ingressResult,
       egress: egressResult,
       passed: isPassing(ingressResult) && isPassing(egressResult),
-      usageMetadata,
     };
   } catch (err) {
     return {
@@ -241,7 +238,6 @@ async function runEval(dirPath: string): Promise<EvalResult> {
         namesMismatched: 0,
       },
       passed: false,
-      usageMetadata: null,
       error: err instanceof Error ? err.message : String(err),
     };
   }
