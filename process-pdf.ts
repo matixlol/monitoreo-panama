@@ -20,12 +20,12 @@ export const IngresoRowSchema = z.object({
   direccion: z.string().nullish(),
   telefono: z.string().nullish(),
   correoElectronico: z.string().nullish(),
-  donacionesPrivadasEfectivo: z.coerce.number().nullish(),
-  donacionesPrivadasChequeAch: z.coerce.number().nullish(),
-  donacionesPrivadasEspecie: z.coerce.number().nullish(),
-  recursosPropiosEfectivoCheque: z.coerce.number().nullish(),
-  recursosPropiosEspecie: z.coerce.number().nullish(),
-  total: z.coerce.number().nullish(),
+  donacionesPrivadasEfectivo: z.number().nullish(),
+  donacionesPrivadasChequeAch: z.number().nullish(),
+  donacionesPrivadasEspecie: z.number().nullish(),
+  recursosPropiosEfectivoCheque: z.number().nullish(),
+  recursosPropiosEspecie: z.number().nullish(),
+  total: z.number().nullish(),
 });
 
 export const EgresoRowSchema = z.object({
@@ -35,19 +35,19 @@ export const EgresoRowSchema = z.object({
   proveedorNombre: z.string().nullish(),
   detalleGasto: z.string().nullish(),
   pagoTipo: z.enum(["Efectivo", "Especie", "Cheque"]).nullish(),
-  movilizacion: z.coerce.number().nullish(),
-  combustible: z.coerce.number().nullish(),
-  hospedaje: z.coerce.number().nullish(),
-  activistas: z.coerce.number().nullish(),
-  caravanaConcentraciones: z.coerce.number().nullish(),
-  comidaBrindis: z.coerce.number().nullish(),
-  alquilerLocalServiciosBasicos: z.coerce.number().nullish(),
-  cargosBancarios: z.coerce.number().nullish(),
-  totalGastosCampania: z.coerce.number().nullish(),
-  personalizacionArticulosPromocionales: z.coerce.number().nullish(),
-  propagandaElectoral: z.coerce.number().nullish(),
-  totalGastosPropaganda: z.coerce.number().nullish(),
-  totalGeneral: z.coerce.number().nullish(),
+  movilizacion: z.number().nullish(),
+  combustible: z.number().nullish(),
+  hospedaje: z.number().nullish(),
+  activistas: z.number().nullish(),
+  caravanaConcentraciones: z.number().nullish(),
+  comidaBrindis: z.number().nullish(),
+  alquilerLocalServiciosBasicos: z.number().nullish(),
+  cargosBancarios: z.number().nullish(),
+  totalGastosCampania: z.number().nullish(),
+  personalizacionArticulosPromocionales: z.number().nullish(),
+  propagandaElectoral: z.number().nullish(),
+  totalGastosPropaganda: z.number().nullish(),
+  totalGeneral: z.number().nullish(),
 });
 
 export const ResponseSchema = z.object({
@@ -61,7 +61,6 @@ export type ExtractedData = z.infer<typeof ResponseSchema>;
 
 export interface ExtractionResult {
   data: ExtractedData;
-  usageMetadata?: any;
 }
 
 export async function extractDataFromPDF(
@@ -74,7 +73,7 @@ export async function extractDataFromPDF(
   const pdfBuffer = await readFile(pdfPath);
   const pdfDoc = await PDFDocument.load(pdfBuffer);
   const totalPages = pdfDoc.getPageCount();
-  const BATCH_SIZE = 2;
+  const BATCH_SIZE = 8;
 
   console.log(
     `[Batching] Total pages: ${totalPages}. Processing in batches of ${BATCH_SIZE}.`
@@ -122,13 +121,16 @@ export async function extractDataFromPDF(
             {
               type: "text",
               text: `This PDF segment contains financial reports from Panama's Electoral Tribunal (Tribunal Electoral).
-      Extract rows from "INFORME DE INGRESOS" and "INFORME DE GASTOS" tables.
-      
-      "INFORME DE INGRESOS" (Formulario Pre-17) columns:
-      1. Fecha, 2. Recibo No., 3. Nombre del Contribuyente, 4. Representante Legal, 5. Cédula/RUC, 6. Dirección, 7. Teléfono, 8. Correo Electrónico, 9. Donaciones Privadas - Efectivo, 10. Donaciones Privadas - Cheque/ACH, 11. Donaciones Privadas - Especie, 12. Recursos Propios - Efectivo/Cheque, 13. Recursos Propios - Especie, 14. TOTAL
 
-      "INFORME DE GASTOS" (Formulario Pre-18) columns:
-      1. Fecha, 2. No. de Factura/Recibo, 3. Cédula/RUC, 4. Nombre del Proveedor, 5. Detalle del Gasto, 6. Pago en Efectivo, Especie o Cheque, 7. Movilización, 8. Combustible, 9. Hospedaje, 10. Activistas, 11. Caravana y concentraciones, 12. Comida y Brindis, 13. Alquiler de Local / servicios básicos, 14. Cargos Bancarios, 15. Total de Otros Gastos, 16. Personalización de artículos promocionales, 17. Propaganda Electoral, 18. Total de Gastos de Propaganda, 19. Total General`,
+Extract rows from "INFORME DE INGRESOS" and "INFORME DE GASTOS" tables. Only extract from pages that say "Formulario Pre-17" or "Formulario Pre-18"/"Pre-8".
+
+"INFORME DE INGRESOS" (Formulario Pre-17) columns:
+1. Fecha, 2. Recibo No., 3. Nombre del Contribuyente, 4. Representante Legal, 5. Cédula/RUC, 6. Dirección, 7. Teléfono, 8. Correo Electrónico, 9. Donaciones Privadas - Efectivo, 10. Donaciones Privadas - Cheque/ACH, 11. Donaciones Privadas - Especie, 12. Recursos Propios - Efectivo/Cheque, 13. Recursos Propios - Especie, 14. TOTAL
+
+"INFORME DE GASTOS" (Formulario Pre-18/Pre-8) columns:
+1. Fecha, 2. No. de Factura/Recibo, 3. Cédula/RUC, 4. Nombre del Proveedor, 5. Detalle del Gasto, 6. Pago en Efectivo, Especie o Cheque, 7. Movilización, 8. Combustible, 9. Hospedaje, 10. Activistas, 11. Caravana y concentraciones, 12. Comida y Brindis, 13. Alquiler de Local / servicios básicos, 14. Cargos Bancarios, 15. Total de Gastos de Campaña (totalGastosCampania), 16. Personalización de artículos promocionales, 17. Propaganda Electoral, 18. Total de Gastos de Propaganda (totalGastosPropaganda), 19. Total de Gastos de Propaganda y Campaña (totalGeneral)
+
+If a column is missing, just set it as null.`,
             },
             {
               type: "file" as const,
@@ -156,22 +158,13 @@ export async function extractDataFromPDF(
     }
   );
 
-  let totalUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
-
   for (const result of results) {
     accumulatedData.ingress.push(...result.object.ingress);
     accumulatedData.egress.push(...result.object.egress);
-    if (result.usage) {
-      totalUsage.promptTokens += (result.usage as any).promptTokens || 0;
-      totalUsage.completionTokens +=
-        (result.usage as any).completionTokens || 0;
-      totalUsage.totalTokens += (result.usage as any).totalTokens || 0;
-    }
   }
 
   return {
     data: accumulatedData,
-    usageMetadata: totalUsage,
   };
 }
 
@@ -180,11 +173,7 @@ async function processPDF(pdfPath: string): Promise<void> {
   console.log("Sending PDF to Gemini...");
 
   try {
-    const { data, usageMetadata } = await extractDataFromPDF(pdfPath);
-
-    // Output the result
-    console.log("\n=== EXTRACTED DATA ===\n");
-    console.log(JSON.stringify(data, null, 2));
+    const { data } = await extractDataFromPDF(pdfPath);
 
     // Also save to files
     if (data.ingress && Array.isArray(data.ingress)) {
@@ -204,9 +193,6 @@ async function processPDF(pdfPath: string): Promise<void> {
     console.log("\n=== SUMMARY ===");
     console.log(`Ingress records: ${data.ingress?.length || 0}`);
     console.log(`Egress records: ${data.egress?.length || 0}`);
-    if (usageMetadata) {
-      console.log(`Usage: ${JSON.stringify(usageMetadata)}`);
-    }
   } catch (error) {
     console.error("Error processing PDF:", error);
     process.exit(1);

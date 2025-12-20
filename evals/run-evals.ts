@@ -200,7 +200,7 @@ async function runEval(dirPath: string): Promise<EvalResult> {
 
   try {
     // Extract data from PDF
-    const { data: extracted, usageMetadata } = await extractDataFromPDF(pdfPath);
+    const { data: extracted } = await extractDataFromPDF(pdfPath);
 
     // Compare
     const ingressResult = compareRows(
@@ -251,9 +251,6 @@ function printResult(result: EvalResult): void {
   const status = result.passed ? "✅ PASS" : "❌ FAIL";
   console.log(`\n${"=".repeat(60)}`);
   console.log(`${status} - ${result.dirName}`);
-  if (result.usageMetadata) {
-    console.log(`  Usage: ${JSON.stringify(result.usageMetadata)}`);
-  }
   console.log(`${"=".repeat(60)}`);
 
   if (result.error) {
