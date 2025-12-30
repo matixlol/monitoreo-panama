@@ -349,7 +349,7 @@ async function main() {
   console.log(`Found ${evalDirs.length} eval(s) to run...\n`);
 
   // Run all evals in parallel
-  const results = await pMap(evalDirs, runEval, { concurrency: 5 });
+  const results = await pMap(evalDirs, runEval, { concurrency: 50 });
 
   // Print results
   for (const result of results) {
