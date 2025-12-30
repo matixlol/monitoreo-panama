@@ -311,6 +311,9 @@ function printResult(result: EvalResult): void {
 }
 
 async function main() {
+  // Get filter argument (first command-line argument)
+  const filter = process.argv[2];
+
   // Find all eval directories (directories with a PDF and at least one JSON)
   const entries = readdirSync(EVALS_DIR, { withFileTypes: true });
   const evalDirs: string[] = [];
@@ -324,15 +327,25 @@ async function main() {
       (f) => f === "ingress.json" || f === "egress.json"
     );
     if (hasPdf && hasJson) {
-      evalDirs.push(dirPath);
+      // Filter by directory name if filter is provided
+      if (!filter || entry.name.toLowerCase().includes(filter.toLowerCase())) {
+        evalDirs.push(dirPath);
+      }
     }
   }
 
   if (evalDirs.length === 0) {
-    console.log("No eval directories found.");
+    if (filter) {
+      console.log(`No eval directories found matching filter: "${filter}"`);
+    } else {
+      console.log("No eval directories found.");
+    }
     return;
   }
 
+  if (filter) {
+    console.log(`Filter: "${filter}"`);
+  }
   console.log(`Found ${evalDirs.length} eval(s) to run...\n`);
 
   // Run all evals in parallel
