@@ -18,7 +18,7 @@
     "personalizacionArticulosPromocionales": null,
     "propagandaElectoral": null,
     "totalGastosPropaganda": null,
-    "totalGeneral": 50
+    "totalDeGastosDePropagandaYCampania": 50
   },
   {
     "fecha": "26/ago/2022",
@@ -39,7 +39,7 @@
     "personalizacionArticulosPromocionales": null,
     "propagandaElectoral": null,
     "totalGastosPropaganda": null,
-    "totalGeneral": 49
+    "totalDeGastosDePropagandaYCampania": 49
   },
   {
     "fecha": "27/ago/2022",
@@ -60,7 +60,7 @@
     "personalizacionArticulosPromocionales": null,
     "propagandaElectoral": null,
     "totalGastosPropaganda": null,
-    "totalGeneral": 10
+    "totalDeGastosDePropagandaYCampania": 10
   },
   {
     "fecha": "09/sep/2022",
@@ -81,7 +81,7 @@
     "personalizacionArticulosPromocionales": null,
     "propagandaElectoral": null,
     "totalGastosPropaganda": null,
-    "totalGeneral": 200
+    "totalDeGastosDePropagandaYCampania": 200
   },
   {
     "fecha": "09/sep/2022",
@@ -102,7 +102,7 @@
     "personalizacionArticulosPromocionales": null,
     "propagandaElectoral": null,
     "totalGastosPropaganda": null,
-    "totalGeneral": 157.5
+    "totalDeGastosDePropagandaYCampania": 157.5
   },
   {
     "fecha": "01/0ct/2022",
@@ -123,7 +123,7 @@
     "personalizacionArticulosPromocionales": null,
     "propagandaElectoral": null,
     "totalGastosPropaganda": null,
-    "totalGeneral": 50
+    "totalDeGastosDePropagandaYCampania": 50
   },
   {
     "fecha": "01/oct/2022",
@@ -144,7 +144,7 @@
     "personalizacionArticulosPromocionales": null,
     "propagandaElectoral": null,
     "totalGastosPropaganda": null,
-    "totalGeneral": 59.5
+    "totalDeGastosDePropagandaYCampania": 59.5
   },
   {
     "fecha": "11/oct/2022",
@@ -165,7 +165,7 @@
     "personalizacionArticulosPromocionales": null,
     "propagandaElectoral": null,
     "totalGastosPropaganda": null,
-    "totalGeneral": 15
+    "totalDeGastosDePropagandaYCampania": 15
   },
   {
     "fecha": "12/0ct/2022",
@@ -186,7 +186,7 @@
     "personalizacionArticulosPromocionales": null,
     "propagandaElectoral": null,
     "totalGastosPropaganda": null,
-    "totalGeneral": 40
+    "totalDeGastosDePropagandaYCampania": 40
   },
   {
     "fecha": "12/oct/2022",
@@ -207,7 +207,7 @@
     "personalizacionArticulosPromocionales": null,
     "propagandaElectoral": null,
     "totalGastosPropaganda": null,
-    "totalGeneral": 20
+    "totalDeGastosDePropagandaYCampania": 20
   },
   {
     "fecha": "28/oct/2022",
@@ -228,7 +228,7 @@
     "personalizacionArticulosPromocionales": null,
     "propagandaElectoral": null,
     "totalGastosPropaganda": null,
-    "totalGeneral": 60
+    "totalDeGastosDePropagandaYCampania": 60
   },
   {
     "fecha": "28/oct/2022",
@@ -249,7 +249,7 @@
     "personalizacionArticulosPromocionales": null,
     "propagandaElectoral": null,
     "totalGastosPropaganda": null,
-    "totalGeneral": 60
+    "totalDeGastosDePropagandaYCampania": 60
   },
   {
     "fecha": "28-oct-22",
@@ -270,7 +270,7 @@
     "personalizacionArticulosPromocionales": null,
     "propagandaElectoral": null,
     "totalGastosPropaganda": null,
-    "totalGeneral": 15
+    "totalDeGastosDePropagandaYCampania": 15
   },
   {
     "fecha": "29/oct/2022",
@@ -291,7 +291,7 @@
     "personalizacionArticulosPromocionales": null,
     "propagandaElectoral": null,
     "totalGastosPropaganda": null,
-    "totalGeneral": 48
+    "totalDeGastosDePropagandaYCampania": 48
   },
   {
     "fecha": "14/abr/2023",
@@ -312,7 +312,7 @@
     "personalizacionArticulosPromocionales": null,
     "propagandaElectoral": null,
     "totalGastosPropaganda": null,
-    "totalGeneral": 42
+    "totalDeGastosDePropagandaYCampania": 42
   },
   {
     "fecha": "15/abr/2023",
@@ -333,6 +333,6 @@
     "personalizacionArticulosPromocionales": null,
     "propagandaElectoral": null,
     "totalGastosPropaganda": null,
-    "totalGeneral": 45
+    "totalDeGastosDePropagandaYCampania": 45
   }
 ]

@@ -16,7 +16,7 @@ interface EvalResult {
   ingress: ComparisonResult;
   egress: ComparisonResult;
   passed: boolean;
-  error?: string;
+  error?: any;
 }
 
 interface ComparisonResult {
@@ -238,7 +238,7 @@ async function runEval(dirPath: string): Promise<EvalResult> {
         namesMismatched: 0,
       },
       passed: false,
-      error: err instanceof Error ? err.message : String(err),
+      error: err,
     };
   }
 }
@@ -251,11 +251,12 @@ function printResult(result: EvalResult): void {
 
   if (result.error) {
     console.log(`  Error: ${result.error}`);
+    console.error(result.error);
     return;
   }
 
   // Ingress
-  console.log(`\n  INGRESS:`);
+  console.log(`\n  INGRESS (evals/${result.dirName}/ingress.json):`);
   console.log(
     `    Rows: ${result.ingress.rowCount.actual}/${result.ingress.rowCount.expected}`
   );
@@ -282,7 +283,7 @@ function printResult(result: EvalResult): void {
   }
 
   // Egress
-  console.log(`\n  EGRESS:`);
+  console.log(`\n  EGRESS (evals/${result.dirName}/egress.json):`);
   console.log(
     `    Rows: ${result.egress.rowCount.actual}/${result.egress.rowCount.expected}`
   );
