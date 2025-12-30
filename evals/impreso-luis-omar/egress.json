@@ -18,7 +18,7 @@
     "personalizacionArticulosPromocionales": null,
     "propagandaElectoral": null,
     "totalGastosPropaganda": null,
-    "totalGeneral": 5.35
+    "totalDeGastosDePropagandaYCampania": 5.35
   },
   {
     "fecha": "30/04/2024",
@@ -39,7 +39,7 @@
     "personalizacionArticulosPromocionales": null,
     "propagandaElectoral": null,
     "totalGastosPropaganda": null,
-    "totalGeneral": 300
+    "totalDeGastosDePropagandaYCampania": 300
   },
   {
     "fecha": "30/04/2024",
@@ -60,7 +60,7 @@
     "personalizacionArticulosPromocionales": null,
     "propagandaElectoral": 300,
     "totalGastosPropaganda": null,
-    "totalGeneral": 300
+    "totalDeGastosDePropagandaYCampania": 300
   },
   {
     "fecha": "30/04/2024",
@@ -81,7 +81,7 @@
     "personalizacionArticulosPromocionales": null,
     "propagandaElectoral": null,
     "totalGastosPropaganda": null,
-    "totalGeneral": 0.2
+    "totalDeGastosDePropagandaYCampania": 0.2
   },
   {
     "fecha": "05/04/2024",
@@ -102,7 +102,7 @@
     "personalizacionArticulosPromocionales": null,
     "propagandaElectoral": null,
     "totalGastosPropaganda": null,
-    "totalGeneral": 5000
+    "totalDeGastosDePropagandaYCampania": 5000
   },
   {
     "fecha": "05/04/2024",
@@ -123,6 +123,6 @@
     "personalizacionArticulosPromocionales": null,
     "propagandaElectoral": 2000,
     "totalGastosPropaganda": null,
-    "totalGeneral": 4400
+    "totalDeGastosDePropagandaYCampania": 4400
   }
 ]

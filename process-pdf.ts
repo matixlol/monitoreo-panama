@@ -2,21 +2,21 @@ import { readFile } from "fs/promises";
 import { existsSync } from "fs";
 import z from "zod";
 import { generateObject } from "ai";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { PDFDocument } from "pdf-lib";
 import pMap from "p-map";
 import { openrouter } from "@openrouter/ai-sdk-provider";
 
-const MODEL = "gemini-3-flash-preview";
-
-const google = createGoogleGenerativeAI({});
+const cedulaRuc = z
+  .string()
+  .nullish()
+  .transform((a) => (a === "null" ? null : a));
 
 export const IngresoRowSchema = z.object({
   fecha: z.string().nullish(),
   reciboNumero: z.string(),
   contribuyenteNombre: z.string().nullish(),
   representanteLegal: z.string().nullish(),
-  cedulaRuc: z.string().nullish(),
+  cedulaRuc,
   direccion: z.string().nullish(),
   telefono: z.string().nullish(),
   correoElectronico: z.string().nullish(),
@@ -31,10 +31,10 @@ export const IngresoRowSchema = z.object({
 export const EgresoRowSchema = z.object({
   fecha: z.string().nullish(),
   numeroFacturaRecibo: z.string(),
-  cedulaRuc: z.string().nullish(),
+  cedulaRuc,
   proveedorNombre: z.string().nullish(),
   detalleGasto: z.string().nullish(),
-  pagoTipo: z.enum(["Efectivo", "Especie", "Cheque"]).nullish(),
+  pagoTipo: z.enum(["Efectivo", "Especie", "Cheque"]).nullish().catch(null),
   movilizacion: z.number().nullish(),
   combustible: z.number().nullish(),
   hospedaje: z.number().nullish(),
@@ -47,7 +47,7 @@ export const EgresoRowSchema = z.object({
   personalizacionArticulosPromocionales: z.number().nullish(),
   propagandaElectoral: z.number().nullish(),
   totalGastosPropaganda: z.number().nullish(),
-  totalGeneral: z.number().nullish(),
+  totalDeGastosDePropagandaYCampania: z.number().nullish(),
 });
 
 export const ResponseSchema = z.object({
@@ -113,6 +113,7 @@ export async function extractDataFromPDF(
           allow_fallbacks: true,
         },
       }),
+      temperature: 0,
       schema: ResponseSchema,
       messages: [
         {
@@ -122,15 +123,15 @@ export async function extractDataFromPDF(
               type: "text",
               text: `This PDF segment contains financial reports from Panama's Electoral Tribunal (Tribunal Electoral).
 
-Extract rows from "INFORME DE INGRESOS" and "INFORME DE GASTOS" tables. Only extract from pages that say "Formulario Pre-17" or "Formulario Pre-18"/"Pre-8".
+Extract rows from "INFORME DE INGRESOS" and "INFORME DE GASTOS" tables. Don't extract the table if it doesn't look like the one described below. If a cell is empty, just return a literal \`null\`.
 
 "INFORME DE INGRESOS" (Formulario Pre-17) columns:
 1. Fecha, 2. Recibo No., 3. Nombre del Contribuyente, 4. Representante Legal, 5. Cédula/RUC, 6. Dirección, 7. Teléfono, 8. Correo Electrónico, 9. Donaciones Privadas - Efectivo, 10. Donaciones Privadas - Cheque/ACH, 11. Donaciones Privadas - Especie, 12. Recursos Propios - Efectivo/Cheque, 13. Recursos Propios - Especie, 14. TOTAL
 
 "INFORME DE GASTOS" (Formulario Pre-18/Pre-8) columns:
-1. Fecha, 2. No. de Factura/Recibo, 3. Cédula/RUC, 4. Nombre del Proveedor, 5. Detalle del Gasto, 6. Pago en Efectivo, Especie o Cheque, 7. Movilización, 8. Combustible, 9. Hospedaje, 10. Activistas, 11. Caravana y concentraciones, 12. Comida y Brindis, 13. Alquiler de Local / servicios básicos, 14. Cargos Bancarios, 15. Total de Gastos de Campaña (totalGastosCampania), 16. Personalización de artículos promocionales, 17. Propaganda Electoral, 18. Total de Gastos de Propaganda (totalGastosPropaganda), 19. Total de Gastos de Propaganda y Campaña (totalGeneral)
+1. Fecha, 2. No. de Factura/Recibo, 3. Cédula/RUC, 4. Nombre del Proveedor, 5. Detalle del Gasto, 6. Pago en Efectivo, Especie o Cheque, 7. Movilización, 8. Combustible, 9. Hospedaje, 10. Activistas, 11. Caravana y concentraciones, 12. Comida y Brindis, 13. Alquiler de Local / servicios básicos, 14. Cargos Bancarios, 15. Total de Gastos de Campaña (totalGastosCampania), 16. Personalización de artículos promocionales, 17. Propaganda Electoral, 18. Total de Gastos de Propaganda (totalGastosPropaganda), 19. Total de Gastos de Propaganda y Campaña (totalDeGastosDePropagandaYCampania)
 
-If a column is missing, just set it as null.`,
+Do not confuse Total de Gastos de Campaña (totalGastosCampania) with Total de Gastos de Propaganda y Campaña (totalDeGastosDePropagandaYCampania)`,
             },
             {
               type: "file" as const,
