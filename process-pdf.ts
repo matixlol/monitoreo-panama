@@ -77,7 +77,9 @@ type BatchProcessor = (
   totalBatches: number
 ) => Promise<BatchResult>;
 
-const EXTRACTION_PROMPT = `This PDF segment contains financial reports from Panama's Electoral Tribunal (Tribunal Electoral).
+export const BATCH_SIZE = 8;
+
+export const EXTRACTION_PROMPT = `This PDF segment contains financial reports from Panama's Electoral Tribunal (Tribunal Electoral).
 
 Extract rows from "INFORME DE INGRESOS" and "INFORME DE GASTOS" tables. Don't extract the table if it doesn't look like the one described below. If a cell is empty, just return a literal \`null\`.
 
@@ -88,6 +90,52 @@ Extract rows from "INFORME DE INGRESOS" and "INFORME DE GASTOS" tables. Don't ex
 1. Fecha, 2. No. de Factura/Recibo, 3. Cédula/RUC, 4. Nombre del Proveedor, 5. Detalle del Gasto, 6. Pago en Efectivo, Especie o Cheque, 7. Movilización, 8. Combustible, 9. Hospedaje, 10. Activistas, 11. Caravana y concentraciones, 12. Comida y Brindis, 13. Alquiler de Local / servicios básicos, 14. Cargos Bancarios, 15. Total de Gastos de Campaña (totalGastosCampania), 16. Personalización de artículos promocionales, 17. Propaganda Electoral, 18. Total de Gastos de Propaganda (totalGastosPropaganda), 19. Total de Gastos de Propaganda y Campaña (totalDeGastosDePropagandaYCampania)
 
 Do not confuse Total de Gastos de Campaña (totalGastosCampania) with Total de Gastos de Propaganda y Campaña (totalDeGastosDePropagandaYCampania). Read each cell as-is, don't try to guess the value if it's not clear.`;
+
+export interface PdfChunk {
+  pdfBytes: Uint8Array;
+  pageIndices: number[];
+  batchIndex: number;
+  totalBatches: number;
+}
+
+/**
+ * Split a PDF into chunks of BATCH_SIZE pages each
+ * Returns an array of PDF chunks with their metadata
+ */
+export async function splitPdfIntoChunks(
+  pdfBuffer: Buffer | Uint8Array,
+  batchSize: number = BATCH_SIZE
+): Promise<PdfChunk[]> {
+  const pdfDoc = await PDFDocument.load(pdfBuffer);
+  const totalPages = pdfDoc.getPageCount();
+
+  const batches: number[][] = [];
+  for (let i = 0; i < totalPages; i += batchSize) {
+    const batch: number[] = [];
+    for (let j = i; j < Math.min(i + batchSize, totalPages); j++) {
+      batch.push(j);
+    }
+    batches.push(batch);
+  }
+
+  const chunks: PdfChunk[] = [];
+  for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+    const pageIndices = batches[batchIndex];
+    const subPdfDoc = await PDFDocument.create();
+    const copiedPages = await subPdfDoc.copyPages(pdfDoc, pageIndices);
+    copiedPages.forEach((page) => subPdfDoc.addPage(page));
+    const pdfBytes = await subPdfDoc.save();
+
+    chunks.push({
+      pdfBytes,
+      pageIndices,
+      batchIndex,
+      totalBatches: batches.length,
+    });
+  }
+
+  return chunks;
+}
 
 /**
  * Process a batch using OpenRouter API (via AI SDK)
@@ -232,12 +280,10 @@ export async function extractDataFromPDF(
   }
 
   const pdfBuffer = await readFile(pdfPath);
-  const pdfDoc = await PDFDocument.load(pdfBuffer);
-  const totalPages = pdfDoc.getPageCount();
-  const BATCH_SIZE = 8;
+  const chunks = await splitPdfIntoChunks(pdfBuffer);
 
   console.log(
-    `[Batching] Total pages: ${totalPages}. Processing in batches of ${BATCH_SIZE}.`
+    `[Batching] Processing ${chunks.length} batches of up to ${BATCH_SIZE} pages each.`
   );
 
   const accumulatedData: ExtractedData = {
@@ -245,29 +291,17 @@ export async function extractDataFromPDF(
     egress: [],
   };
 
-  const batches: number[][] = [];
-  for (let i = 0; i < totalPages; i += BATCH_SIZE) {
-    const batch: number[] = [];
-    for (let j = i; j < Math.min(i + BATCH_SIZE, totalPages); j++) {
-      batch.push(j);
-    }
-    batches.push(batch);
-  }
-
   const processor: BatchProcessor = processWithGemini;
 
-  const processBatch = async (pageIndices: number[], batchIndex: number) => {
-    const subPdfDoc = await PDFDocument.create();
-    const copiedPages = await subPdfDoc.copyPages(pdfDoc, pageIndices);
-    copiedPages.forEach((page) => subPdfDoc.addPage(page));
-    const subPdfBytes = await subPdfDoc.save();
-
-    return processor(subPdfBytes, pageIndices, batchIndex, batches.length);
-  };
-
   const results = await pMap(
-    batches,
-    (batch, index) => processBatch(batch, index),
+    chunks,
+    (chunk) =>
+      processor(
+        chunk.pdfBytes,
+        chunk.pageIndices,
+        chunk.batchIndex,
+        chunk.totalBatches
+      ),
     { concurrency: 20 }
   );
 

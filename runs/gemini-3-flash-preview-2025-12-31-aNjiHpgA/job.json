@@ -1,0 +1,20 @@
+{
+  "jobName": "batches/2e0qjiyldt5ah2bnexv5w8cnlg9jkzjnsfo3",
+  "model": "gemini-3-flash-preview",
+  "runId": "aNjiHpgA",
+  "createdAt": "2025-12-31T17:48:09.983Z",
+  "evalNames": [
+    "lorenzo-diogenes-galvan",
+    "impreso-luis-omar",
+    "juaquin-aguirre-candidato",
+    "gertrudis-rodriguez-candidato",
+    "impreso-pedro",
+    "arcesio-ticas-gallardo",
+    "impreso-dana-castanieda",
+    "jose-antonio-perez",
+    "jos-trist-aguilar",
+    "romulo-roux-candidato"
+  ],
+  "requestCount": 20,
+  "inputFileName": "files/02q92hxe9llr"
+}
