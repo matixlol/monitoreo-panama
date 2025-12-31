@@ -20,46 +20,46 @@ export const OPENROUTER_MODEL = openrouter.chat("openai/gpt-5-mini");
 
 const cedulaRuc = z
   .string()
-  .nullish()
+  .nullable()
   .transform((a) => (a === "null" ? null : a));
 
 export const IngresoRowSchema = z.object({
-  fecha: z.string().nullish(),
+  fecha: z.string().nullable(),
   reciboNumero: z.string(),
-  contribuyenteNombre: z.string().nullish(),
-  representanteLegal: z.string().nullish(),
+  contribuyenteNombre: z.string().nullable(),
+  representanteLegal: z.string().nullable(),
   cedulaRuc,
-  direccion: z.string().nullish(),
-  telefono: z.string().nullish(),
-  correoElectronico: z.string().nullish(),
-  donacionesPrivadasEfectivo: z.number().nullish(),
-  donacionesPrivadasChequeAch: z.number().nullish(),
-  donacionesPrivadasEspecie: z.number().nullish(),
-  recursosPropiosEfectivoCheque: z.number().nullish(),
-  recursosPropiosEspecie: z.number().nullish(),
-  total: z.number().nullish(),
+  direccion: z.string().nullable(),
+  telefono: z.string().nullable(),
+  correoElectronico: z.string().nullable(),
+  donacionesPrivadasEfectivo: z.number().nullable(),
+  donacionesPrivadasChequeAch: z.number().nullable(),
+  donacionesPrivadasEspecie: z.number().nullable(),
+  recursosPropiosEfectivoCheque: z.number().nullable(),
+  recursosPropiosEspecie: z.number().nullable(),
+  total: z.number().nullable(),
 });
 
 export const EgresoRowSchema = z.object({
-  fecha: z.string().nullish(),
+  fecha: z.string().nullable(),
   numeroFacturaRecibo: z.string(),
   cedulaRuc,
-  proveedorNombre: z.string().nullish(),
-  detalleGasto: z.string().nullish(),
-  pagoTipo: z.enum(["Efectivo", "Especie", "Cheque"]).nullish().catch(null),
-  movilizacion: z.number().nullish(),
-  combustible: z.number().nullish(),
-  hospedaje: z.number().nullish(),
-  activistas: z.number().nullish(),
-  caravanaConcentraciones: z.number().nullish(),
-  comidaBrindis: z.number().nullish(),
-  alquilerLocalServiciosBasicos: z.number().nullish(),
-  cargosBancarios: z.number().nullish(),
-  totalGastosCampania: z.number().nullish(),
-  personalizacionArticulosPromocionales: z.number().nullish(),
-  propagandaElectoral: z.number().nullish(),
-  totalGastosPropaganda: z.number().nullish(),
-  totalDeGastosDePropagandaYCampania: z.number().nullish(),
+  proveedorNombre: z.string().nullable(),
+  detalleGasto: z.string().nullable(),
+  pagoTipo: z.enum(["Efectivo", "Especie", "Cheque"]).nullable().catch(null),
+  movilizacion: z.number().nullable(),
+  combustible: z.number().nullable(),
+  hospedaje: z.number().nullable(),
+  activistas: z.number().nullable(),
+  caravanaConcentraciones: z.number().nullable(),
+  comidaBrindis: z.number().nullable(),
+  alquilerLocalServiciosBasicos: z.number().nullable(),
+  cargosBancarios: z.number().nullable(),
+  totalGastosCampania: z.number().nullable(),
+  personalizacionArticulosPromocionales: z.number().nullable(),
+  propagandaElectoral: z.number().nullable(),
+  totalGastosPropaganda: z.number().nullable(),
+  totalDeGastosDePropagandaYCampania: z.number().nullable(),
 });
 
 export const ResponseSchema = z.object({
