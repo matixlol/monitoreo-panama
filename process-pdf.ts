@@ -130,7 +130,7 @@ export async function splitPdfIntoChunks(
 
   const chunks: PdfChunk[] = [];
   for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
-    const pageIndices = batches[batchIndex];
+    const pageIndices = batches[batchIndex]!;
     const subPdfDoc = await PDFDocument.create();
     const copiedPages = await subPdfDoc.copyPages(pdfDoc, pageIndices);
     for (const page of copiedPages) {
@@ -140,7 +140,7 @@ export async function splitPdfIntoChunks(
 
     chunks.push({
       pdfBytes,
-      pageIndices,
+      pageIndices: pageIndices,
       batchIndex,
       totalBatches: batches.length,
     });
@@ -161,8 +161,8 @@ const processWithOpenRouter: BatchProcessor = async (
 ) => {
   console.log(
     `[Batch ${batchIndex + 1}/${totalBatches}] Processing pages ${
-      pageIndices[0] + 1
-    }-${pageIndices[pageIndices.length - 1] + 1} via OpenRouter...`
+      pageIndices[0]! + 1
+    }-${pageIndices[pageIndices.length - 1]! + 1} via OpenRouter...`
   );
 
   const { object, usage } = await generateObject({
@@ -212,8 +212,8 @@ const processWithGemini: BatchProcessor = async (
 ) => {
   console.log(
     `[Batch ${batchIndex + 1}/${totalBatches}] Processing pages ${
-      pageIndices[0] + 1
-    }-${pageIndices[pageIndices.length - 1] + 1} via Gemini...`
+      pageIndices[0]! + 1
+    }-${pageIndices[pageIndices.length - 1]! + 1} via Gemini...`
   );
 
   const pdfBase64 = Buffer.from(pdfBytes).toString("base64");
@@ -252,7 +252,10 @@ const processWithGemini: BatchProcessor = async (
     throw new Error(`Gemini API error: ${response.status} - ${error}`);
   }
 
-  const result = await response.json();
+  const result = (await response.json()) as {
+    candidates?: { content?: { parts?: { text?: string }[] } }[];
+    usageMetadata?: unknown;
+  };
   const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
 
   if (!text) {
