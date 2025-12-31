@@ -1,0 +1,18 @@
+[
+  {
+    "fecha": null,
+    "reciboNumero": "",
+    "contribuyenteNombre": null,
+    "representanteLegal": null,
+    "cedulaRuc": "8-396-175",
+    "direccion": null,
+    "telefono": null,
+    "correoElectronico": null,
+    "donacionesPrivadasEfectivo": 3000,
+    "donacionesPrivadasChequeAch": null,
+    "donacionesPrivadasEspecie": 6000,
+    "recursosPropiosEfectivoCheque": 1290,
+    "recursosPropiosEspecie": null,
+    "total": 10290
+  }
+]

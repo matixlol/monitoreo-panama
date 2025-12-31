@@ -1,0 +1,50 @@
+[
+  {
+    "fecha": "12-05-2023",
+    "reciboNumero": "",
+    "contribuyenteNombre": "LUIS OMAR ORTEGA",
+    "representanteLegal": null,
+    "cedulaRuc": "8-260-630",
+    "direccion": "TORRIJOS CARTER, CALLE Sta, CASA #1229",
+    "telefono": "6914-0550",
+    "correoElectronico": null,
+    "donacionesPrivadasEfectivo": null,
+    "donacionesPrivadasChequeAch": null,
+    "donacionesPrivadasEspecie": null,
+    "recursosPropiosEfectivoCheque": 50,
+    "recursosPropiosEspecie": null,
+    "total": 50
+  },
+  {
+    "fecha": "23-04-2024",
+    "reciboNumero": "",
+    "contribuyenteNombre": "LUIS OMAR ORTEGA",
+    "representanteLegal": null,
+    "cedulaRuc": "8-260-630",
+    "direccion": "TORRIJOS CARTER, CALLE Sta, CASA #1229",
+    "telefono": "6914-0550",
+    "correoElectronico": null,
+    "donacionesPrivadasEfectivo": null,
+    "donacionesPrivadasChequeAch": null,
+    "donacionesPrivadasEspecie": null,
+    "recursosPropiosEfectivoCheque": 5000,
+    "recursosPropiosEspecie": null,
+    "total": 5000
+  },
+  {
+    "fecha": "24-04-2024",
+    "reciboNumero": "",
+    "contribuyenteNombre": "LUIS OMAR ORTEGA",
+    "representanteLegal": null,
+    "cedulaRuc": "8-260-630",
+    "direccion": "TORRIJOS CARTER, CALLE Sta, CASA #1229",
+    "telefono": "6914-0550",
+    "correoElectronico": null,
+    "donacionesPrivadasEfectivo": null,
+    "donacionesPrivadasChequeAch": null,
+    "donacionesPrivadasEspecie": null,
+    "recursosPropiosEfectivoCheque": 5000,
+    "recursosPropiosEspecie": null,
+    "total": 5000
+  }
+]
