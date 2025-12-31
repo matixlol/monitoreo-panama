@@ -84,6 +84,440 @@
     "totalDeGastosDePropagandaYCampania": 45
   },
   {
+    "numeroFacturaRecibo": "null",
+    "cedulaRuc": "PE-15-58",
+    "proveedorNombre": "Angel Pizarro",
+    "totalGastosCampania": 20,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "null",
+    "cedulaRuc": "143213866",
+    "proveedorNombre": "Ariana Gaerste",
+    "totalGastosCampania": 30,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "null",
+    "cedulaRuc": "8-263-797",
+    "proveedorNombre": "Samuel Alexander",
+    "totalGastosCampania": 40,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "null",
+    "cedulaRuc": "8-813-460",
+    "proveedorNombre": "Miguel Carles",
+    "totalGastosCampania": 25,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "163094",
+    "cedulaRuc": "8-843-1813",
+    "proveedorNombre": "Abraham Vasquez",
+    "totalGastosCampania": 47,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "null",
+    "cedulaRuc": "PE-11-2492",
+    "proveedorNombre": "Oziel De Gracia",
+    "totalGastosCampania": 220,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "null",
+    "cedulaRuc": "8-739-1941",
+    "proveedorNombre": "Yal Caballero Pastor",
+    "totalGastosCampania": 205,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "44170",
+    "cedulaRuc": "6-704-1143",
+    "proveedorNombre": "Jack Barneth",
+    "totalGastosCampania": 65,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "163152",
+    "cedulaRuc": "2-725-1666",
+    "proveedorNombre": "Miguel Cárdenas",
+    "totalGastosCampania": 88.87,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "10222 - 1001568",
+    "cedulaRuc": "PE-10-1146",
+    "proveedorNombre": "Cynthia Cedeño",
+    "totalGastosCampania": 114.65,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "979",
+    "cedulaRuc": "1769771-1-699759",
+    "proveedorNombre": "La Coruña Investments S.A.",
+    "totalGastosCampania": 470.39,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "null",
+    "cedulaRuc": "8-871-923",
+    "proveedorNombre": "Rocio Ameijeiras",
+    "totalGastosCampania": 85,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "978",
+    "cedulaRuc": "1769771-1-699759",
+    "proveedorNombre": "La Coruña Investments S.A.",
+    "totalGastosCampania": 706.79,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "868 - 951",
+    "cedulaRuc": "253525-1-403482",
+    "proveedorNombre": "Econoprecios, S.A.",
+    "totalGastosCampania": 1386.21,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "980",
+    "cedulaRuc": "1769771-1-699759",
+    "proveedorNombre": "La Coruña Investments S.A.",
+    "totalGastosCampania": 180.77,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "null",
+    "cedulaRuc": "8-756-2331",
+    "proveedorNombre": "José Samaniego",
+    "totalGastosCampania": 55,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "null",
+    "cedulaRuc": "8-249-422",
+    "proveedorNombre": "Ascanio Angeles",
+    "totalGastosCampania": 380,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "null",
+    "cedulaRuc": "E-8-185583",
+    "proveedorNombre": "Rosielth Scarleth Dur",
+    "totalGastosCampania": 420,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "null",
+    "cedulaRuc": "PE-10-1146",
+    "proveedorNombre": "Cynthia Cedeño",
+    "totalGastosCampania": 180,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "null",
+    "cedulaRuc": "E-8-57380",
+    "proveedorNombre": "Man Fan Leung",
+    "totalGastosCampania": 360,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "22360",
+    "cedulaRuc": "253525-1-403482",
+    "proveedorNombre": "Econoprecios, S.A.",
+    "totalGastosCampania": 2172.1,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "129",
+    "cedulaRuc": "N-NT-2-742167",
+    "proveedorNombre": "Ahana Gaerste",
+    "totalGastosCampania": 800,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "null",
+    "cedulaRuc": "9-702-564",
+    "proveedorNombre": "Elsa Pérez",
+    "totalGastosCampania": 135,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "7568",
+    "cedulaRuc": "138-289-35920",
+    "proveedorNombre": "Geo F Novey Inc",
+    "totalGastosCampania": 35.21,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "null",
+    "cedulaRuc": "8-914-1796",
+    "proveedorNombre": "Jhoma Mena",
+    "totalGastosCampania": 513.26,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "1488,8076,8070,8080,52723,2892",
+    "cedulaRuc": "2-704-851",
+    "proveedorNombre": "Cristina Ogando",
+    "totalGastosCampania": 376.68,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "12190",
+    "cedulaRuc": "1241742-1-591340",
+    "proveedorNombre": "Gran Hotel Azuero",
+    "totalGastosCampania": 1712,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "null",
+    "cedulaRuc": "8-808-1253",
+    "proveedorNombre": "Javier Iturralde",
+    "totalGastosCampania": 25,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "210",
+    "cedulaRuc": "253525-1-403482",
+    "proveedorNombre": "Econoprecios, S.A.",
+    "totalGastosCampania": 192.55,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "null",
+    "cedulaRuc": "8-555-244",
+    "proveedorNombre": "Jessica Mabel Villarea",
+    "totalGastosCampania": 195,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "null",
+    "cedulaRuc": "8-808-1253",
+    "proveedorNombre": "Javier Iturralde",
+    "totalGastosCampania": 20,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "5290",
+    "cedulaRuc": "60596-59-347217",
+    "proveedorNombre": "Super Boquita S.A.",
+    "totalGastosCampania": 72,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "13518-45086-0919",
+    "cedulaRuc": "6-704-1143",
+    "proveedorNombre": "Jack Barneth",
+    "totalGastosCampania": 166.21,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "1892-1900-194255",
+    "cedulaRuc": "PE-15-58",
+    "proveedorNombre": "Angel Pizarro",
+    "totalGastosCampania": 130.4,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "0872-0426",
+    "cedulaRuc": "8-871-923",
+    "proveedorNombre": "Rocio Ameijeiras",
+    "totalGastosCampania": 74.01,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "15073",
+    "cedulaRuc": "PE-10-1146",
+    "proveedorNombre": "Cynthia Cedeño",
+    "totalGastosCampania": 63,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "null",
+    "cedulaRuc": "PE-11-2492",
+    "proveedorNombre": "Oziel De Gracia",
+    "totalGastosCampania": 150,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "203291-143808",
+    "cedulaRuc": "PE-15-58",
+    "proveedorNombre": "Angel Pizarro",
+    "totalGastosCampania": 75,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "55953",
+    "cedulaRuc": "2584813-1-831534",
+    "proveedorNombre": "Total Clean",
+    "totalGastosCampania": 156.19,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "3009",
+    "cedulaRuc": "155587452-2-2014",
+    "proveedorNombre": "Inversiones G & G Pty. Corp",
+    "totalGastosCampania": 314.58,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "3342",
+    "cedulaRuc": "507455-1-436734",
+    "proveedorNombre": "CM America Publicidad, S. A.",
+    "totalGastosCampania": 6500,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "Varios",
+    "cedulaRuc": "Varios",
+    "proveedorNombre": "Petróleos Delta SA",
+    "totalGastosCampania": 1000,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "130",
+    "cedulaRuc": "8-NT-2-742167",
+    "proveedorNombre": "Ariana Gaerste Sexto Pago",
+    "totalGastosCampania": 8888,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "133",
+    "cedulaRuc": null,
+    "proveedorNombre": "Ariana Gaerste",
+    "totalGastosCampania": 2400,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "1",
+    "cedulaRuc": "8-518-379",
+    "proveedorNombre": "Jorge Suarez",
+    "totalGastosCampania": 550,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "1",
+    "cedulaRuc": "8-721-1026",
+    "proveedorNombre": "Miguel Saldaña",
+    "totalGastosCampania": 675,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "3181",
+    "cedulaRuc": "138-289-35920",
+    "proveedorNombre": "Geo F Novey Inc",
+    "totalGastosCampania": 35.21,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "22360",
+    "cedulaRuc": "253525-1-403482",
+    "proveedorNombre": "Econoprecios, S.A.",
+    "totalGastosCampania": 663.29,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "1006",
+    "cedulaRuc": "1769771-1-699759",
+    "proveedorNombre": "La Coruña Investments S.A.",
+    "totalGastosCampania": 610.43,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "39224",
+    "cedulaRuc": "1091-157-111481",
+    "proveedorNombre": "Ultramar Commercial Cor",
+    "totalGastosCampania": 195.33,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "1",
+    "cedulaRuc": "N-20-210",
+    "proveedorNombre": "Pc Cell",
+    "totalGastosCampania": 267.17,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "1",
+    "cedulaRuc": "8-763-1629",
+    "proveedorNombre": "Ariel Vergara",
+    "totalGastosCampania": 250,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "3964",
+    "cedulaRuc": "11524-2-115657778",
+    "proveedorNombre": "Mauricio Correa",
+    "totalGastosCampania": 33.01,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "3138",
+    "cedulaRuc": "138-289-35920",
+    "proveedorNombre": "Geo F Novey Inc",
+    "totalGastosCampania": 32.09,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "1",
+    "cedulaRuc": "8-518-379",
+    "proveedorNombre": "Jorge Suarez",
+    "totalGastosCampania": 100,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "6711106",
+    "cedulaRuc": "15430-249-148718",
+    "proveedorNombre": "Ace International Hardware",
+    "totalGastosCampania": 1658.04,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "44612",
+    "cedulaRuc": "66159-91-363381",
+    "proveedorNombre": "Panafoto, S. A.",
+    "totalGastosCampania": 148,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "45357, 166835",
+    "cedulaRuc": "2290153-1-788391 / 630-483-123250",
+    "proveedorNombre": "Oziel De Gracia",
+    "totalGastosCampania": 150,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "null",
+    "cedulaRuc": "6-704-1143",
+    "proveedorNombre": "Jack Barneth",
+    "totalGastosCampania": 150,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "null",
+    "cedulaRuc": "8-263-797",
+    "proveedorNombre": "Samuel Alexander",
+    "totalGastosCampania": 150,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "null",
+    "cedulaRuc": "8-249-422",
+    "proveedorNombre": "Ascanio Angeles",
+    "totalGastosCampania": 150,
+    "totalGastosPropaganda": null
+  },
+  {
+    "numeroFacturaRecibo": "null",
+    "cedulaRuc": "E-8-57387",
+    "proveedorNombre": "Man Fan Leung",
+    "totalGastosCampania": 150,
+    "totalGastosPropaganda": null
+  },
+  {
     "fecha": "14/02/2024",
     "numeroFacturaRecibo": "null",
     "cedulaRuc": "8-463-925",

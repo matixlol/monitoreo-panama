@@ -7873,5 +7873,12 @@
     "propagandaElectoral": null,
     "totalGastosPropaganda": 0,
     "totalDeGastosDePropagandaYCampania": 74.75
+  },
+  {
+    "numeroFacturaRecibo": "PPBT110009975-00125577",
+    "cedulaRuc": "573001-1-446946",
+    "proveedorNombre": "Inversiones 12 de Septiembre (GPS)",
+    "totalGastosCampania": 0,
+    "totalGastosPropaganda": 52.63321550119643
   }
 ]

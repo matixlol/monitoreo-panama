@@ -8,58 +8,66 @@ import pMap from "p-map";
 import { openrouter } from "@openrouter/ai-sdk-provider";
 import { writeFile } from "fs/promises";
 
-export const MODEL_NAME = "gpt-5-mini";
-export const OPENROUTER_MODEL = openrouter.chat("openai/gpt-5-mini");
+// export const MODEL_NAME = "gpt-5-mini";
+export const MODEL_NAME = "gemini-3-flash-preview";
+// export const OPENROUTER_MODEL = openrouter.chat("openai/gpt-5-mini");
 
-// export const OPENROUTER_MODEL = openrouter.chat("google/gemini-3-flash-preview", {
-//   provider: {
-//     order: ["google-ai-studio"],
-//     allow_fallbacks: true,
-//   },
-// });
+export const OPENROUTER_MODEL = openrouter.chat(
+  "google/gemini-3-flash-preview",
+  {
+    provider: {
+      order: ["google-ai-studio"],
+      allow_fallbacks: true,
+    },
+  }
+);
 
 const cedulaRuc = z
   .string()
   .nullable()
   .transform((a) => (a === "null" ? null : a));
 
+const typeOfNull = MODEL_NAME.includes("gpt")
+  ? ("nullable" as const)
+  : ("nullish" as const);
+
 export const IngresoRowSchema = z.object({
-  fecha: z.string().nullable(),
+  fecha: z.string()[typeOfNull](),
   reciboNumero: z.string(),
-  contribuyenteNombre: z.string().nullable(),
-  representanteLegal: z.string().nullable(),
+  contribuyenteNombre: z.string()[typeOfNull](),
+  representanteLegal: z.string()[typeOfNull](),
   cedulaRuc,
-  direccion: z.string().nullable(),
-  telefono: z.string().nullable(),
-  correoElectronico: z.string().nullable(),
-  donacionesPrivadasEfectivo: z.number().nullable(),
-  donacionesPrivadasChequeAch: z.number().nullable(),
-  donacionesPrivadasEspecie: z.number().nullable(),
-  recursosPropiosEfectivoCheque: z.number().nullable(),
-  recursosPropiosEspecie: z.number().nullable(),
-  total: z.number().nullable(),
+  direccion: z.string()[typeOfNull](),
+  telefono: z.string()[typeOfNull](),
+  correoElectronico: z.string()[typeOfNull](),
+  donacionesPrivadasEfectivo: z.number()[typeOfNull](),
+  donacionesPrivadasChequeAch: z.number()[typeOfNull](),
+  donacionesPrivadasEspecie: z.number()[typeOfNull](),
+  recursosPropiosEfectivoCheque: z.number()[typeOfNull](),
+  recursosPropiosEspecie: z.number()[typeOfNull](),
+  total: z.number()[typeOfNull](),
 });
 
 export const EgresoRowSchema = z.object({
-  fecha: z.string().nullable(),
+  fecha: z.string()[typeOfNull](),
   numeroFacturaRecibo: z.string(),
   cedulaRuc,
-  proveedorNombre: z.string().nullable(),
-  detalleGasto: z.string().nullable(),
-  pagoTipo: z.enum(["Efectivo", "Especie", "Cheque"]).nullable().catch(null),
-  movilizacion: z.number().nullable(),
-  combustible: z.number().nullable(),
-  hospedaje: z.number().nullable(),
-  activistas: z.number().nullable(),
-  caravanaConcentraciones: z.number().nullable(),
-  comidaBrindis: z.number().nullable(),
-  alquilerLocalServiciosBasicos: z.number().nullable(),
-  cargosBancarios: z.number().nullable(),
-  totalGastosCampania: z.number().nullable(),
-  personalizacionArticulosPromocionales: z.number().nullable(),
-  propagandaElectoral: z.number().nullable(),
-  totalGastosPropaganda: z.number().nullable(),
-  totalDeGastosDePropagandaYCampania: z.number().nullable(),
+  proveedorNombre: z.string()[typeOfNull](),
+  detalleGasto: z.string()[typeOfNull](),
+  pagoTipo: z.enum(["Efectivo", "Especie", "Cheque"])[typeOfNull]().catch(null),
+  movilizacion: z.number()[typeOfNull](),
+  combustible: z.number()[typeOfNull](),
+  hospedaje: z.number()[typeOfNull](),
+  activistas: z.number()[typeOfNull](),
+  caravanaConcentraciones: z.number()[typeOfNull](),
+  comidaBrindis: z.number()[typeOfNull](),
+  alquilerLocalServiciosBasicos: z.number()[typeOfNull](),
+  cargosBancarios: z.number()[typeOfNull](),
+  totalGastosCampania: z.number()[typeOfNull](),
+  personalizacionArticulosPromocionales: z.number()[typeOfNull](),
+  propagandaElectoral: z.number()[typeOfNull](),
+  totalGastosPropaganda: z.number()[typeOfNull](),
+  totalDeGastosDePropagandaYCampania: z.number()[typeOfNull](),
 });
 
 export const ResponseSchema = z.object({
@@ -87,7 +95,7 @@ type BatchProcessor = (
   totalBatches: number
 ) => Promise<BatchResult>;
 
-export const BATCH_SIZE = 8;
+export const BATCH_SIZE = 5;
 
 export const EXTRACTION_PROMPT = `This PDF segment contains financial reports from Panama's Electoral Tribunal (Tribunal Electoral).
 

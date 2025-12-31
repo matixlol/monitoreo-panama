@@ -430,5 +430,37 @@
     "recursosPropiosEfectivoCheque": null,
     "recursosPropiosEspecie": null,
     "total": 1300
+  },
+  {
+    "fecha": "3/5/24",
+    "reciboNumero": "28",
+    "contribuyenteNombre": "GHYZKA AVILA DIAZ",
+    "representanteLegal": null,
+    "cedulaRuc": null,
+    "direccion": null,
+    "telefono": null,
+    "correoElectronico": null,
+    "donacionesPrivadasEfectivo": null,
+    "donacionesPrivadasChequeAch": 1000,
+    "donacionesPrivadasEspecie": null,
+    "recursosPropiosEfectivoCheque": null,
+    "recursosPropiosEspecie": null,
+    "total": 1000
+  },
+  {
+    "fecha": "6/5/24",
+    "reciboNumero": "29",
+    "contribuyenteNombre": "MOVIMIENTO INDEP ROCA",
+    "representanteLegal": null,
+    "cedulaRuc": null,
+    "direccion": null,
+    "telefono": null,
+    "correoElectronico": null,
+    "donacionesPrivadasEfectivo": null,
+    "donacionesPrivadasChequeAch": 10000,
+    "donacionesPrivadasEspecie": null,
+    "recursosPropiosEfectivoCheque": null,
+    "recursosPropiosEspecie": null,
+    "total": 10000
   }
 ]
