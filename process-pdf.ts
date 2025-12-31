@@ -8,6 +8,16 @@ import pMap from "p-map";
 import { openrouter } from "@openrouter/ai-sdk-provider";
 import { writeFile } from "fs/promises";
 
+export const MODEL_NAME = "gpt-5-mini";
+export const OPENROUTER_MODEL = openrouter.chat("openai/gpt-5-mini");
+
+// export const OPENROUTER_MODEL = openrouter.chat("google/gemini-3-flash-preview", {
+//   provider: {
+//     order: ["google-ai-studio"],
+//     allow_fallbacks: true,
+//   },
+// });
+
 const cedulaRuc = z
   .string()
   .nullish()
@@ -123,7 +133,9 @@ export async function splitPdfIntoChunks(
     const pageIndices = batches[batchIndex];
     const subPdfDoc = await PDFDocument.create();
     const copiedPages = await subPdfDoc.copyPages(pdfDoc, pageIndices);
-    copiedPages.forEach((page) => subPdfDoc.addPage(page));
+    for (const page of copiedPages) {
+      subPdfDoc.addPage(page);
+    }
     const pdfBytes = await subPdfDoc.save();
 
     chunks.push({
@@ -154,12 +166,7 @@ const processWithOpenRouter: BatchProcessor = async (
   );
 
   const { object, usage } = await generateObject({
-    model: openrouter.chat("google/gemini-3-flash-preview", {
-      provider: {
-        order: ["google-ai-studio"],
-        allow_fallbacks: true,
-      },
-    }),
+    model: OPENROUTER_MODEL,
     temperature: 0,
     schema: ResponseSchema,
     providerOptions: {
@@ -213,7 +220,7 @@ const processWithGemini: BatchProcessor = async (
   const jsonSchema = z.toJSONSchema(ResponseSchema, { unrepresentable: "any" });
 
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${process.env.GEMINI_API_KEY}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${process.env.GEMINI_API_KEY}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -291,7 +298,7 @@ export async function extractDataFromPDF(
     egress: [],
   };
 
-  const processor: BatchProcessor = processWithGemini;
+  const processor: BatchProcessor = processWithOpenRouter;
 
   const results = await pMap(
     chunks,
