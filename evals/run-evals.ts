@@ -1,11 +1,14 @@
-import { readdirSync, existsSync } from "fs";
-import { readFile } from "fs/promises";
+import { readdirSync, existsSync, mkdirSync } from "fs";
+import { readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import pMap from "p-map";
+import { nanoid } from "nanoid";
 import {
   extractDataFromPDF,
+  MODEL_NAME,
   type IngresoRow,
   type EgresoRow,
+  type ExtractedData,
 } from "../process-pdf";
 
 const EVALS_DIR = import.meta.dir;
@@ -17,6 +20,7 @@ interface EvalResult {
   egress: ComparisonResult;
   passed: boolean;
   error?: any;
+  extracted?: ExtractedData;
 }
 
 interface ComparisonResult {
@@ -218,6 +222,7 @@ async function runEval(dirPath: string): Promise<EvalResult> {
       ingress: ingressResult,
       egress: egressResult,
       passed: isPassing(ingressResult) && isPassing(egressResult),
+      extracted,
     };
   } catch (err) {
     return {
@@ -310,9 +315,61 @@ function printResult(result: EvalResult): void {
   }
 }
 
+function parseArgs(): { filter?: string; save: boolean } {
+  const args = process.argv.slice(2);
+  const save = args.includes("--save");
+  const filter = args.find((arg) => !arg.startsWith("--"));
+  return { filter, save };
+}
+
+function generateRunId(): string {
+  return nanoid(8);
+}
+
+function getRunDir(runId: string): string {
+  const date = new Date().toISOString().split("T")[0];
+  return join(EVALS_DIR, "..", "runs", `${MODEL_NAME}-${date}-${runId}`);
+}
+
+async function saveResults(
+  runDir: string,
+  results: EvalResult[],
+  evalNames: string[]
+): Promise<void> {
+  // Create run directory
+  mkdirSync(runDir, { recursive: true });
+
+  // Write job.json metadata
+  const metadata = {
+    jobName: `sync-${runDir.split("/").pop()}`,
+    model: MODEL_NAME,
+    runId: runDir.split("-").pop(),
+    createdAt: new Date().toISOString(),
+    evalNames,
+    requestCount: evalNames.length,
+  };
+  await writeFile(join(runDir, "job.json"), JSON.stringify(metadata, null, 2));
+
+  // Write per-eval results
+  for (const result of results) {
+    if (!result.extracted) continue;
+
+    const evalDir = join(runDir, result.dirName);
+    mkdirSync(evalDir, { recursive: true });
+
+    await writeFile(
+      join(evalDir, "ingress.json"),
+      JSON.stringify(result.extracted.ingress, null, 2)
+    );
+    await writeFile(
+      join(evalDir, "egress.json"),
+      JSON.stringify(result.extracted.egress, null, 2)
+    );
+  }
+}
+
 async function main() {
-  // Get filter argument (first command-line argument)
-  const filter = process.argv[2];
+  const { filter, save } = parseArgs();
 
   // Find all eval directories (directories with a PDF and at least one JSON)
   const entries = readdirSync(EVALS_DIR, { withFileTypes: true });
@@ -364,6 +421,15 @@ async function main() {
     `SUMMARY: ${passed} passed, ${failed} failed out of ${results.length} total`
   );
   console.log(`${"=".repeat(60)}`);
+
+  // Save results if --save flag is provided
+  if (save) {
+    const runId = generateRunId();
+    const runDir = getRunDir(runId);
+    const evalNames = evalDirs.map((d) => d.split("/").pop()!);
+    await saveResults(runDir, results, evalNames);
+    console.log(`\nResults saved to ${runDir}`);
+  }
 
   if (failed > 0) {
     process.exit(1);
