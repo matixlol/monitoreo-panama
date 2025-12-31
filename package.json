@@ -21,5 +21,9 @@
     "p-map": "^7.0.4",
     "pdf-lib": "^1.17.1",
     "zod": "^4.1.13"
+  },
+  "private": true,
+  "peerDependencies": {
+    "typescript": "^5"
   }
 }
