@@ -1,0 +1,34 @@
+[
+  {
+    "fecha": "null",
+    "reciboNumero": "null",
+    "contribuyenteNombre": "Vái Guston",
+    "representanteLegal": "PRD",
+    "cedulaRuc": "8.396.175",
+    "direccion": "ha Moc, Uuegue",
+    "telefono": "109817974",
+    "correoElectronico": null,
+    "donacionesPrivadasEfectivo": null,
+    "donacionesPrivadasChequeAch": null,
+    "donacionesPrivadasEspecie": null,
+    "recursosPropiosEfectivoCheque": 1290,
+    "recursosPropiosEspecie": 6000,
+    "total": 129000
+  },
+  {
+    "fecha": "19.424",
+    "reciboNumero": "01",
+    "contribuyenteNombre": "Criel. Deroero",
+    "representanteLegal": null,
+    "cedulaRuc": "19.216-91",
+    "direccion": "Zantiago",
+    "telefono": "66533073",
+    "correoElectronico": null,
+    "donacionesPrivadasEfectivo": 3000,
+    "donacionesPrivadasChequeAch": null,
+    "donacionesPrivadasEspecie": null,
+    "recursosPropiosEfectivoCheque": null,
+    "recursosPropiosEspecie": null,
+    "total": 3000
+  }
+]
