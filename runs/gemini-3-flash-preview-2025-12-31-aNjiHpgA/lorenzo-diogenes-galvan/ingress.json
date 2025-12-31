@@ -430,5 +430,21 @@
     "recursosPropiosEfectivoCheque": null,
     "recursosPropiosEspecie": null,
     "total": 1300
+  },
+  {
+    "reciboNumero": "28",
+    "contribuyenteNombre": "GHYZKA AVILA DIAZ",
+    "representanteLegal": null,
+    "cedulaRuc": null,
+    "telefono": null,
+    "total": 1000
+  },
+  {
+    "reciboNumero": "29",
+    "contribuyenteNombre": "MOVIMIENTO INDEP PAN",
+    "representanteLegal": null,
+    "cedulaRuc": null,
+    "telefono": null,
+    "total": 10000
   }
 ]

@@ -1,6 +1,7 @@
 import {
   getApiKey,
   getJobStatus,
+  getState,
   loadJobMetadata,
   findAllRuns,
   formatStatus,
@@ -47,10 +48,11 @@ async function main() {
         const runName = job.runDir.split("/").pop();
         console.log(`  ${runName}: ${formatStatus(status)}`);
 
-        if (COMPLETED_STATES.has(status.state)) {
+        const state = getState(status);
+        if (COMPLETED_STATES.has(state)) {
           pendingJobs.delete(jobName);
 
-          if (status.state === "JOB_STATE_SUCCEEDED") {
+          if (state === "BATCH_STATE_SUCCEEDED") {
             completedJobs.push({ runDir: job.runDir, status });
           } else {
             failedJobs.push({ runDir: job.runDir, status });
@@ -83,7 +85,7 @@ async function main() {
 
   for (const { runDir, status } of failedJobs) {
     console.error(`\nFailed job: ${runDir.split("/").pop()}`);
-    console.error(`  State: ${status.state}`);
+    console.error(`  State: ${getState(status)}`);
     if (status.error) {
       console.error(`  Error: ${status.error.message}`);
     }

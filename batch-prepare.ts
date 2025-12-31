@@ -22,6 +22,7 @@ interface BatchRequest {
       mediaResolution: string;
       responseMimeType: string;
       responseJsonSchema: unknown;
+      maxOutputTokens?: number;
     };
   };
 }
@@ -97,6 +98,7 @@ async function generateBatchRequests(
             mediaResolution: "MEDIA_RESOLUTION_HIGH",
             responseMimeType: "application/json",
             responseJsonSchema: jsonSchema,
+            maxOutputTokens: 8192,
           },
         },
       });
@@ -163,7 +165,7 @@ async function uploadJsonlFile(jsonlPath: string): Promise<string> {
     throw new Error(`Failed to upload file: ${uploadResponse.status} - ${error}`);
   }
 
-  const result = await uploadResponse.json();
+  const result = (await uploadResponse.json()) as { file: { name: string } };
   console.log(`Uploaded file: ${result.file.name}`);
   return result.file.name;
 }
@@ -195,7 +197,7 @@ async function createBatchJob(model: string, inputFileName: string): Promise<str
     throw new Error(`Failed to create batch job: ${response.status} - ${error}`);
   }
 
-  const result = await response.json();
+  const result = (await response.json()) as { name: string };
   console.log(`Created batch job: ${result.name}`);
   return result.name;
 }
@@ -203,7 +205,7 @@ async function createBatchJob(model: string, inputFileName: string): Promise<str
 async function main() {
   const args = process.argv.slice(2);
   const modelIndex = args.indexOf("--model");
-  const model = modelIndex !== -1 ? args[modelIndex + 1] : "gemini-3-flash-preview";
+  const model = modelIndex !== -1 && args[modelIndex + 1] ? args[modelIndex + 1] : "gemini-3-flash-preview";
 
   if (!process.env.GEMINI_API_KEY) {
     console.error("Error: GEMINI_API_KEY environment variable is required");

@@ -15,16 +15,23 @@ export interface JobMetadata {
 
 export interface BatchJobStatus {
   name: string;
-  state: string;
-  createTime?: string;
-  updateTime?: string;
-  batchStats?: {
-    totalRequestCount: number;
-    successRequestCount?: number;
-    failedRequestCount?: number;
+  done?: boolean;
+  metadata?: {
+    state: string;
+    createTime?: string;
+    updateTime?: string;
+    endTime?: string;
+    batchStats?: {
+      requestCount: string;
+      successfulRequestCount?: string;
+      failedRequestCount?: string;
+    };
+    output?: {
+      responsesFile: string;
+    };
   };
-  dest?: {
-    fileName: string;
+  response?: {
+    responsesFile: string;
   };
   error?: {
     code: number;
@@ -50,10 +57,9 @@ export interface BatchResponse {
 }
 
 export const COMPLETED_STATES = new Set([
-  "JOB_STATE_SUCCEEDED",
-  "JOB_STATE_FAILED",
-  "JOB_STATE_CANCELLED",
-  "JOB_STATE_EXPIRED",
+  "BATCH_STATE_SUCCEEDED",
+  "BATCH_STATE_FAILED",
+  "BATCH_STATE_CANCELLED",
 ]);
 
 export function getApiKey(): string {
@@ -78,7 +84,7 @@ export async function getJobStatus(jobName: string): Promise<BatchJobStatus> {
     throw new Error(`Failed to get job status: ${response.status} - ${error}`);
   }
 
-  return response.json();
+  return response.json() as Promise<BatchJobStatus>;
 }
 
 export async function downloadResultsFile(fileName: string): Promise<string> {
@@ -107,18 +113,24 @@ export async function loadJobMetadata(runDir: string): Promise<JobMetadata | nul
   }
 }
 
+export function getState(status: BatchJobStatus): string {
+  return status.metadata?.state || "UNKNOWN";
+}
+
 export function formatStatus(status: BatchJobStatus): string {
-  const state = status.state || "UNKNOWN";
-  if (status.batchStats) {
-    const { successRequestCount = 0, totalRequestCount } = status.batchStats;
-    return `${state} (${successRequestCount}/${totalRequestCount})`;
+  const state = getState(status);
+  const stats = status.metadata?.batchStats;
+  if (stats) {
+    const success = stats.successfulRequestCount || "0";
+    const total = stats.requestCount;
+    return `${state} (${success}/${total})`;
   }
   return state;
 }
 
 export function parseKey(key: string): { evalName: string; batchIndex: number } {
   const parts = key.split(":batch-");
-  if (parts.length !== 2) {
+  if (parts.length !== 2 || !parts[0] || !parts[1]) {
     throw new Error(`Invalid key format: ${key}`);
   }
   return {
@@ -209,6 +221,10 @@ export async function processResults(
   }
 }
 
+export function getResultsFileName(status: BatchJobStatus): string | undefined {
+  return status.response?.responsesFile || status.metadata?.output?.responsesFile;
+}
+
 export async function processCompletedRun(runDir: string): Promise<void> {
   const metadata = await loadJobMetadata(runDir);
   if (!metadata) {
@@ -216,17 +232,19 @@ export async function processCompletedRun(runDir: string): Promise<void> {
   }
 
   const status = await getJobStatus(metadata.jobName);
+  const state = getState(status);
 
-  if (status.state !== "JOB_STATE_SUCCEEDED") {
-    throw new Error(`Job not succeeded: ${status.state}`);
+  if (state !== "BATCH_STATE_SUCCEEDED") {
+    throw new Error(`Job not succeeded: ${state}`);
   }
 
-  if (!status.dest?.fileName) {
+  const resultsFileName = getResultsFileName(status);
+  if (!resultsFileName) {
     throw new Error("No results file found in completed job");
   }
 
-  console.log(`Downloading results from ${status.dest.fileName}...`);
-  const resultsContent = await downloadResultsFile(status.dest.fileName);
+  console.log(`Downloading results from ${resultsFileName}...`);
+  const resultsContent = await downloadResultsFile(resultsFileName);
 
   // Save raw results
   const resultsPath = join(runDir, "results.jsonl");

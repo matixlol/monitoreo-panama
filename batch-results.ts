@@ -3,6 +3,7 @@ import { join } from "path";
 import {
   getApiKey,
   getJobStatus,
+  getState,
   loadJobMetadata,
   processCompletedRun,
   COMPLETED_STATES,
@@ -16,16 +17,17 @@ async function pollUntilComplete(
 
   while (true) {
     const status = await getJobStatus(jobName);
+    const state = getState(status);
+    const stats = status.metadata?.batchStats;
+    
     console.log(
-      `  State: ${status.state}` +
-        (status.batchStats
-          ? ` (${status.batchStats.successRequestCount ?? 0}/${
-              status.batchStats.totalRequestCount
-            } complete)`
+      `  State: ${state}` +
+        (stats
+          ? ` (${stats.successfulRequestCount ?? 0}/${stats.requestCount} complete)`
           : "")
     );
 
-    if (COMPLETED_STATES.has(status.state)) {
+    if (COMPLETED_STATES.has(state)) {
       return status;
     }
 
@@ -65,9 +67,10 @@ async function main() {
 
   // Poll until complete
   const status = await pollUntilComplete(metadata.jobName);
+  const finalState = getState(status);
 
-  if (status.state !== "JOB_STATE_SUCCEEDED") {
-    console.error(`\nJob ended with state: ${status.state}`);
+  if (finalState !== "BATCH_STATE_SUCCEEDED") {
+    console.error(`\nJob ended with state: ${finalState}`);
     if (status.error) {
       console.error(`Error: ${status.error.message}`);
     }
@@ -80,10 +83,9 @@ async function main() {
   console.log(`\n=== Processing Complete ===`);
   console.log(`Results saved to ${runDir}`);
 
-  if (status.batchStats?.failedRequestCount) {
-    console.log(
-      `\nWarning: ${status.batchStats.failedRequestCount} requests failed`
-    );
+  const failedCount = status.metadata?.batchStats?.failedRequestCount;
+  if (failedCount && parseInt(failedCount) > 0) {
+    console.log(`\nWarning: ${failedCount} requests failed`);
   }
 }
 
