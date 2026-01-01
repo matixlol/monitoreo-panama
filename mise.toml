@@ -1,0 +1,4 @@
+[env]
+mise.file = ".env"
+[tools]
+bun = "1.3.5"
