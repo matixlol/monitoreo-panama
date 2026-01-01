@@ -1,0 +1,18 @@
+[
+  {
+    "fecha": "15/03/24",
+    "reciboNumero": "",
+    "contribuyenteNombre": "Joaquín Aguirre",
+    "representanteLegal": "Joaquín Aguirre",
+    "cedulaRuc": null,
+    "direccion": null,
+    "telefono": "65840175",
+    "correoElectronico": null,
+    "donacionesPrivadasEfectivo": null,
+    "donacionesPrivadasChequeAch": null,
+    "donacionesPrivadasEspecie": null,
+    "recursosPropiosEfectivoCheque": 10525,
+    "recursosPropiosEspecie": null,
+    "total": 10525
+  }
+]

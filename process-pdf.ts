@@ -8,19 +8,27 @@ import pMap from "p-map";
 import { openrouter } from "@openrouter/ai-sdk-provider";
 import { writeFile } from "fs/promises";
 
-// export const MODEL_NAME = "gpt-5-mini";
-export const MODEL_NAME = "gemini-3-flash-preview";
-// export const OPENROUTER_MODEL = openrouter.chat("openai/gpt-5-mini");
+export const MODEL_NAME = "gpt-5-mini";
+export const OPENROUTER_MODEL = openrouter.chat("openai/gpt-5-mini");
 
-export const OPENROUTER_MODEL = openrouter.chat(
-  "google/gemini-3-flash-preview",
-  {
-    provider: {
-      order: ["google-ai-studio"],
-      allow_fallbacks: true,
-    },
-  }
-);
+// export const MODEL_NAME = "gemini-3-flash-preview";
+// export const OPENROUTER_MODEL = openrouter.chat(
+//   "google/gemini-3-flash-preview",
+//   {
+//     provider: {
+//       order: ["google-ai-studio"],
+//       allow_fallbacks: true,
+//     },
+//   }
+// );
+
+// export const MODEL_NAME = "glm-4.6v";
+// export const OPENROUTER_MODEL = openrouter.chat("z-ai/glm-4.6v", {
+//   provider: {
+//     order: ["deepinfra"],
+//     allow_fallbacks: false,
+//   },
+// });
 
 const cedulaRuc = z
   .string()
@@ -175,8 +183,8 @@ const processWithOpenRouter: BatchProcessor = async (
 
   const { object, usage } = await generateObject({
     model: OPENROUTER_MODEL,
-    temperature: 0,
     schema: ResponseSchema,
+    maxRetries: 3,
     providerOptions: {
       openrouter: {
         generation_config: {
