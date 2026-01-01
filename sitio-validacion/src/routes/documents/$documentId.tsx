@@ -145,6 +145,51 @@ function DocumentValidationPage() {
   // Get model names
   const modelNames = Object.keys(extractionsByModel);
 
+  // Merge rows from all models to get the union
+  const mergeRowsFromAllModels = useCallback(
+    (type: 'ingress' | 'egress', keyField: string): (IngressRow | EgressRow)[] => {
+      const rowMap = new Map<string, IngressRow | EgressRow>();
+
+      for (const modelName of modelNames) {
+        const modelData = extractionsByModel[modelName];
+        if (!modelData) continue;
+
+        const rows = type === 'ingress' ? modelData.ingress : modelData.egress;
+        for (const row of rows) {
+          const key = String((row as Record<string, unknown>)[keyField]);
+          if (!rowMap.has(key)) {
+            // First time seeing this row - use it as base
+            rowMap.set(key, row);
+          }
+        }
+      }
+
+      return Array.from(rowMap.values());
+    },
+    [modelNames, extractionsByModel],
+  );
+
+  // Get which models found each row
+  const getModelsForRow = useCallback(
+    (type: 'ingress' | 'egress', keyField: string, rowKey: string): string[] => {
+      const modelsFound: string[] = [];
+
+      for (const modelName of modelNames) {
+        const modelData = extractionsByModel[modelName];
+        if (!modelData) continue;
+
+        const rows = type === 'ingress' ? modelData.ingress : modelData.egress;
+        const found = rows.some((row) => String((row as Record<string, unknown>)[keyField]) === rowKey);
+        if (found) {
+          modelsFound.push(modelName);
+        }
+      }
+
+      return modelsFound;
+    },
+    [modelNames, extractionsByModel],
+  );
+
   // Compute diffs between models
   const computeDiffs = useCallback(
     (
@@ -190,20 +235,20 @@ function DocumentValidationPage() {
     [],
   );
 
-  // Get current data to display (edited or from first model)
+  // Get current data to display (edited, validated, or merged from all models)
   const currentIngress = useMemo(() => {
     if (editedIngress) return editedIngress;
     if (validatedData) return validatedData.ingress as unknown as IngressRow[];
-    const firstModel = modelNames[0];
-    return firstModel ? extractionsByModel[firstModel]?.ingress || [] : [];
-  }, [editedIngress, validatedData, modelNames, extractionsByModel]);
+    // Merge rows from all models to show the union
+    return mergeRowsFromAllModels('ingress', 'reciboNumero') as IngressRow[];
+  }, [editedIngress, validatedData, mergeRowsFromAllModels]);
 
   const currentEgress = useMemo(() => {
     if (editedEgress) return editedEgress;
     if (validatedData) return validatedData.egress as unknown as EgressRow[];
-    const firstModel = modelNames[0];
-    return firstModel ? extractionsByModel[firstModel]?.egress || [] : [];
-  }, [editedEgress, validatedData, modelNames, extractionsByModel]);
+    // Merge rows from all models to show the union
+    return mergeRowsFromAllModels('egress', 'numeroFacturaRecibo') as EgressRow[];
+  }, [editedEgress, validatedData, mergeRowsFromAllModels]);
 
   // Compute diffs between models
   const ingressDiffs = useMemo(() => {
@@ -554,6 +599,8 @@ function DocumentValidationPage() {
                   diffs={ingressDiffs}
                   keyField="reciboNumero"
                   modelData={extractionsByModel}
+                  modelNames={modelNames}
+                  getModelsForRow={(rowKey) => getModelsForRow('ingress', 'reciboNumero', rowKey)}
                   onEdit={(rowIndex, field, value) => handleCellEdit('ingress', rowIndex, field, value)}
                   onDelete={(rowIndex) => handleDeleteRow('ingress', rowIndex)}
                 />
@@ -565,6 +612,8 @@ function DocumentValidationPage() {
                   diffs={egressDiffs}
                   keyField="numeroFacturaRecibo"
                   modelData={extractionsByModel}
+                  modelNames={modelNames}
+                  getModelsForRow={(rowKey) => getModelsForRow('egress', 'numeroFacturaRecibo', rowKey)}
                   onEdit={(rowIndex, field, value) => handleCellEdit('egress', rowIndex, field, value)}
                   onDelete={(rowIndex) => handleDeleteRow('egress', rowIndex)}
                 />
@@ -597,25 +646,45 @@ interface DataTableProps {
   diffs: Map<string, Set<string>>;
   keyField: string;
   modelData: Record<string, { ingress: IngressRow[]; egress: EgressRow[] }>;
+  modelNames: string[];
+  getModelsForRow: (rowKey: string) => string[];
   onEdit: (rowIndex: number, field: string, value: string | number | null) => void;
   onDelete: (rowIndex: number) => void;
 }
 
-function DataTable({ columns, rows, allRows, diffs, keyField, modelData, onEdit, onDelete }: DataTableProps) {
+function DataTable({
+  columns,
+  rows,
+  allRows,
+  diffs,
+  keyField,
+  modelData,
+  modelNames,
+  getModelsForRow,
+  onEdit,
+  onDelete,
+}: DataTableProps) {
   const [editingCell, setEditingCell] = useState<{ row: number; col: string } | null>(null);
 
-  const modelNames = Object.keys(modelData);
+  const getAlternateValues = (rowKey: string, field: string): Record<string, unknown> => {
+    const alternates: Record<string, unknown> = {};
+    const isIngress = 'reciboNumero' in (rows[0] || {});
 
-  const getAlternateValue = (rowKey: string, field: string) => {
-    if (modelNames.length < 2) return null;
-    const model2 = modelData[modelNames[1]!];
-    if (!model2) return null;
+    for (const modelName of modelNames) {
+      const model = modelData[modelName];
+      if (!model) continue;
 
-    const dataArray = 'reciboNumero' in (rows[0] || {}) ? model2.ingress : model2.egress;
-    const row = dataArray.find(
-      (r: IngressRow | EgressRow) => String((r as Record<string, unknown>)[keyField]) === rowKey,
-    );
-    return row ? (row as Record<string, unknown>)[field] : null;
+      const dataArray = isIngress ? model.ingress : model.egress;
+      const row = dataArray.find(
+        (r: IngressRow | EgressRow) => String((r as Record<string, unknown>)[keyField]) === rowKey,
+      );
+
+      if (row) {
+        alternates[modelName] = (row as Record<string, unknown>)[field];
+      }
+    }
+
+    return alternates;
   };
 
   // Get the actual index in allRows for each displayed row
@@ -645,18 +714,22 @@ function DataTable({ columns, rows, allRows, diffs, keyField, modelData, onEdit,
           const rowKey = String((row as Record<string, unknown>)[keyField]);
           const rowDiffs = diffs.get(rowKey);
           const actualIndex = getActualIndex(row);
+          const modelsFound = getModelsForRow(rowKey);
+          const isMissingFromSomeModels = modelsFound.length > 0 && modelsFound.length < modelNames.length;
 
           return (
             <tr
               key={displayIndex}
-              className="hover:bg-slate-50 dark:hover:bg-slate-800/50 group border-b border-slate-100 dark:border-slate-800"
+              className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 group border-b border-slate-100 dark:border-slate-800 ${
+                isMissingFromSomeModels ? 'bg-orange-50 dark:bg-orange-900/20' : ''
+              }`}
             >
               {columns
                 .filter((col) => col.key !== 'pageNumber')
-                .map((col) => {
+                .map((col, colIndex) => {
                   const value = (row as Record<string, unknown>)[col.key];
                   const hasDiff = rowDiffs?.has(col.key);
-                  const altValue = hasDiff ? getAlternateValue(rowKey, col.key) : null;
+                  const altValues = hasDiff ? getAlternateValues(rowKey, col.key) : {};
                   const isEditing = editingCell?.row === displayIndex && editingCell?.col === col.key;
 
                   return (
@@ -666,6 +739,29 @@ function DataTable({ columns, rows, allRows, diffs, keyField, modelData, onEdit,
                         hasDiff ? 'bg-amber-50 dark:bg-amber-900/30 border-l-2 border-amber-400' : ''
                       }`}
                     >
+                      {/* Show model indicators on the first column */}
+                      {colIndex === 0 && isMissingFromSomeModels && (
+                        <div className="flex items-center gap-1 mb-0.5">
+                          {modelNames.map((modelName) => {
+                            const found = modelsFound.includes(modelName);
+                            const shortName = modelName.split('-')[0] || modelName.substring(0, 3);
+                            return (
+                              <span
+                                key={modelName}
+                                className={`text-[9px] px-1 py-0 rounded ${
+                                  found
+                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300'
+                                    : 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 line-through'
+                                }`}
+                                title={`${modelName}: ${found ? 'Found' : 'Missing'}`}
+                              >
+                                {shortName}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
+
                       {isEditing ? (
                         <input
                           type={col.type === 'number' ? 'number' : 'text'}
@@ -698,9 +794,16 @@ function DataTable({ columns, rows, allRows, diffs, keyField, modelData, onEdit,
                           <span className={value === null ? 'text-slate-400 italic' : ''}>
                             {value === null ? '—' : String(value)}
                           </span>
-                          {hasDiff && altValue !== undefined && (
+                          {hasDiff && Object.keys(altValues).length > 0 && (
                             <div className="text-[10px] text-amber-600 dark:text-amber-400">
-                              Alt: {altValue === null ? '—' : String(altValue)}
+                              {Object.entries(altValues).map(([modelName, modelValue]) => {
+                                const shortName = modelName.split('-')[0] || modelName.substring(0, 3);
+                                return (
+                                  <div key={modelName}>
+                                    {shortName}: {modelValue === null ? '—' : String(modelValue)}
+                                  </div>
+                                );
+                              })}
                             </div>
                           )}
                         </div>
