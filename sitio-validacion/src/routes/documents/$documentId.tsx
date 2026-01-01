@@ -68,6 +68,8 @@ const INGRESS_COLUMNS: { key: keyof IngressRow; label: string; type: 'string' | 
   { key: 'donacionesPrivadasEfectivo', label: 'Don. Efectivo', type: 'number' },
   { key: 'donacionesPrivadasChequeAch', label: 'Don. Cheque/ACH', type: 'number' },
   { key: 'donacionesPrivadasEspecie', label: 'Don. Especie', type: 'number' },
+  { key: 'recursosPropiosEfectivoCheque', label: 'Rec. Propios Efec/Cheque', type: 'number' },
+  { key: 'recursosPropiosEspecie', label: 'Rec. Propios Especie', type: 'number' },
   { key: 'total', label: 'Total', type: 'number' },
 ];
 
@@ -341,20 +343,27 @@ function DocumentValidationPage() {
     });
   }, [currentPage, documentId, getCurrentRotation, setPageRotation]);
 
-  // Find rows with diffs for quick navigation
-  const rowsWithDiffs = useMemo(() => {
+  // Find pages with diffs for quick navigation
+  const pagesWithDiffs = useMemo(() => {
     const diffs = activeTab === 'ingress' ? ingressDiffs : egressDiffs;
     const rows = activeTab === 'ingress' ? currentIngress : currentEgress;
     const keyField = activeTab === 'ingress' ? 'reciboNumero' : 'numeroFacturaRecibo';
 
-    return rows
-      .map((row, index) => ({
-        index,
-        row,
-        hasDiff: diffs.has(String((row as Record<string, unknown>)[keyField])),
-      }))
-      .filter((r) => r.hasDiff);
+    const pageSet = new Set<number>();
+    for (const row of rows) {
+      const rowKey = String((row as Record<string, unknown>)[keyField]);
+      if (diffs.has(rowKey)) {
+        pageSet.add(row.pageNumber);
+      }
+    }
+    return Array.from(pageSet).sort((a, b) => a - b);
   }, [activeTab, ingressDiffs, egressDiffs, currentIngress, currentEgress]);
+
+  // Get rows for current page
+  const currentPageRows = useMemo(() => {
+    const rows = activeTab === 'ingress' ? currentIngress : currentEgress;
+    return rows.filter((row) => row.pageNumber === currentPage);
+  }, [activeTab, currentIngress, currentEgress, currentPage]);
 
   if (!document) {
     return (
@@ -386,9 +395,9 @@ function DocumentValidationPage() {
           </div>
 
           <div className="flex items-center gap-4">
-            {rowsWithDiffs.length > 0 && (
+            {pagesWithDiffs.length > 0 && (
               <span className="text-sm text-amber-600 dark:text-amber-400">
-                ⚠ {rowsWithDiffs.length} diferencias entre modelos
+                ⚠ {pagesWithDiffs.length} páginas con diferencias
               </span>
             )}
 
@@ -511,56 +520,64 @@ function DocumentValidationPage() {
           </div>
 
           {/* Diff Navigation */}
-          {rowsWithDiffs.length > 0 && (
-            <div className="p-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 flex items-center gap-2 overflow-x-auto">
+          {pagesWithDiffs.length > 0 && (
+            <div className="px-2 py-1 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 flex items-center gap-1 overflow-x-auto">
               <span className="text-xs text-amber-700 dark:text-amber-400 whitespace-nowrap">Ir a diferencia:</span>
-              {rowsWithDiffs.slice(0, 10).map(({ index, row }) => (
+              {pagesWithDiffs.slice(0, 15).map((pageNum) => (
                 <button
-                  key={index}
-                  onClick={() => goToPage(row.pageNumber)}
-                  className="px-2 py-1 text-xs bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200 rounded hover:bg-amber-300"
+                  key={pageNum}
+                  onClick={() => goToPage(pageNum)}
+                  className={`px-2 py-0.5 text-xs rounded hover:bg-amber-300 ${
+                    pageNum === currentPage
+                      ? 'bg-amber-400 dark:bg-amber-600 text-amber-900 dark:text-amber-100 font-medium'
+                      : 'bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200'
+                  }`}
                 >
-                  Pág {row.pageNumber}
+                  {pageNum}
                 </button>
               ))}
-              {rowsWithDiffs.length > 10 && (
-                <span className="text-xs text-amber-600">+{rowsWithDiffs.length - 10} más</span>
+              {pagesWithDiffs.length > 15 && (
+                <span className="text-xs text-amber-600">+{pagesWithDiffs.length - 15} más</span>
               )}
             </div>
           )}
 
           {/* Table */}
           <div className="flex-1 overflow-auto">
-            {activeTab === 'ingress' ? (
+            {currentPageRows.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-slate-400 text-sm">
+                No hay {activeTab === 'ingress' ? 'ingresos' : 'gastos'} en esta página
+              </div>
+            ) : activeTab === 'ingress' ? (
               <DataTable
                 columns={INGRESS_COLUMNS as { key: string; label: string; type: 'string' | 'number' }[]}
-                rows={currentIngress}
+                rows={currentPageRows as IngressRow[]}
+                allRows={currentIngress}
                 diffs={ingressDiffs}
                 keyField="reciboNumero"
                 modelData={extractionsByModel}
                 onEdit={(rowIndex, field, value) => handleCellEdit('ingress', rowIndex, field, value)}
                 onDelete={(rowIndex) => handleDeleteRow('ingress', rowIndex)}
-                onGoToPage={goToPage}
               />
             ) : (
               <DataTable
                 columns={EGRESS_COLUMNS as { key: string; label: string; type: 'string' | 'number' }[]}
-                rows={currentEgress}
+                rows={currentPageRows as EgressRow[]}
+                allRows={currentEgress}
                 diffs={egressDiffs}
                 keyField="numeroFacturaRecibo"
                 modelData={extractionsByModel}
                 onEdit={(rowIndex, field, value) => handleCellEdit('egress', rowIndex, field, value)}
                 onDelete={(rowIndex) => handleDeleteRow('egress', rowIndex)}
-                onGoToPage={goToPage}
               />
             )}
           </div>
 
           {/* Add Row Button */}
-          <div className="p-3 border-t border-slate-200 dark:border-slate-700">
+          <div className="px-2 py-1 border-t border-slate-200 dark:border-slate-700">
             <button
               onClick={() => handleAddRow(activeTab)}
-              className="w-full px-4 py-2 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg text-slate-500 hover:border-indigo-400 hover:text-indigo-600 transition-colors"
+              className="w-full px-2 py-1 text-xs border border-dashed border-slate-300 dark:border-slate-600 rounded text-slate-500 hover:border-indigo-400 hover:text-indigo-600 transition-colors"
             >
               + Agregar fila
             </button>
@@ -575,15 +592,15 @@ function DocumentValidationPage() {
 interface DataTableProps {
   columns: { key: string; label: string; type: 'string' | 'number' }[];
   rows: (IngressRow | EgressRow)[];
+  allRows: (IngressRow | EgressRow)[];
   diffs: Map<string, Set<string>>;
   keyField: string;
   modelData: Record<string, { ingress: IngressRow[]; egress: EgressRow[] }>;
   onEdit: (rowIndex: number, field: string, value: string | number | null) => void;
   onDelete: (rowIndex: number) => void;
-  onGoToPage: (page: number) => void;
 }
 
-function DataTable({ columns, rows, diffs, keyField, modelData, onEdit, onDelete, onGoToPage }: DataTableProps) {
+function DataTable({ columns, rows, allRows, diffs, keyField, modelData, onEdit, onDelete }: DataTableProps) {
   const [editingCell, setEditingCell] = useState<{ row: number; col: string } | null>(null);
 
   const modelNames = Object.keys(modelData);
@@ -600,94 +617,100 @@ function DataTable({ columns, rows, diffs, keyField, modelData, onEdit, onDelete
     return row ? (row as Record<string, unknown>)[field] : null;
   };
 
+  // Get the actual index in allRows for each displayed row
+  const getActualIndex = (row: IngressRow | EgressRow): number => {
+    return allRows.indexOf(row);
+  };
+
   return (
-    <table className="w-full text-sm">
+    <table className="w-full text-xs border-collapse table-fixed">
       <thead className="bg-slate-50 dark:bg-slate-800 sticky top-0">
         <tr>
-          {columns.map((col) => (
-            <th
-              key={col.key}
-              className="px-3 py-2 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap"
-            >
-              {col.label}
-            </th>
-          ))}
-          <th className="px-3 py-2 w-10"></th>
+          {columns
+            .filter((col) => col.key !== 'pageNumber')
+            .map((col) => (
+              <th
+                key={col.key}
+                className="px-1 py-1 text-left text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700 break-words"
+              >
+                {col.label}
+              </th>
+            ))}
+          <th className="px-1 py-1 w-6 border-b border-slate-200 dark:border-slate-700"></th>
         </tr>
       </thead>
-      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-        {rows.map((row, rowIndex) => {
+      <tbody>
+        {rows.map((row, displayIndex) => {
           const rowKey = String((row as Record<string, unknown>)[keyField]);
           const rowDiffs = diffs.get(rowKey);
+          const actualIndex = getActualIndex(row);
 
           return (
-            <tr key={rowIndex} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-              {columns.map((col) => {
-                const value = (row as Record<string, unknown>)[col.key];
-                const hasDiff = rowDiffs?.has(col.key);
-                const altValue = hasDiff ? getAlternateValue(rowKey, col.key) : null;
-                const isEditing = editingCell?.row === rowIndex && editingCell?.col === col.key;
+            <tr
+              key={displayIndex}
+              className="hover:bg-slate-50 dark:hover:bg-slate-800/50 group border-b border-slate-100 dark:border-slate-800"
+            >
+              {columns
+                .filter((col) => col.key !== 'pageNumber')
+                .map((col) => {
+                  const value = (row as Record<string, unknown>)[col.key];
+                  const hasDiff = rowDiffs?.has(col.key);
+                  const altValue = hasDiff ? getAlternateValue(rowKey, col.key) : null;
+                  const isEditing = editingCell?.row === displayIndex && editingCell?.col === col.key;
 
-                return (
-                  <td
-                    key={col.key}
-                    className={`px-3 py-2 ${
-                      hasDiff ? 'bg-amber-50 dark:bg-amber-900/30 border-l-2 border-amber-400' : ''
-                    }`}
-                  >
-                    {col.key === 'pageNumber' ? (
-                      <button
-                        onClick={() => onGoToPage(row.pageNumber)}
-                        className="text-indigo-600 dark:text-indigo-400 hover:underline font-medium"
-                      >
-                        {value as number}
-                      </button>
-                    ) : isEditing ? (
-                      <input
-                        type={col.type === 'number' ? 'number' : 'text'}
-                        defaultValue={value === null ? '' : String(value)}
-                        autoFocus
-                        className="w-full px-2 py-1 border border-indigo-400 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800"
-                        onBlur={(e) => {
-                          const newValue =
-                            col.type === 'number'
-                              ? e.target.value
-                                ? Number(e.target.value)
-                                : null
-                              : e.target.value || null;
-                          onEdit(rowIndex, col.key, newValue);
-                          setEditingCell(null);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.currentTarget.blur();
-                          } else if (e.key === 'Escape') {
+                  return (
+                    <td
+                      key={col.key}
+                      className={`px-1 py-0.5 ${
+                        hasDiff ? 'bg-amber-50 dark:bg-amber-900/30 border-l-2 border-amber-400' : ''
+                      }`}
+                    >
+                      {isEditing ? (
+                        <input
+                          type={col.type === 'number' ? 'number' : 'text'}
+                          defaultValue={value === null ? '' : String(value)}
+                          autoFocus
+                          className="w-full px-1 py-0 text-xs border border-indigo-400 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-slate-800"
+                          onBlur={(e) => {
+                            const newValue =
+                              col.type === 'number'
+                                ? e.target.value
+                                  ? Number(e.target.value)
+                                  : null
+                                : e.target.value || null;
+                            onEdit(actualIndex, col.key, newValue);
                             setEditingCell(null);
-                          }
-                        }}
-                      />
-                    ) : (
-                      <div
-                        onClick={() => setEditingCell({ row: rowIndex, col: col.key })}
-                        className="cursor-text min-h-[24px] group"
-                      >
-                        <span className={value === null ? 'text-slate-400 italic' : ''}>
-                          {value === null ? '—' : String(value)}
-                        </span>
-                        {hasDiff && altValue !== undefined && (
-                          <div className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                            Alt: {altValue === null ? '—' : String(altValue)}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </td>
-                );
-              })}
-              <td className="px-2 py-2">
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.currentTarget.blur();
+                            } else if (e.key === 'Escape') {
+                              setEditingCell(null);
+                            }
+                          }}
+                        />
+                      ) : (
+                        <div
+                          onClick={() => setEditingCell({ row: displayIndex, col: col.key })}
+                          className="cursor-text min-h-[16px]"
+                        >
+                          <span className={value === null ? 'text-slate-400 italic' : ''}>
+                            {value === null ? '—' : String(value)}
+                          </span>
+                          {hasDiff && altValue !== undefined && (
+                            <div className="text-[10px] text-amber-600 dark:text-amber-400">
+                              Alt: {altValue === null ? '—' : String(altValue)}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </td>
+                  );
+                })}
+              <td className="px-1 py-0.5">
                 <button
-                  onClick={() => onDelete(rowIndex)}
-                  className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => onDelete(actualIndex)}
+                  className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity text-sm"
                   title="Eliminar fila"
                 >
                   ×
