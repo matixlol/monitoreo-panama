@@ -124,7 +124,6 @@ function DocumentValidationPage() {
   });
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [activeTab, setActiveTab] = useState<'ingress' | 'egress'>('ingress');
   const [editedIngress, setEditedIngress] = useState<IngressRow[] | null>(null);
   const [editedEgress, setEditedEgress] = useState<EgressRow[] | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -387,27 +386,41 @@ function DocumentValidationPage() {
     });
   }, [currentPage, documentId, getCurrentRotation, setPageRotation]);
 
-  // Find pages with diffs for quick navigation
+  // Find pages with diffs for quick navigation (check both ingress and egress)
   const pagesWithDiffs = useMemo(() => {
-    const diffs = activeTab === 'ingress' ? ingressDiffs : egressDiffs;
-    const rows = activeTab === 'ingress' ? currentIngress : currentEgress;
-    const keyField = activeTab === 'ingress' ? 'reciboNumero' : 'numeroFacturaRecibo';
-
     const pageSet = new Set<number>();
-    for (const row of rows) {
-      const rowKey = String((row as Record<string, unknown>)[keyField]);
-      if (diffs.has(rowKey)) {
+
+    // Check ingress diffs
+    for (const row of currentIngress) {
+      const rowKey = String((row as Record<string, unknown>)['reciboNumero']);
+      if (ingressDiffs.has(rowKey)) {
         pageSet.add(row.pageNumber);
       }
     }
-    return Array.from(pageSet).sort((a, b) => a - b);
-  }, [activeTab, ingressDiffs, egressDiffs, currentIngress, currentEgress]);
 
-  // Get rows for current page
-  const currentPageRows = useMemo(() => {
-    const rows = activeTab === 'ingress' ? currentIngress : currentEgress;
-    return rows.filter((row) => row.pageNumber === currentPage);
-  }, [activeTab, currentIngress, currentEgress, currentPage]);
+    // Check egress diffs
+    for (const row of currentEgress) {
+      const rowKey = String((row as Record<string, unknown>)['numeroFacturaRecibo']);
+      if (egressDiffs.has(rowKey)) {
+        pageSet.add(row.pageNumber);
+      }
+    }
+
+    return Array.from(pageSet).sort((a, b) => a - b);
+  }, [ingressDiffs, egressDiffs, currentIngress, currentEgress]);
+
+  // Get rows for current page (both ingress and egress)
+  const currentPageIngressRows = useMemo(() => {
+    return currentIngress.filter((row) => row.pageNumber === currentPage);
+  }, [currentIngress, currentPage]);
+
+  const currentPageEgressRows = useMemo(() => {
+    return currentEgress.filter((row) => row.pageNumber === currentPage);
+  }, [currentEgress, currentPage]);
+
+  // Determine which type of data exists on this page
+  const hasIngressOnPage = currentPageIngressRows.length > 0;
+  const hasEgressOnPage = currentPageEgressRows.length > 0;
 
   if (!document) {
     return (
@@ -534,30 +547,18 @@ function DocumentValidationPage() {
         {/* Data Panel */}
         <ResizablePanel defaultSize={50} minSize={30}>
           <div className="h-full flex flex-col bg-white dark:bg-slate-900">
-            {/* Tabs */}
-            <div className="flex border-b border-slate-200 dark:border-slate-700">
-              <Button
-                onClick={() => setActiveTab('ingress')}
-                variant="ghost"
-                className={`flex-1 rounded-none border-b-2 ${
-                  activeTab === 'ingress'
-                    ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
-                    : 'border-transparent text-slate-500'
-                }`}
-              >
-                Ingresos ({currentIngress.length})
-              </Button>
-              <Button
-                onClick={() => setActiveTab('egress')}
-                variant="ghost"
-                className={`flex-1 rounded-none border-b-2 ${
-                  activeTab === 'egress'
-                    ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
-                    : 'border-transparent text-slate-500'
-                }`}
-              >
-                Gastos ({currentEgress.length})
-              </Button>
+            {/* Header */}
+            <div className="px-3 py-2 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+              <h2 className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Tabla de Datos
+                {hasIngressOnPage && hasEgressOnPage && (
+                  <span className="ml-2 text-xs text-amber-600 dark:text-amber-400">(Ingresos y Gastos)</span>
+                )}
+                {hasIngressOnPage && !hasEgressOnPage && (
+                  <span className="ml-2 text-xs text-slate-500">— Ingresos</span>
+                )}
+                {!hasIngressOnPage && hasEgressOnPage && <span className="ml-2 text-xs text-slate-500">— Gastos</span>}
+              </h2>
             </div>
 
             {/* Diff Navigation */}
@@ -585,51 +586,85 @@ function DocumentValidationPage() {
               </div>
             )}
 
-            {/* Table */}
+            {/* Tables */}
             <div className="flex-1 overflow-auto">
-              {currentPageRows.length === 0 ? (
+              {!hasIngressOnPage && !hasEgressOnPage ? (
                 <div className="flex items-center justify-center h-full text-slate-400 text-sm">
-                  No hay {activeTab === 'ingress' ? 'ingresos' : 'gastos'} en esta página
+                  No hay datos en esta página
                 </div>
-              ) : activeTab === 'ingress' ? (
-                <DataTable
-                  columns={INGRESS_COLUMNS as { key: string; label: string; type: 'string' | 'number' }[]}
-                  rows={currentPageRows as IngressRow[]}
-                  allRows={currentIngress}
-                  diffs={ingressDiffs}
-                  keyField="reciboNumero"
-                  modelData={extractionsByModel}
-                  modelNames={modelNames}
-                  getModelsForRow={(rowKey) => getModelsForRow('ingress', 'reciboNumero', rowKey)}
-                  onEdit={(rowIndex, field, value) => handleCellEdit('ingress', rowIndex, field, value)}
-                  onDelete={(rowIndex) => handleDeleteRow('ingress', rowIndex)}
-                />
               ) : (
-                <DataTable
-                  columns={EGRESS_COLUMNS as { key: string; label: string; type: 'string' | 'number' }[]}
-                  rows={currentPageRows as EgressRow[]}
-                  allRows={currentEgress}
-                  diffs={egressDiffs}
-                  keyField="numeroFacturaRecibo"
-                  modelData={extractionsByModel}
-                  modelNames={modelNames}
-                  getModelsForRow={(rowKey) => getModelsForRow('egress', 'numeroFacturaRecibo', rowKey)}
-                  onEdit={(rowIndex, field, value) => handleCellEdit('egress', rowIndex, field, value)}
-                  onDelete={(rowIndex) => handleDeleteRow('egress', rowIndex)}
-                />
+                <div className="space-y-4">
+                  {/* Ingress Table */}
+                  {hasIngressOnPage && (
+                    <div>
+                      {hasEgressOnPage && (
+                        <div className="px-2 py-1 bg-emerald-50 dark:bg-emerald-900/20 border-b border-emerald-200 dark:border-emerald-800">
+                          <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">Ingresos</span>
+                        </div>
+                      )}
+                      <DataTable
+                        columns={INGRESS_COLUMNS as { key: string; label: string; type: 'string' | 'number' }[]}
+                        rows={currentPageIngressRows}
+                        allRows={currentIngress}
+                        diffs={ingressDiffs}
+                        keyField="reciboNumero"
+                        modelData={extractionsByModel}
+                        modelNames={modelNames}
+                        getModelsForRow={(rowKey) => getModelsForRow('ingress', 'reciboNumero', rowKey)}
+                        onEdit={(rowIndex, field, value) => handleCellEdit('ingress', rowIndex, field, value)}
+                        onDelete={(rowIndex) => handleDeleteRow('ingress', rowIndex)}
+                      />
+                    </div>
+                  )}
+
+                  {/* Egress Table */}
+                  {hasEgressOnPage && (
+                    <div>
+                      {hasIngressOnPage && (
+                        <div className="px-2 py-1 bg-rose-50 dark:bg-rose-900/20 border-b border-rose-200 dark:border-rose-800">
+                          <span className="text-xs font-medium text-rose-700 dark:text-rose-400">Gastos</span>
+                        </div>
+                      )}
+                      <DataTable
+                        columns={EGRESS_COLUMNS as { key: string; label: string; type: 'string' | 'number' }[]}
+                        rows={currentPageEgressRows}
+                        allRows={currentEgress}
+                        diffs={egressDiffs}
+                        keyField="numeroFacturaRecibo"
+                        modelData={extractionsByModel}
+                        modelNames={modelNames}
+                        getModelsForRow={(rowKey) => getModelsForRow('egress', 'numeroFacturaRecibo', rowKey)}
+                        onEdit={(rowIndex, field, value) => handleCellEdit('egress', rowIndex, field, value)}
+                        onDelete={(rowIndex) => handleDeleteRow('egress', rowIndex)}
+                      />
+                    </div>
+                  )}
+                </div>
               )}
             </div>
 
             {/* Add Row Button */}
-            <div className="px-2 py-1 border-t border-slate-200 dark:border-slate-700">
-              <Button
-                onClick={() => handleAddRow(activeTab)}
-                variant="outline"
-                size="sm"
-                className="w-full border-dashed"
-              >
-                + Agregar fila
-              </Button>
+            <div className="px-2 py-1 border-t border-slate-200 dark:border-slate-700 flex gap-2">
+              {(hasIngressOnPage || (!hasIngressOnPage && !hasEgressOnPage)) && (
+                <Button
+                  onClick={() => handleAddRow('ingress')}
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 border-dashed"
+                >
+                  + Agregar ingreso
+                </Button>
+              )}
+              {(hasEgressOnPage || (!hasIngressOnPage && !hasEgressOnPage)) && (
+                <Button
+                  onClick={() => handleAddRow('egress')}
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 border-dashed"
+                >
+                  + Agregar gasto
+                </Button>
+              )}
             </div>
           </div>
         </ResizablePanel>
