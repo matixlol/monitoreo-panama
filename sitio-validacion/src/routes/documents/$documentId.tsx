@@ -3,10 +3,11 @@ import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { useState, useCallback, useMemo } from 'react';
 import type { Id } from '../../../convex/_generated/dataModel';
-import type { OptimisticLocalStore } from 'convex/react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
+import { Button } from '@/components/ui/button';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 
 // Configure PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -100,29 +101,27 @@ function DocumentValidationPage() {
   const saveValidatedData = useMutation(api.extractions.saveValidatedData);
 
   // Rotation mutation with optimistic update
-  const setPageRotation = useMutation(api.documents.setPageRotation).withOptimisticUpdate(
-    (localStore: OptimisticLocalStore, args) => {
-      const currentDoc = localStore.getQuery(api.documents.getDocument, {
-        documentId: documentId as Id<'documents'>,
-      });
-      if (currentDoc) {
-        const pageRotations = { ...(currentDoc.pageRotations ?? {}) };
-        const normalizedRotation = ((args.rotation % 360) + 360) % 360;
+  const setPageRotation = useMutation(api.documents.setPageRotation).withOptimisticUpdate((localStore, args) => {
+    const currentDoc = localStore.getQuery(api.documents.getDocument, {
+      documentId: documentId as Id<'documents'>,
+    });
+    if (currentDoc) {
+      const pageRotations = { ...(currentDoc.pageRotations ?? {}) };
+      const normalizedRotation = ((args.rotation % 360) + 360) % 360;
 
-        if (normalizedRotation === 0) {
-          delete pageRotations[String(args.pageNumber)];
-        } else {
-          pageRotations[String(args.pageNumber)] = normalizedRotation;
-        }
-
-        localStore.setQuery(
-          api.documents.getDocument,
-          { documentId: documentId as Id<'documents'> },
-          { ...currentDoc, pageRotations },
-        );
+      if (normalizedRotation === 0) {
+        delete pageRotations[String(args.pageNumber)];
+      } else {
+        pageRotations[String(args.pageNumber)] = normalizedRotation;
       }
-    },
-  );
+
+      localStore.setQuery(
+        api.documents.getDocument,
+        { documentId: documentId as Id<'documents'> },
+        { ...currentDoc, pageRotations },
+      );
+    }
+  });
 
   const [currentPage, setCurrentPage] = useState(1);
   const [activeTab, setActiveTab] = useState<'ingress' | 'egress'>('ingress');
@@ -401,189 +400,191 @@ function DocumentValidationPage() {
               </span>
             )}
 
-            <button
-              onClick={handleSave}
-              disabled={!hasEdits || isSaving}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                hasEdits && !isSaving
-                  ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                  : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-              }`}
-            >
+            <Button onClick={handleSave} disabled={!hasEdits || isSaving} variant={hasEdits ? 'default' : 'outline'}>
               {isSaving ? 'Guardando...' : 'Guardar Validación'}
-            </button>
+            </Button>
           </div>
         </div>
       </header>
 
-      <div className="flex h-[calc(100vh-57px)]">
+      <ResizablePanelGroup orientation="horizontal" className="h-[calc(100vh-57px)]">
         {/* PDF Viewer Panel */}
-        <div className="w-1/2 border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 flex flex-col">
-          {/* PDF Controls */}
-          <div className="p-3 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-center gap-4">
-            <button
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage <= 1}
-              className="px-3 py-1 bg-slate-200 dark:bg-slate-700 rounded disabled:opacity-50"
-            >
-              ←
-            </button>
-            <span className="text-sm text-slate-600 dark:text-slate-400">
-              Página {currentPage} de {document.pageCount}
-            </span>
-            <button
-              onClick={() => setCurrentPage((p) => Math.min(document.pageCount, p + 1))}
-              disabled={currentPage >= document.pageCount}
-              className="px-3 py-1 bg-slate-200 dark:bg-slate-700 rounded disabled:opacity-50"
-            >
-              →
-            </button>
-            <div className="w-px h-6 bg-slate-300 dark:bg-slate-600" />
-            <button
-              onClick={handleRotate}
-              className="px-3 py-1 bg-slate-200 dark:bg-slate-700 rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors flex items-center gap-1"
-              title="Rotar página 90°"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
+        <ResizablePanel defaultSize={50} minSize={30}>
+          <div className="h-full border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 flex flex-col">
+            {/* PDF Controls */}
+            <div className="p-3 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-center gap-4">
+              <Button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage <= 1}
+                variant="outline"
+                size="sm"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
-              <span className="text-sm">Rotar</span>
-            </button>
-          </div>
-
-          {/* PDF Embed */}
-          <div className="flex-1 overflow-auto p-4">
-            <div className="min-w-fit flex justify-center">
-              {document.fileUrl ? (
-                <Document
-                  file={document.fileUrl}
-                  loading={
-                    <div className="flex items-center justify-center h-full text-slate-500">Cargando PDF...</div>
-                  }
-                  error={
-                    <div className="flex items-center justify-center h-full text-red-500">Error al cargar el PDF</div>
-                  }
+                ←
+              </Button>
+              <span className="text-sm text-slate-600 dark:text-slate-400">
+                Página {currentPage} de {document.pageCount}
+              </span>
+              <Button
+                onClick={() => setCurrentPage((p) => Math.min(document.pageCount, p + 1))}
+                disabled={currentPage >= document.pageCount}
+                variant="outline"
+                size="sm"
+              >
+                →
+              </Button>
+              <div className="w-px h-6 bg-slate-300 dark:bg-slate-600" />
+              <Button onClick={handleRotate} variant="outline" size="sm" title="Rotar página 90°">
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
                 >
-                  <Page
-                    pageNumber={currentPage}
-                    className="rounded-lg shadow-lg"
-                    renderTextLayer={true}
-                    renderAnnotationLayer={true}
-                    rotate={getCurrentRotation()}
-                    loading={
-                      <div className="flex items-center justify-center h-64 text-slate-500">Cargando página...</div>
-                    }
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                   />
-                </Document>
-              ) : (
-                <div className="flex items-center justify-center h-full text-slate-500">No se pudo cargar el PDF</div>
-              )}
+                </svg>
+                Rotar
+              </Button>
+            </div>
+
+            {/* PDF Embed */}
+            <div className="flex-1 overflow-auto p-4">
+              <div className="min-w-fit flex justify-center">
+                {document.fileUrl ? (
+                  <Document
+                    file={document.fileUrl}
+                    loading={
+                      <div className="flex items-center justify-center h-full text-slate-500">Cargando PDF...</div>
+                    }
+                    error={
+                      <div className="flex items-center justify-center h-full text-red-500">Error al cargar el PDF</div>
+                    }
+                  >
+                    <Page
+                      pageNumber={currentPage}
+                      className="rounded-lg shadow-lg"
+                      renderTextLayer={true}
+                      renderAnnotationLayer={true}
+                      rotate={getCurrentRotation()}
+                      loading={
+                        <div className="flex items-center justify-center h-64 text-slate-500">Cargando página...</div>
+                      }
+                    />
+                  </Document>
+                ) : (
+                  <div className="flex items-center justify-center h-full text-slate-500">No se pudo cargar el PDF</div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        </ResizablePanel>
+
+        <ResizableHandle withHandle />
 
         {/* Data Panel */}
-        <div className="w-1/2 flex flex-col bg-white dark:bg-slate-900">
-          {/* Tabs */}
-          <div className="flex border-b border-slate-200 dark:border-slate-700">
-            <button
-              onClick={() => setActiveTab('ingress')}
-              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-                activeTab === 'ingress'
-                  ? 'border-b-2 border-indigo-600 text-indigo-600 dark:text-indigo-400'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              Ingresos ({currentIngress.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('egress')}
-              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-                activeTab === 'egress'
-                  ? 'border-b-2 border-indigo-600 text-indigo-600 dark:text-indigo-400'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              Gastos ({currentEgress.length})
-            </button>
-          </div>
+        <ResizablePanel defaultSize={50} minSize={30}>
+          <div className="h-full flex flex-col bg-white dark:bg-slate-900">
+            {/* Tabs */}
+            <div className="flex border-b border-slate-200 dark:border-slate-700">
+              <Button
+                onClick={() => setActiveTab('ingress')}
+                variant="ghost"
+                className={`flex-1 rounded-none border-b-2 ${
+                  activeTab === 'ingress'
+                    ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
+                    : 'border-transparent text-slate-500'
+                }`}
+              >
+                Ingresos ({currentIngress.length})
+              </Button>
+              <Button
+                onClick={() => setActiveTab('egress')}
+                variant="ghost"
+                className={`flex-1 rounded-none border-b-2 ${
+                  activeTab === 'egress'
+                    ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
+                    : 'border-transparent text-slate-500'
+                }`}
+              >
+                Gastos ({currentEgress.length})
+              </Button>
+            </div>
 
-          {/* Diff Navigation */}
-          {pagesWithDiffs.length > 0 && (
-            <div className="px-2 py-1 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 flex items-center gap-1 overflow-x-auto">
-              <span className="text-xs text-amber-700 dark:text-amber-400 whitespace-nowrap">Ir a diferencia:</span>
-              {pagesWithDiffs.slice(0, 15).map((pageNum) => (
-                <button
-                  key={pageNum}
-                  onClick={() => goToPage(pageNum)}
-                  className={`px-2 py-0.5 text-xs rounded hover:bg-amber-300 ${
-                    pageNum === currentPage
-                      ? 'bg-amber-400 dark:bg-amber-600 text-amber-900 dark:text-amber-100 font-medium'
-                      : 'bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200'
-                  }`}
-                >
-                  {pageNum}
-                </button>
-              ))}
-              {pagesWithDiffs.length > 15 && (
-                <span className="text-xs text-amber-600">+{pagesWithDiffs.length - 15} más</span>
+            {/* Diff Navigation */}
+            {pagesWithDiffs.length > 0 && (
+              <div className="px-2 py-1 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 flex items-center gap-1 overflow-x-auto">
+                <span className="text-xs text-amber-700 dark:text-amber-400 whitespace-nowrap">Ir a diferencia:</span>
+                {pagesWithDiffs.slice(0, 15).map((pageNum) => (
+                  <Button
+                    key={pageNum}
+                    onClick={() => goToPage(pageNum)}
+                    variant={pageNum === currentPage ? 'default' : 'outline'}
+                    size="sm"
+                    className={`text-xs h-6 px-2 ${
+                      pageNum === currentPage
+                        ? 'bg-amber-400 dark:bg-amber-600 text-amber-900 dark:text-amber-100 hover:bg-amber-500'
+                        : 'bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200 hover:bg-amber-300'
+                    }`}
+                  >
+                    {pageNum}
+                  </Button>
+                ))}
+                {pagesWithDiffs.length > 15 && (
+                  <span className="text-xs text-amber-600">+{pagesWithDiffs.length - 15} más</span>
+                )}
+              </div>
+            )}
+
+            {/* Table */}
+            <div className="flex-1 overflow-auto">
+              {currentPageRows.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-slate-400 text-sm">
+                  No hay {activeTab === 'ingress' ? 'ingresos' : 'gastos'} en esta página
+                </div>
+              ) : activeTab === 'ingress' ? (
+                <DataTable
+                  columns={INGRESS_COLUMNS as { key: string; label: string; type: 'string' | 'number' }[]}
+                  rows={currentPageRows as IngressRow[]}
+                  allRows={currentIngress}
+                  diffs={ingressDiffs}
+                  keyField="reciboNumero"
+                  modelData={extractionsByModel}
+                  onEdit={(rowIndex, field, value) => handleCellEdit('ingress', rowIndex, field, value)}
+                  onDelete={(rowIndex) => handleDeleteRow('ingress', rowIndex)}
+                />
+              ) : (
+                <DataTable
+                  columns={EGRESS_COLUMNS as { key: string; label: string; type: 'string' | 'number' }[]}
+                  rows={currentPageRows as EgressRow[]}
+                  allRows={currentEgress}
+                  diffs={egressDiffs}
+                  keyField="numeroFacturaRecibo"
+                  modelData={extractionsByModel}
+                  onEdit={(rowIndex, field, value) => handleCellEdit('egress', rowIndex, field, value)}
+                  onDelete={(rowIndex) => handleDeleteRow('egress', rowIndex)}
+                />
               )}
             </div>
-          )}
 
-          {/* Table */}
-          <div className="flex-1 overflow-auto">
-            {currentPageRows.length === 0 ? (
-              <div className="flex items-center justify-center h-full text-slate-400 text-sm">
-                No hay {activeTab === 'ingress' ? 'ingresos' : 'gastos'} en esta página
-              </div>
-            ) : activeTab === 'ingress' ? (
-              <DataTable
-                columns={INGRESS_COLUMNS as { key: string; label: string; type: 'string' | 'number' }[]}
-                rows={currentPageRows as IngressRow[]}
-                allRows={currentIngress}
-                diffs={ingressDiffs}
-                keyField="reciboNumero"
-                modelData={extractionsByModel}
-                onEdit={(rowIndex, field, value) => handleCellEdit('ingress', rowIndex, field, value)}
-                onDelete={(rowIndex) => handleDeleteRow('ingress', rowIndex)}
-              />
-            ) : (
-              <DataTable
-                columns={EGRESS_COLUMNS as { key: string; label: string; type: 'string' | 'number' }[]}
-                rows={currentPageRows as EgressRow[]}
-                allRows={currentEgress}
-                diffs={egressDiffs}
-                keyField="numeroFacturaRecibo"
-                modelData={extractionsByModel}
-                onEdit={(rowIndex, field, value) => handleCellEdit('egress', rowIndex, field, value)}
-                onDelete={(rowIndex) => handleDeleteRow('egress', rowIndex)}
-              />
-            )}
+            {/* Add Row Button */}
+            <div className="px-2 py-1 border-t border-slate-200 dark:border-slate-700">
+              <Button
+                onClick={() => handleAddRow(activeTab)}
+                variant="outline"
+                size="sm"
+                className="w-full border-dashed"
+              >
+                + Agregar fila
+              </Button>
+            </div>
           </div>
-
-          {/* Add Row Button */}
-          <div className="px-2 py-1 border-t border-slate-200 dark:border-slate-700">
-            <button
-              onClick={() => handleAddRow(activeTab)}
-              className="w-full px-2 py-1 text-xs border border-dashed border-slate-300 dark:border-slate-600 rounded text-slate-500 hover:border-indigo-400 hover:text-indigo-600 transition-colors"
-            >
-              + Agregar fila
-            </button>
-          </div>
-        </div>
-      </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
     </div>
   );
 }
@@ -631,7 +632,7 @@ function DataTable({ columns, rows, allRows, diffs, keyField, modelData, onEdit,
             .map((col) => (
               <th
                 key={col.key}
-                className="px-1 py-1 text-left text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700 break-words"
+                className="px-1 py-1 text-left text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700 wrap-break-word"
               >
                 {col.label}
               </th>
@@ -708,13 +709,15 @@ function DataTable({ columns, rows, allRows, diffs, keyField, modelData, onEdit,
                   );
                 })}
               <td className="px-1 py-0.5">
-                <button
+                <Button
                   onClick={() => onDelete(actualIndex)}
-                  className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity text-sm"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity h-5 w-5"
                   title="Eliminar fila"
                 >
                   ×
-                </button>
+                </Button>
               </td>
             </tr>
           );
