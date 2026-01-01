@@ -8,6 +8,10 @@
  * @module
  */
 
+import type * as documents from "../documents.js";
+import type * as extraction from "../extraction.js";
+import type * as extractionHelpers from "../extractionHelpers.js";
+import type * as extractions from "../extractions.js";
 import type * as myFunctions from "../myFunctions.js";
 
 import type {
@@ -17,6 +21,10 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  documents: typeof documents;
+  extraction: typeof extraction;
+  extractionHelpers: typeof extractionHelpers;
+  extractions: typeof extractions;
   myFunctions: typeof myFunctions;
 }>;
 
