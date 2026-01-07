@@ -18,6 +18,8 @@ const ingressRowValidator = v.object({
   recursosPropiosEfectivoCheque: v.optional(v.union(v.number(), v.null())),
   recursosPropiosEspecie: v.optional(v.union(v.number(), v.null())),
   total: v.optional(v.union(v.number(), v.null())),
+  // Fields marked as unreadable/illegible in the source PDF by human validators
+  humanUnreadableFields: v.optional(v.array(v.string())),
 });
 
 // Egress row validator (matching EgresoRowSchema from process-pdf.ts)
@@ -42,6 +44,8 @@ const egressRowValidator = v.object({
   propagandaElectoral: v.optional(v.union(v.number(), v.null())),
   totalGastosPropaganda: v.optional(v.union(v.number(), v.null())),
   totalDeGastosDePropagandaYCampania: v.optional(v.union(v.number(), v.null())),
+  // Fields marked as unreadable/illegible in the source PDF by human validators
+  humanUnreadableFields: v.optional(v.array(v.string())),
 });
 
 export default defineSchema({
