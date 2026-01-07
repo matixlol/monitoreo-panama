@@ -3,12 +3,18 @@ import { Authenticated, useConvexAuth } from 'convex/react';
 import { useMutation, useQuery } from 'convex/react';
 import { useAuthActions } from '@convex-dev/auth/react';
 import { api } from '../../../convex/_generated/api';
-import { useRef, useState } from 'react';
+import { useRef, useState, useCallback } from 'react';
 import { PDFDocument } from 'pdf-lib';
 
 export const Route = createFileRoute('/documents/')({
   component: DocumentsPage,
 });
+
+type UploadProgress = {
+  fileName: string;
+  status: 'pending' | 'uploading' | 'processing' | 'completed' | 'failed';
+  error?: string;
+};
 
 function DocumentsPage() {
   const documents = useQuery(api.documents.listDocuments);
@@ -18,57 +24,140 @@ function DocumentsPage() {
 
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
+  const [uploadStats, setUploadStats] = useState<{ completed: number; failed: number; total: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const uploadSingleFile = useCallback(
+    async (file: File, index: number): Promise<boolean> => {
+      // Update status to uploading
+      setUploadProgress((prev) => {
+        const updated = [...prev];
+        updated[index] = { ...updated[index]!, status: 'uploading' };
+        return updated;
+      });
 
-    if (file.type !== 'application/pdf') {
-      setUploadError('Please select a PDF file');
+      try {
+        // Get page count from PDF
+        const arrayBuffer = await file.arrayBuffer();
+        const pdfDoc = await PDFDocument.load(arrayBuffer);
+        const pageCount = pdfDoc.getPageCount();
+
+        // Update status to processing
+        setUploadProgress((prev) => {
+          const updated = [...prev];
+          updated[index] = { ...updated[index]!, status: 'processing' };
+          return updated;
+        });
+
+        // Get upload URL
+        const uploadUrl = await generateUploadUrl();
+
+        // Upload file
+        const response = await fetch(uploadUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': file.type },
+          body: file,
+        });
+
+        if (!response.ok) {
+          throw new Error('Upload failed');
+        }
+
+        const { storageId } = await response.json();
+
+        // Create document record
+        await createDocument({
+          fileId: storageId,
+          name: file.name,
+          pageCount,
+        });
+
+        // Update status to completed
+        setUploadProgress((prev) => {
+          const updated = [...prev];
+          updated[index] = { ...updated[index]!, status: 'completed' };
+          return updated;
+        });
+
+        return true;
+      } catch (error) {
+        // Update status to failed
+        setUploadProgress((prev) => {
+          const updated = [...prev];
+          updated[index] = {
+            ...updated[index]!,
+            status: 'failed',
+            error: error instanceof Error ? error.message : 'Upload failed',
+          };
+          return updated;
+        });
+        return false;
+      }
+    },
+    [generateUploadUrl, createDocument],
+  );
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    // Filter for PDFs only
+    const pdfFiles = Array.from(files).filter((file) => file.type === 'application/pdf');
+
+    if (pdfFiles.length === 0) {
+      setUploadError('Please select PDF files');
       return;
     }
 
+    if (pdfFiles.length !== files.length) {
+      setUploadError(`${files.length - pdfFiles.length} non-PDF files were skipped`);
+    } else {
+      setUploadError(null);
+    }
+
     setIsUploading(true);
-    setUploadError(null);
+    setUploadStats(null);
 
-    try {
-      // Get page count from PDF
-      const arrayBuffer = await file.arrayBuffer();
-      const pdfDoc = await PDFDocument.load(arrayBuffer);
-      const pageCount = pdfDoc.getPageCount();
+    // Initialize progress for all files
+    const initialProgress: UploadProgress[] = pdfFiles.map((file) => ({
+      fileName: file.name,
+      status: 'pending',
+    }));
+    setUploadProgress(initialProgress);
 
-      // Get upload URL
-      const uploadUrl = await generateUploadUrl();
+    // Process files in batches of 5 for better performance
+    const BATCH_SIZE = 5;
+    let completed = 0;
+    let failed = 0;
 
-      // Upload file
-      const response = await fetch(uploadUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': file.type },
-        body: file,
+    for (let i = 0; i < pdfFiles.length; i += BATCH_SIZE) {
+      const batch = pdfFiles.slice(i, i + BATCH_SIZE);
+      const results = await Promise.all(batch.map((file, batchIndex) => uploadSingleFile(file, i + batchIndex)));
+
+      results.forEach((success) => {
+        if (success) {
+          completed++;
+        } else {
+          failed++;
+        }
       });
+    }
 
-      if (!response.ok) {
-        throw new Error('Upload failed');
-      }
+    setUploadStats({ completed, failed, total: pdfFiles.length });
+    setIsUploading(false);
 
-      const { storageId } = await response.json();
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
 
-      // Create document record
-      await createDocument({
-        fileId: storageId,
-        name: file.name,
-        pageCount,
-      });
-
-      // Reset file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    } catch (error) {
-      setUploadError(error instanceof Error ? error.message : 'Upload failed');
-    } finally {
-      setIsUploading(false);
+    // Clear progress after 5 seconds if all succeeded
+    if (failed === 0) {
+      setTimeout(() => {
+        setUploadProgress([]);
+        setUploadStats(null);
+      }, 3000);
     }
   };
 
@@ -117,6 +206,7 @@ function DocumentsPage() {
                 ref={fileInputRef}
                 type="file"
                 accept="application/pdf"
+                multiple
                 onChange={handleUpload}
                 disabled={isUploading}
                 className="hidden"
@@ -160,15 +250,146 @@ function DocumentsPage() {
                         d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
                       />
                     </svg>
-                    Subir PDF
+                    Subir PDFs
                   </>
                 )}
               </label>
               <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                PDF con tablas de INFORME DE INGRESOS o INFORME DE GASTOS
+                Selecciona uno o múltiples PDFs (INFORME DE INGRESOS o INFORME DE GASTOS)
               </p>
               {uploadError && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{uploadError}</p>}
             </div>
+
+            {/* Upload Progress */}
+            {uploadProgress.length > 0 && (
+              <div className="mt-6">
+                {/* Summary Stats */}
+                {uploadStats && (
+                  <div className="mb-4 p-3 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center gap-6">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                        {uploadStats.completed}
+                      </div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">Completados</div>
+                    </div>
+                    {uploadStats.failed > 0 && (
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-red-600 dark:text-red-400">{uploadStats.failed}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">Fallidos</div>
+                      </div>
+                    )}
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-slate-600 dark:text-slate-300">{uploadStats.total}</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">Total</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Progress Bar */}
+                {isUploading && (
+                  <div className="mb-4">
+                    <div className="flex justify-between text-sm text-slate-600 dark:text-slate-400 mb-1">
+                      <span>Progreso</span>
+                      <span>
+                        {uploadProgress.filter((p) => p.status === 'completed' || p.status === 'failed').length} /{' '}
+                        {uploadProgress.length}
+                      </span>
+                    </div>
+                    <div className="w-full h-2 bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-indigo-600 transition-all duration-300"
+                        style={{
+                          width: `${(uploadProgress.filter((p) => p.status === 'completed' || p.status === 'failed').length / uploadProgress.length) * 100}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* File List - Collapsible for large uploads */}
+                <details className="group" open={uploadProgress.length <= 10}>
+                  <summary className="cursor-pointer text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200">
+                    {uploadProgress.length} archivos{' '}
+                    <span className="text-slate-400 group-open:hidden">(click para expandir)</span>
+                  </summary>
+                  <div className="mt-2 max-h-60 overflow-y-auto space-y-1 text-sm">
+                    {uploadProgress.map((item, idx) => (
+                      <div
+                        key={idx}
+                        className={`flex items-center gap-2 px-2 py-1 rounded ${
+                          item.status === 'completed'
+                            ? 'bg-emerald-50 dark:bg-emerald-900/20'
+                            : item.status === 'failed'
+                              ? 'bg-red-50 dark:bg-red-900/20'
+                              : item.status === 'uploading' || item.status === 'processing'
+                                ? 'bg-blue-50 dark:bg-blue-900/20'
+                                : 'bg-slate-50 dark:bg-slate-800'
+                        }`}
+                      >
+                        {/* Status Icon */}
+                        {item.status === 'pending' && <span className="w-4 h-4 text-slate-400">○</span>}
+                        {(item.status === 'uploading' || item.status === 'processing') && (
+                          <svg className="animate-spin h-4 w-4 text-blue-500" viewBox="0 0 24 24">
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                              fill="none"
+                            />
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            />
+                          </svg>
+                        )}
+                        {item.status === 'completed' && <span className="w-4 h-4 text-emerald-500">✓</span>}
+                        {item.status === 'failed' && <span className="w-4 h-4 text-red-500">✕</span>}
+
+                        {/* File Name */}
+                        <span
+                          className={`flex-1 truncate ${
+                            item.status === 'failed'
+                              ? 'text-red-700 dark:text-red-400'
+                              : item.status === 'completed'
+                                ? 'text-emerald-700 dark:text-emerald-400'
+                                : 'text-slate-700 dark:text-slate-300'
+                          }`}
+                          title={item.fileName}
+                        >
+                          {item.fileName}
+                        </span>
+
+                        {/* Status Label */}
+                        <span className="text-xs text-slate-400">
+                          {item.status === 'pending' && 'Pendiente'}
+                          {item.status === 'uploading' && 'Subiendo...'}
+                          {item.status === 'processing' && 'Procesando...'}
+                          {item.status === 'completed' && 'Listo'}
+                          {item.status === 'failed' && (item.error || 'Error')}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+
+                {/* Clear button when done */}
+                {!isUploading && uploadStats && uploadStats.failed > 0 && (
+                  <button
+                    onClick={() => {
+                      setUploadProgress([]);
+                      setUploadStats(null);
+                    }}
+                    className="mt-3 text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                  >
+                    Limpiar lista
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Documents List */}
