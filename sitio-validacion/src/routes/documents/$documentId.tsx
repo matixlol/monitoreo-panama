@@ -101,6 +101,7 @@ const EGRESS_COLUMNS: { key: keyof EgressRow; label: string; type: 'string' | 'n
   { key: 'pageNumber', label: 'Pág', type: 'number' },
   { key: 'fecha', label: 'Fecha', type: 'string' },
   { key: 'numeroFacturaRecibo', label: 'Factura/Recibo', type: 'string' },
+  { key: 'cedulaRuc', label: 'Cédula/RUC', type: 'string' },
   { key: 'proveedorNombre', label: 'Proveedor', type: 'string' },
   { key: 'detalleGasto', label: 'Detalle', type: 'string' },
   { key: 'pagoTipo', label: 'Tipo Pago', type: 'string' },
@@ -849,13 +850,29 @@ function DataTable({
                             {value === null ? '—' : String(value)}
                           </span>
                           {hasDiff && Object.keys(altValues).length > 0 && (
-                            <div className="text-[10px] text-amber-600 dark:text-amber-400">
+                            <div className="text-[10px] space-y-1 mt-1">
                               {Object.entries(altValues).map(([modelName, modelValue]) => {
                                 const shortName = getShortModelName(modelName);
+                                const isSelected = modelValue === value;
                                 return (
-                                  <div key={modelName}>
-                                    {shortName}: {modelValue === null ? '—' : String(modelValue)}
-                                  </div>
+                                  <button
+                                    key={modelName}
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onEdit(actualIndex, col.key, modelValue as string | number | null);
+                                    }}
+                                    className={`block w-full text-left py-0.5 rounded border transition-colors cursor-pointer ${
+                                      isSelected
+                                        ? 'border-emerald-400 dark:border-emerald-500 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-400 dark:ring-emerald-500'
+                                        : 'border-amber-300 dark:border-amber-600 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-800 hover:border-amber-400 dark:hover:border-amber-500'
+                                    }`}
+                                    title={isSelected ? `Valor actual (de ${modelName})` : `Usar valor de ${modelName}`}
+                                  >
+                                    {isSelected && <span className="mr-1">✓</span>}
+                                    <span className="font-medium">{shortName}:</span>{' '}
+                                    {modelValue === null ? '—' : String(modelValue)}
+                                  </button>
                                 );
                               })}
                             </div>

@@ -28,7 +28,7 @@ Do not confuse Total de Gastos de Campaña (totalGastosCampania) with Total de G
 // Zod schemas for validation
 const IngresoRowSchema = z.object({
   fecha: z.string().nullish(),
-  reciboNumero: z.string(),
+  reciboNumero: z.string().nullish(),
   contribuyenteNombre: z.string().nullish(),
   representanteLegal: z.string().nullish(),
   cedulaRuc: z
@@ -48,7 +48,7 @@ const IngresoRowSchema = z.object({
 
 const EgresoRowSchema = z.object({
   fecha: z.string().nullish(),
-  numeroFacturaRecibo: z.string(),
+  numeroFacturaRecibo: z.string().nullish(),
   cedulaRuc: z
     .string()
     .nullable()

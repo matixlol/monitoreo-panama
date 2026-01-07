@@ -5,7 +5,7 @@ import { v } from 'convex/values';
 const ingressRowValidator = v.object({
   pageNumber: v.number(),
   fecha: v.optional(v.union(v.string(), v.null())),
-  reciboNumero: v.string(),
+  reciboNumero: v.optional(v.union(v.string(), v.null())),
   contribuyenteNombre: v.optional(v.union(v.string(), v.null())),
   representanteLegal: v.optional(v.union(v.string(), v.null())),
   cedulaRuc: v.optional(v.union(v.string(), v.null())),
@@ -24,7 +24,7 @@ const ingressRowValidator = v.object({
 const egressRowValidator = v.object({
   pageNumber: v.number(),
   fecha: v.optional(v.union(v.string(), v.null())),
-  numeroFacturaRecibo: v.string(),
+  numeroFacturaRecibo: v.optional(v.union(v.string(), v.null())),
   cedulaRuc: v.optional(v.union(v.string(), v.null())),
   proveedorNombre: v.optional(v.union(v.string(), v.null())),
   detalleGasto: v.optional(v.union(v.string(), v.null())),
