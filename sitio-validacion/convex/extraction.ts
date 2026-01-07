@@ -35,7 +35,7 @@ const IngresoRowSchema = z.object({
   representanteLegal: z.string().nullish(),
   cedulaRuc: z
     .string()
-    .nullable()
+    .nullish()
     .transform((a) => (a === 'null' ? null : a)),
   direccion: z.string().nullish(),
   telefono: z.string().nullish(),
@@ -55,7 +55,7 @@ const EgresoRowSchema = z.object({
   numeroFacturaRecibo: z.string().nullish(),
   cedulaRuc: z
     .string()
-    .nullable()
+    .nullish()
     .transform((a) => (a === 'null' ? null : a)),
   proveedorNombre: z.string().nullish(),
   detalleGasto: z.string().nullish(),
