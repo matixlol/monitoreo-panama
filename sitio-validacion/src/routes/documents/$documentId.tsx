@@ -1067,7 +1067,7 @@ function DataTable({
                           suppressContentEditableWarning
                           ref={(el) => {
                             if (el) {
-                              el.textContent = value === null ? '' : String(value);
+                              el.textContent = value == null ? '' : String(value);
                               el.focus();
                               // Move cursor to end
                               const range = document.createRange();
