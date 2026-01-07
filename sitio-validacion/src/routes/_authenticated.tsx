@@ -1,14 +1,9 @@
 import { Outlet, createFileRoute, redirect } from '@tanstack/react-router';
-import { getAuth, getSignInUrl } from '@workos/authkit-tanstack-react-start';
 
 export const Route = createFileRoute('/_authenticated')({
-  loader: async ({ location }) => {
-    const { user } = await getAuth();
-    if (!user) {
-      const path = location.pathname;
-      const href = await getSignInUrl({ data: { returnPathname: path } });
-      throw redirect({ href });
-    }
+  beforeLoad: async ({ context }) => {
+    // We'll check authentication client-side via the Authenticated/Unauthenticated components
+    // For server-side protection in the future, you could use the convex auth helpers
   },
   component: () => <Outlet />,
 });

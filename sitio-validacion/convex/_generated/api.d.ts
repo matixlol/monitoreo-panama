@@ -8,10 +8,12 @@
  * @module
  */
 
+import type * as auth from "../auth.js";
 import type * as documents from "../documents.js";
 import type * as extraction from "../extraction.js";
 import type * as extractionHelpers from "../extractionHelpers.js";
 import type * as extractions from "../extractions.js";
+import type * as http from "../http.js";
 
 import type {
   ApiFromModules,
@@ -20,10 +22,12 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  auth: typeof auth;
   documents: typeof documents;
   extraction: typeof extraction;
   extractionHelpers: typeof extractionHelpers;
   extractions: typeof extractions;
+  http: typeof http;
 }>;
 
 /**
