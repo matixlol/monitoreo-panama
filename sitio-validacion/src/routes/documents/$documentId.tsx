@@ -274,13 +274,13 @@ function DocumentValidationPage() {
     value: string | number | null,
   ) => {
     if (type === 'ingress') {
-      const rows = editedIngress || [...currentIngress];
+      const rows = [...(editedIngress || currentIngress)];
       const row = { ...rows[rowIndex] };
       (row as Record<string, unknown>)[field] = value;
       rows[rowIndex] = row as IngressRow;
       setEditedIngress(rows);
     } else {
-      const rows = editedEgress || [...currentEgress];
+      const rows = [...(editedEgress || currentEgress)];
       const row = { ...rows[rowIndex] };
       (row as Record<string, unknown>)[field] = value;
       rows[rowIndex] = row as EgressRow;
@@ -339,13 +339,13 @@ function DocumentValidationPage() {
 
   const handleDeleteRow = (type: 'ingress' | 'egress', rowIndex: number) => {
     if (type === 'ingress') {
-      const rows = editedIngress || [...currentIngress];
+      const rows = [...(editedIngress || currentIngress)];
       rows.splice(rowIndex, 1);
-      setEditedIngress([...rows]);
+      setEditedIngress(rows);
     } else {
-      const rows = editedEgress || [...currentEgress];
+      const rows = [...(editedEgress || currentEgress)];
       rows.splice(rowIndex, 1);
-      setEditedEgress([...rows]);
+      setEditedEgress(rows);
     }
   };
 
@@ -687,6 +687,15 @@ interface DataTableProps {
   onDelete: (rowIndex: number) => void;
 }
 
+// Helper to get short model name
+function getShortModelName(modelName: string): string {
+  // Handle gemini-2.x and gemini-3.x specially
+  if (modelName.startsWith('gemini-2')) return 'g2';
+  if (modelName.startsWith('gemini-3')) return 'g3';
+  // For other models, take the first part
+  return modelName.split('-')[0] || modelName.substring(0, 3);
+}
+
 function DataTable({
   columns,
   rows,
@@ -779,7 +788,7 @@ function DataTable({
                         <div className="flex items-center gap-1 mb-0.5">
                           {modelNames.map((modelName) => {
                             const found = modelsFound.includes(modelName);
-                            const shortName = modelName.split('-')[0] || modelName.substring(0, 3);
+                            const shortName = getShortModelName(modelName);
                             return (
                               <span
                                 key={modelName}
@@ -832,7 +841,7 @@ function DataTable({
                           {hasDiff && Object.keys(altValues).length > 0 && (
                             <div className="text-[10px] text-amber-600 dark:text-amber-400">
                               {Object.entries(altValues).map(([modelName, modelValue]) => {
-                                const shortName = modelName.split('-')[0] || modelName.substring(0, 3);
+                                const shortName = getShortModelName(modelName);
                                 return (
                                   <div key={modelName}>
                                     {shortName}: {modelValue === null ? '—' : String(modelValue)}

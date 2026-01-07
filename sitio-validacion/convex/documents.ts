@@ -74,19 +74,6 @@ export const retryExtraction = mutation({
  */
 export const listDocuments = query({
   args: {},
-  returns: v.array(
-    v.object({
-      _id: v.id('documents'),
-      _creationTime: v.number(),
-      fileId: v.id('_storage'),
-      name: v.string(),
-      pageCount: v.number(),
-      status: v.union(v.literal('pending'), v.literal('processing'), v.literal('completed'), v.literal('failed')),
-      errorMessage: v.optional(v.string()),
-      ingressCount: v.number(),
-      egressCount: v.number(),
-    }),
-  ),
   handler: async (ctx) => {
     const documents = await ctx.db.query('documents').order('desc').collect();
 
@@ -139,20 +126,6 @@ export const getDocument = query({
   args: {
     documentId: v.id('documents'),
   },
-  returns: v.union(
-    v.object({
-      _id: v.id('documents'),
-      _creationTime: v.number(),
-      fileId: v.id('_storage'),
-      name: v.string(),
-      pageCount: v.number(),
-      status: v.union(v.literal('pending'), v.literal('processing'), v.literal('completed'), v.literal('failed')),
-      errorMessage: v.optional(v.string()),
-      fileUrl: v.union(v.string(), v.null()),
-      pageRotations: v.optional(v.record(v.string(), v.number())),
-    }),
-    v.null(),
-  ),
   handler: async (ctx, args) => {
     const doc = await ctx.db.get(args.documentId);
     if (!doc) {
