@@ -243,7 +243,10 @@ function DocumentValidationPage() {
           for (const field of Object.keys(row1)) {
             const v1 = (row1 as Record<string, unknown>)[field];
             const v2 = (row2 as Record<string, unknown>)[field];
-            if (v1 !== v2) {
+            // Normalize values before comparing
+            const normalizedV1 = normalizeValueForComparison(field, v1);
+            const normalizedV2 = normalizeValueForComparison(field, v2);
+            if (normalizedV1 !== normalizedV2) {
               diffFields.add(field);
             }
           }
@@ -698,6 +701,45 @@ interface DataTableProps {
   onDelete: (rowIndex: number) => void;
 }
 
+// Normalization functions for comparison and display
+function normalizeCedulaRuc(value: string | null | undefined): string | null {
+  if (value == null) return null;
+  // Replace dashes with dots for cedulaRuc
+  return value.replace(/-/g, '.');
+}
+
+function normalizeDate(value: string | null | undefined): string | null {
+  if (value == null) return null;
+  // Replace dots with dashes for dates
+  return value.replace(/\./g, '-');
+}
+
+function normalizeValueForComparison(field: string, value: unknown): unknown {
+  if (value == null) return value;
+  if (typeof value !== 'string') return value;
+
+  if (field === 'cedulaRuc') {
+    return normalizeCedulaRuc(value);
+  }
+  if (field === 'fecha') {
+    return normalizeDate(value);
+  }
+  return value;
+}
+
+function normalizeValueForDisplay(field: string, value: unknown): string {
+  if (value == null) return '—';
+  if (typeof value !== 'string') return String(value);
+
+  if (field === 'cedulaRuc') {
+    return normalizeCedulaRuc(value) ?? '—';
+  }
+  if (field === 'fecha') {
+    return normalizeDate(value) ?? '—';
+  }
+  return value;
+}
+
 // Helper to get short model name
 function getShortModelName(modelName: string): string {
   // Handle gemini-2.x and gemini-3.x specially
@@ -847,13 +889,16 @@ function DataTable({
                           className="cursor-text min-h-[16px]"
                         >
                           <span className={value === null ? 'text-slate-400 italic' : ''}>
-                            {value === null ? '—' : String(value)}
+                            {normalizeValueForDisplay(col.key, value)}
                           </span>
                           {hasDiff && Object.keys(altValues).length > 0 && (
                             <div className="text-[10px] space-y-1 mt-1">
                               {Object.entries(altValues).map(([modelName, modelValue]) => {
                                 const shortName = getShortModelName(modelName);
-                                const isSelected = modelValue === value;
+                                // Compare normalized values to determine if selected
+                                const normalizedCurrent = normalizeValueForComparison(col.key, value);
+                                const normalizedModel = normalizeValueForComparison(col.key, modelValue);
+                                const isSelected = normalizedModel === normalizedCurrent;
                                 return (
                                   <button
                                     key={modelName}
@@ -871,7 +916,7 @@ function DataTable({
                                   >
                                     {isSelected && <span className="mr-1">✓</span>}
                                     <span className="font-medium">{shortName}:</span>{' '}
-                                    {modelValue === null ? '—' : String(modelValue)}
+                                    {normalizeValueForDisplay(col.key, modelValue)}
                                   </button>
                                 );
                               })}
