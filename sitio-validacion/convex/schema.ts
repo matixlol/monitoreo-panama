@@ -1,4 +1,5 @@
 import { defineSchema, defineTable } from 'convex/server';
+import { authTables } from '@convex-dev/auth/server';
 import { v } from 'convex/values';
 
 // Base ingress row fields (shared between extraction and validated data)
@@ -69,6 +70,9 @@ const validatedEgressRowValidator = v.object({
 });
 
 export default defineSchema({
+  // Convex Auth tables
+  ...authTables,
+
   // PDF documents metadata
   documents: defineTable({
     fileId: v.id('_storage'),

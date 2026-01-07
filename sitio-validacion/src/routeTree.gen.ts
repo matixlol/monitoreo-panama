@@ -9,18 +9,12 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as CallbackRouteImport } from './routes/callback'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DocumentsIndexRouteImport } from './routes/documents/index'
 import { Route as DocumentsDocumentIdRouteImport } from './routes/documents/$documentId'
 import { Route as AuthenticatedAuthenticatedRouteImport } from './routes/_authenticated/authenticated'
 
-const CallbackRoute = CallbackRouteImport.update({
-  id: '/callback',
-  path: '/callback',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
@@ -49,14 +43,12 @@ const AuthenticatedAuthenticatedRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/callback': typeof CallbackRoute
   '/authenticated': typeof AuthenticatedAuthenticatedRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRoute
   '/documents': typeof DocumentsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/callback': typeof CallbackRoute
   '/authenticated': typeof AuthenticatedAuthenticatedRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRoute
   '/documents': typeof DocumentsIndexRoute
@@ -65,31 +57,19 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
-  '/callback': typeof CallbackRoute
   '/_authenticated/authenticated': typeof AuthenticatedAuthenticatedRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRoute
   '/documents/': typeof DocumentsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/callback'
-    | '/authenticated'
-    | '/documents/$documentId'
-    | '/documents'
+  fullPaths: '/' | '/authenticated' | '/documents/$documentId' | '/documents'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/callback'
-    | '/authenticated'
-    | '/documents/$documentId'
-    | '/documents'
+  to: '/' | '/authenticated' | '/documents/$documentId' | '/documents'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
-    | '/callback'
     | '/_authenticated/authenticated'
     | '/documents/$documentId'
     | '/documents/'
@@ -98,20 +78,12 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
-  CallbackRoute: typeof CallbackRoute
   DocumentsDocumentIdRoute: typeof DocumentsDocumentIdRoute
   DocumentsIndexRoute: typeof DocumentsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/callback': {
-      id: '/callback'
-      path: '/callback'
-      fullPath: '/callback'
-      preLoaderRoute: typeof CallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_authenticated': {
       id: '/_authenticated'
       path: ''
@@ -165,7 +137,6 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
-  CallbackRoute: CallbackRoute,
   DocumentsDocumentIdRoute: DocumentsDocumentIdRoute,
   DocumentsIndexRoute: DocumentsIndexRoute,
 }

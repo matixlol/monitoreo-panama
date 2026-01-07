@@ -1,20 +1,8 @@
 import { HeadContent, Outlet, Scripts, createRootRouteWithContext } from '@tanstack/react-router';
-import { createServerFn } from '@tanstack/react-start';
-import { getAuth } from '@workos/authkit-tanstack-react-start';
 import appCssUrl from '../app.css?url';
 import type { QueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import type { ConvexReactClient } from 'convex/react';
-
-const fetchWorkosAuth = createServerFn({ method: 'GET' }).handler(async () => {
-  const auth = await getAuth();
-  const { user } = auth;
-
-  return {
-    userId: user?.id ?? null,
-    token: user ? auth.accessToken : null,
-  };
-});
 
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient;
@@ -40,15 +28,6 @@ export const Route = createRootRouteWithContext<{
   }),
   component: RootComponent,
   notFoundComponent: () => <div>Not Found</div>,
-  beforeLoad: async (ctx) => {
-    const { userId, token } = await fetchWorkosAuth();
-
-    if (token) {
-      ctx.context.convexClient.setAuth(async () => Promise.resolve(token));
-    }
-
-    return { userId, token };
-  },
 });
 
 function RootComponent() {

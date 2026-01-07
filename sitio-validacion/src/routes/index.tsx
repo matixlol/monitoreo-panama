@@ -1,54 +1,118 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { Authenticated, Unauthenticated } from 'convex/react';
-import { useAuth } from '@workos/authkit-tanstack-react-start/client';
-import { getAuth, getSignInUrl, getSignUpUrl } from '@workos/authkit-tanstack-react-start';
-import type { User } from '@workos/authkit-tanstack-react-start';
+import { Authenticated, Unauthenticated, useConvexAuth } from 'convex/react';
+import { useAuthActions } from '@convex-dev/auth/react';
+import { useState } from 'react';
 
 export const Route = createFileRoute('/')({
   component: Home,
-  loader: async () => {
-    const { user } = await getAuth();
-    const signInUrl = await getSignInUrl();
-    const signUpUrl = await getSignUpUrl();
-
-    return { user, signInUrl, signUpUrl };
-  },
 });
 
 function Home() {
-  const { user, signInUrl, signUpUrl } = Route.useLoaderData();
-  return <HomeContent user={user} signInUrl={signInUrl} signUpUrl={signUpUrl} />;
-}
-
-function HomeContent({ user, signInUrl, signUpUrl }: { user: User | null; signInUrl: string; signUpUrl: string }) {
   return (
     <>
       <header className="sticky top-0 z-10 bg-background p-4 border-b-2 border-slate-200 dark:border-slate-800 flex flex-row justify-between items-center">
         Monitoreo Panama
-        {user && <UserMenu user={user} />}
+        <Authenticated>
+          <UserMenu />
+        </Authenticated>
       </header>
       <main className="p-8 flex flex-col gap-8">
         <Authenticated>
           <Content />
         </Authenticated>
         <Unauthenticated>
-          <SignInForm signInUrl={signInUrl} signUpUrl={signUpUrl} />
+          <SignInForm />
         </Unauthenticated>
       </main>
     </>
   );
 }
 
-function SignInForm({ signInUrl, signUpUrl }: { signInUrl: string; signUpUrl: string }) {
+function SignInForm() {
+  const { signIn } = useAuthActions();
+  const [flow, setFlow] = useState<'signIn' | 'signUp'>('signIn');
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError(null);
+    setIsLoading(true);
+
+    const formData = new FormData(event.currentTarget);
+    formData.set('flow', flow);
+
+    try {
+      await signIn('password', formData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Authentication failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <div className="flex flex-col gap-8 w-96 mx-auto">
-      <p>Please sign in to continue</p>
-      <a href={signInUrl}>
-        <button className="bg-foreground text-background px-4 py-2 rounded-md">Sign in</button>
-      </a>
-      <a href={signUpUrl}>
-        <button className="bg-foreground text-background px-4 py-2 rounded-md">Sign up</button>
-      </a>
+    <div className="flex flex-col gap-6 w-full max-w-sm mx-auto">
+      <div className="text-center">
+        <h1 className="text-2xl font-bold mb-2">{flow === 'signIn' ? 'Sign In' : 'Create Account'}</h1>
+        <p className="text-slate-600 dark:text-slate-400">
+          {flow === 'signIn' ? 'Enter your credentials to continue' : 'Create a new account to get started'}
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2">
+          <label htmlFor="email" className="text-sm font-medium">
+            Email
+          </label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            placeholder="you@example.com"
+            required
+            className="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-slate-500"
+          />
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <label htmlFor="password" className="text-sm font-medium">
+            Password
+          </label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            placeholder="••••••••"
+            required
+            minLength={8}
+            className="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-slate-500"
+          />
+        </div>
+
+        {error && <div className="text-red-500 text-sm bg-red-50 dark:bg-red-950 p-3 rounded-md">{error}</div>}
+
+        <button
+          type="submit"
+          disabled={isLoading}
+          className="bg-foreground text-background px-4 py-2 rounded-md font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+        >
+          {isLoading ? 'Loading...' : flow === 'signIn' ? 'Sign In' : 'Sign Up'}
+        </button>
+      </form>
+
+      <div className="text-center">
+        <button
+          type="button"
+          onClick={() => {
+            setFlow(flow === 'signIn' ? 'signUp' : 'signIn');
+            setError(null);
+          }}
+          className="text-sm text-slate-600 dark:text-slate-400 hover:underline"
+        >
+          {flow === 'signIn' ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
+        </button>
+      </div>
     </div>
   );
 }
@@ -67,13 +131,18 @@ function Content() {
   );
 }
 
-function UserMenu({ user }: { user: User }) {
-  const { signOut } = useAuth();
+function UserMenu() {
+  const { signOut } = useAuthActions();
+  const { isAuthenticated } = useConvexAuth();
+
+  if (!isAuthenticated) return null;
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-sm">{user.email}</span>
-      <button onClick={() => signOut()} className="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600">
+      <button
+        onClick={() => void signOut()}
+        className="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600"
+      >
         Sign out
       </button>
     </div>
