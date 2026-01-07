@@ -915,23 +915,32 @@ function DataTable({
                       )}
 
                       {isEditing ? (
-                        <input
-                          type={col.type === 'number' ? 'number' : 'text'}
-                          defaultValue={value === null ? '' : String(value)}
-                          autoFocus
-                          className="w-full px-1 py-0 text-xs border border-indigo-400 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-slate-800"
+                        <div
+                          contentEditable
+                          suppressContentEditableWarning
+                          ref={(el) => {
+                            if (el) {
+                              el.textContent = value === null ? '' : String(value);
+                              el.focus();
+                              // Move cursor to end
+                              const range = document.createRange();
+                              range.selectNodeContents(el);
+                              range.collapse(false);
+                              const sel = window.getSelection();
+                              sel?.removeAllRanges();
+                              sel?.addRange(range);
+                            }
+                          }}
+                          className="w-full px-1 py-0 text-xs border border-indigo-400 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-slate-800 min-h-[16px] whitespace-pre-wrap"
                           onBlur={(e) => {
-                            const newValue =
-                              col.type === 'number'
-                                ? e.target.value
-                                  ? Number(e.target.value)
-                                  : null
-                                : e.target.value || null;
+                            const text = e.currentTarget.textContent || '';
+                            const newValue = col.type === 'number' ? (text ? Number(text) : null) : text || null;
                             onEdit(actualIndex, col.key, newValue);
                             setEditingCell(null);
                           }}
                           onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault();
                               e.currentTarget.blur();
                             } else if (e.key === 'Escape') {
                               setEditingCell(null);
