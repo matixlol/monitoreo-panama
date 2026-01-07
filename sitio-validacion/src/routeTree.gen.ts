@@ -9,12 +9,18 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DocumentsIndexRouteImport } from './routes/documents/index'
 import { Route as DocumentsDocumentIdRouteImport } from './routes/documents/$documentId'
 import { Route as AuthenticatedAuthenticatedRouteImport } from './routes/_authenticated/authenticated'
 
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
@@ -43,12 +49,14 @@ const AuthenticatedAuthenticatedRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/authenticated': typeof AuthenticatedAuthenticatedRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRoute
   '/documents': typeof DocumentsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/authenticated': typeof AuthenticatedAuthenticatedRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRoute
   '/documents': typeof DocumentsIndexRoute
@@ -57,19 +65,31 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
+  '/admin': typeof AdminRoute
   '/_authenticated/authenticated': typeof AuthenticatedAuthenticatedRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRoute
   '/documents/': typeof DocumentsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/authenticated' | '/documents/$documentId' | '/documents'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/authenticated'
+    | '/documents/$documentId'
+    | '/documents'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/authenticated' | '/documents/$documentId' | '/documents'
+  to:
+    | '/'
+    | '/admin'
+    | '/authenticated'
+    | '/documents/$documentId'
+    | '/documents'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/admin'
     | '/_authenticated/authenticated'
     | '/documents/$documentId'
     | '/documents/'
@@ -78,12 +98,20 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  AdminRoute: typeof AdminRoute
   DocumentsDocumentIdRoute: typeof DocumentsDocumentIdRoute
   DocumentsIndexRoute: typeof DocumentsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated': {
       id: '/_authenticated'
       path: ''
@@ -137,6 +165,7 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  AdminRoute: AdminRoute,
   DocumentsDocumentIdRoute: DocumentsDocumentIdRoute,
   DocumentsIndexRoute: DocumentsIndexRoute,
 }
