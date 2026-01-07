@@ -30,7 +30,7 @@ export const Route = createRootRouteWithContext<{
         content: 'width=device-width, initial-scale=1',
       },
       {
-        title: 'Convex + TanStack Start + WorkOS AuthKit',
+        title: 'Monitoreo Panama',
       },
     ],
     links: [
