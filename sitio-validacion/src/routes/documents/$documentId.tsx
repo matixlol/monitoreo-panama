@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
-import { useState, useCallback, useMemo, lazy, Suspense } from 'react';
+import { useState, useCallback, useMemo, lazy, Suspense, useEffect } from 'react';
 import type { Id } from '../../../convex/_generated/dataModel';
 import { Button } from '@/components/ui/button';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
@@ -105,7 +105,8 @@ const INGRESS_COLUMNS: { key: keyof IngressRow; label: string; type: 'string' | 
   { key: 'total', label: 'Total', type: 'number' },
 ];
 
-const EGRESS_COLUMNS: { key: keyof EgressRow; label: string; type: 'string' | 'number' }[] = [
+// Basic info columns for egress (non-monetary)
+const EGRESS_INFO_COLUMNS: { key: keyof EgressRow; label: string; type: 'string' | 'number' }[] = [
   { key: 'pageNumber', label: 'Pág', type: 'number' },
   { key: 'fecha', label: 'Fecha', type: 'string' },
   { key: 'numeroFacturaRecibo', label: 'Factura/Recibo', type: 'string' },
@@ -113,10 +114,37 @@ const EGRESS_COLUMNS: { key: keyof EgressRow; label: string; type: 'string' | 'n
   { key: 'proveedorNombre', label: 'Proveedor', type: 'string' },
   { key: 'detalleGasto', label: 'Detalle', type: 'string' },
   { key: 'pagoTipo', label: 'Tipo Pago', type: 'string' },
-  { key: 'movilizacion', label: 'Movilización', type: 'number' },
-  { key: 'combustible', label: 'Combustible', type: 'number' },
-  { key: 'totalGastosCampania', label: 'Total Campaña', type: 'number' },
-  { key: 'totalDeGastosDePropagandaYCampania', label: 'Total General', type: 'number' },
+];
+
+// All spend columns for egress (monetary) - organized in 2 rows of 6
+const EGRESS_SPEND_COLUMNS: { key: keyof EgressRow; label: string }[] = [
+  // Row 1: Campaign expenses
+  { key: 'movilizacion', label: 'Movilización' },
+  { key: 'combustible', label: 'Combustible' },
+  { key: 'hospedaje', label: 'Hospedaje' },
+  { key: 'activistas', label: 'Activistas' },
+  { key: 'caravanaConcentraciones', label: 'Caravana/Conc.' },
+  { key: 'comidaBrindis', label: 'Comida/Brindis' },
+  // Row 2: More expenses + totals
+  { key: 'alquilerLocalServiciosBasicos', label: 'Alquiler/Serv.' },
+  { key: 'cargosBancarios', label: 'Carg. Bancarios' },
+  { key: 'personalizacionArticulosPromocionales', label: 'Art. Promocionales' },
+  { key: 'propagandaElectoral', label: 'Propaganda' },
+  { key: 'totalGastosCampania', label: 'Tot. Campaña' },
+  { key: 'totalGastosPropaganda', label: 'Tot. Propaganda' },
+];
+
+// The grand total column
+const EGRESS_TOTAL_COLUMN: { key: keyof EgressRow; label: string } = {
+  key: 'totalDeGastosDePropagandaYCampania',
+  label: 'TOTAL GENERAL',
+};
+
+// Combined for compatibility with existing code
+const EGRESS_COLUMNS: { key: keyof EgressRow; label: string; type: 'string' | 'number' }[] = [
+  ...EGRESS_INFO_COLUMNS,
+  ...EGRESS_SPEND_COLUMNS.map((c) => ({ ...c, type: 'number' as const })),
+  { ...EGRESS_TOTAL_COLUMN, type: 'number' as const },
 ];
 
 function DocumentValidationPage() {
@@ -156,7 +184,18 @@ function DocumentValidationPage() {
     }
   });
 
-  const [currentPage, setCurrentPage] = useState(1);
+  // Initialize page from localStorage, keyed by documentId
+  const storageKey = `document-page-${documentId}`;
+  const [currentPage, setCurrentPage] = useState(() => {
+    const saved = localStorage.getItem(storageKey);
+    return saved ? parseInt(saved, 10) : 1;
+  });
+
+  // Persist page to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem(storageKey, String(currentPage));
+  }, [storageKey, currentPage]);
+
   const [editedIngress, setEditedIngress] = useState<IngressRow[] | null>(null);
   const [editedEgress, setEditedEgress] = useState<EgressRow[] | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -249,7 +288,9 @@ function DocumentValidationPage() {
         const row2 = lookup2.get(key);
         if (row2) {
           const diffFields = new Set<string>();
-          for (const field of Object.keys(row1)) {
+          // Get union of all fields from both rows to catch fields that exist in one but not the other
+          const allFields = new Set([...Object.keys(row1), ...Object.keys(row2)]);
+          for (const field of allFields) {
             const v1 = (row1 as Record<string, unknown>)[field];
             const v2 = (row2 as Record<string, unknown>)[field];
             // Normalize values before comparing
@@ -537,9 +578,9 @@ function DocumentValidationPage() {
   const hasEdits = editedIngress !== null || editedEgress !== null;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 flex flex-col">
       {/* Header */}
-      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10">
+      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shrink-0 z-20">
         <div className="max-w-full mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link to="/documents" className="text-slate-500 hover:text-slate-700 dark:text-slate-400">
@@ -635,10 +676,10 @@ function DocumentValidationPage() {
         </div>
       </header>
 
-      <ResizablePanelGroup orientation="horizontal" className="h-[calc(100vh-57px)]">
+      <ResizablePanelGroup orientation="horizontal" className="flex-1 min-h-0">
         {/* PDF Viewer Panel */}
         <ResizablePanel defaultSize={50} minSize={30}>
-          <div className="h-full border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 flex flex-col">
+          <div className="h-full border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 flex flex-col overflow-hidden">
             {/* PDF Controls */}
             <div className="p-3 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-center gap-4">
               <Button
@@ -680,9 +721,9 @@ function DocumentValidationPage() {
               </Button>
             </div>
 
-            {/* PDF Embed */}
+            {/* PDF Embed - sticky container that stays at top */}
             <div className="flex-1 overflow-auto p-4">
-              <div className="min-w-fit flex justify-center">
+              <div className="sticky top-0 min-w-fit flex justify-center">
                 {document.fileUrl ? (
                   <Suspense
                     fallback={
@@ -810,12 +851,10 @@ function DocumentValidationPage() {
                           <span className="text-xs font-medium text-rose-700 dark:text-rose-400">Gastos</span>
                         </div>
                       )}
-                      <DataTable
-                        columns={EGRESS_COLUMNS as { key: string; label: string; type: 'string' | 'number' }[]}
+                      <EgressDataTable
                         rows={currentPageEgressRows}
                         allRows={currentEgress}
                         diffs={egressDiffs}
-                        keyField="numeroFacturaRecibo"
                         modelData={extractionsByModel}
                         modelNames={modelNames}
                         getModelsForRow={(rowKey) => getModelsForRow('egress', 'numeroFacturaRecibo', rowKey)}
@@ -920,6 +959,431 @@ function getShortModelName(modelName: string): string {
   if (modelName.startsWith('gemini-3')) return 'g3';
   // For other models, take the first part
   return modelName.split('-')[0] || modelName.substring(0, 3);
+}
+
+// EgressDataTable - specialized table for egress with compact spend grid
+interface EgressDataTableProps {
+  rows: EgressRow[];
+  allRows: EgressRow[];
+  diffs: Map<string, Set<string>>;
+  modelData: Record<string, { ingress: IngressRow[]; egress: EgressRow[] }>;
+  modelNames: string[];
+  getModelsForRow: (rowKey: string) => string[];
+  onEdit: (rowIndex: number, field: string, value: string | number | null) => void;
+  onDelete: (rowIndex: number) => void;
+  onToggleUnreadable: (rowIndex: number, field: string) => void;
+}
+
+function EgressDataTable({
+  rows,
+  allRows,
+  diffs,
+  modelData,
+  modelNames,
+  getModelsForRow,
+  onEdit,
+  onDelete,
+  onToggleUnreadable,
+}: EgressDataTableProps) {
+  const [editingCell, setEditingCell] = useState<{ row: number; col: string } | null>(null);
+
+  const getAlternateValues = (rowKey: string, field: string): Record<string, unknown> => {
+    const alternates: Record<string, unknown> = {};
+
+    for (const modelName of modelNames) {
+      const model = modelData[modelName];
+      if (!model) continue;
+
+      const row = model.egress.find((r) => String(r.numeroFacturaRecibo) === rowKey);
+      if (row) {
+        alternates[modelName] = (row as Record<string, unknown>)[field];
+      }
+    }
+
+    return alternates;
+  };
+
+  const getActualIndex = (row: EgressRow): number => {
+    return allRows.indexOf(row);
+  };
+
+  const renderEditableCell = (
+    row: EgressRow,
+    field: string,
+    value: unknown,
+    displayIndex: number,
+    actualIndex: number,
+    hasDiff: boolean,
+    altValues: Record<string, unknown>,
+    type: 'string' | 'number' = 'string',
+    compact = false,
+  ) => {
+    const isEditing = editingCell?.row === displayIndex && editingCell?.col === field;
+    const isHumanUnreadable = row.humanUnreadableFields?.includes(field) ?? false;
+    const isAiUnreadable = row.unreadableFields?.includes(field) ?? false;
+
+    return (
+      <div className={`relative ${compact ? 'text-[10px]' : ''}`}>
+        {/* Unreadable toggle button */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleUnreadable(actualIndex, field);
+          }}
+          className={`absolute -top-0.5 -right-0.5 text-[10px] leading-none w-4 h-4 flex items-center justify-center rounded-full transition-colors z-10 ${
+            isHumanUnreadable
+              ? 'bg-red-400 dark:bg-red-700 text-white font-bold shadow-sm'
+              : isAiUnreadable
+                ? 'bg-orange-400 dark:bg-orange-600 text-white font-bold shadow-sm'
+                : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 opacity-0 group-hover:opacity-100'
+          }`}
+          title={
+            isHumanUnreadable
+              ? 'Marcar como legible'
+              : isAiUnreadable
+                ? 'IA detectó ilegible - Click para confirmar'
+                : 'Marcar como ilegible'
+          }
+        >
+          ?
+        </button>
+
+        {isEditing ? (
+          <div
+            contentEditable
+            suppressContentEditableWarning
+            ref={(el) => {
+              if (el) {
+                el.textContent = value == null ? '' : String(value);
+                el.focus();
+                const range = document.createRange();
+                range.selectNodeContents(el);
+                range.collapse(false);
+                const sel = window.getSelection();
+                sel?.removeAllRanges();
+                sel?.addRange(range);
+              }
+            }}
+            className={`w-full px-1 py-0 border border-indigo-400 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-slate-800 min-h-[16px] whitespace-pre-wrap ${compact ? 'text-[10px]' : 'text-xs'}`}
+            onBlur={(e) => {
+              const text = e.currentTarget.textContent || '';
+              const newValue = type === 'number' ? (text ? Number(text) : null) : text || null;
+              onEdit(actualIndex, field, newValue);
+              setEditingCell(null);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                e.currentTarget.blur();
+              } else if (e.key === 'Escape') {
+                setEditingCell(null);
+              }
+            }}
+          />
+        ) : (
+          <div
+            onClick={() => setEditingCell({ row: displayIndex, col: field })}
+            className={`cursor-text min-h-[14px] pr-4 ${isHumanUnreadable ? 'bg-red-100/50 dark:bg-red-900/30' : ''} ${isAiUnreadable && !isHumanUnreadable ? 'bg-orange-100/50 dark:bg-orange-900/30' : ''}`}
+          >
+            <span className={value === null || value === undefined ? 'text-slate-400 italic' : ''}>
+              {type === 'number' && value != null
+                ? Number(value).toLocaleString('es-PA', { minimumFractionDigits: 2 })
+                : normalizeValueForDisplay(field, value)}
+            </span>
+            {hasDiff && Object.keys(altValues).length > 0 && (
+              <div className="text-[9px] space-y-0.5 mt-0.5">
+                {Object.entries(altValues).map(([modelName, modelValue]) => {
+                  const shortName = getShortModelName(modelName);
+                  const normalizedCurrent = normalizeValueForComparison(field, value);
+                  const normalizedModel = normalizeValueForComparison(field, modelValue);
+                  const isSelected = normalizedModel === normalizedCurrent;
+                  return (
+                    <button
+                      key={modelName}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEdit(actualIndex, field, modelValue as string | number | null);
+                      }}
+                      className={`block w-full text-left py-0 px-0.5 rounded border transition-colors cursor-pointer ${
+                        isSelected
+                          ? 'border-emerald-400 dark:border-emerald-500 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300'
+                          : 'border-amber-300 dark:border-amber-600 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 hover:bg-amber-200'
+                      }`}
+                    >
+                      {isSelected && <span className="mr-0.5">✓</span>}
+                      <span className="font-medium">{shortName}:</span>{' '}
+                      {type === 'number' && modelValue != null
+                        ? Number(modelValue).toLocaleString('es-PA', { minimumFractionDigits: 2 })
+                        : normalizeValueForDisplay(field, modelValue)}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="w-full text-xs">
+      {rows.map((row, displayIndex) => {
+        const rowKey = String(row.numeroFacturaRecibo);
+        const rowDiffs = diffs.get(rowKey);
+        const actualIndex = getActualIndex(row);
+        const modelsFound = getModelsForRow(rowKey);
+        const isMissingFromSomeModels = modelsFound.length > 0 && modelsFound.length < modelNames.length;
+
+        return (
+          <div
+            key={displayIndex}
+            className={`group border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 ${
+              isMissingFromSomeModels ? 'bg-orange-50 dark:bg-orange-900/20' : ''
+            }`}
+          >
+            {/* Model indicators if missing from some models */}
+            {isMissingFromSomeModels && (
+              <div className="flex items-center gap-1 px-2 py-0.5 bg-orange-100 dark:bg-orange-900/30">
+                {modelNames.map((modelName) => {
+                  const found = modelsFound.includes(modelName);
+                  const shortName = getShortModelName(modelName);
+                  return (
+                    <span
+                      key={modelName}
+                      className={`text-[9px] px-1 py-0 rounded ${
+                        found
+                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300'
+                          : 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 line-through'
+                      }`}
+                      title={`${modelName}: ${found ? 'Found' : 'Missing'}`}
+                    >
+                      {shortName}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Info row: basic fields */}
+            <div className="grid grid-cols-[auto_1fr_1fr_1fr_2fr_auto_auto] gap-1 px-2 py-1 items-start">
+              {/* Fecha */}
+              <div
+                className={`${rowDiffs?.has('fecha') ? 'bg-amber-50 dark:bg-amber-900/30 border-l-2 border-amber-400 pl-1' : ''}`}
+              >
+                <div className="text-[9px] text-slate-400 uppercase">Fecha</div>
+                {renderEditableCell(
+                  row,
+                  'fecha',
+                  row.fecha,
+                  displayIndex,
+                  actualIndex,
+                  rowDiffs?.has('fecha') ?? false,
+                  rowDiffs?.has('fecha') ? getAlternateValues(rowKey, 'fecha') : {},
+                  'string',
+                )}
+              </div>
+
+              {/* Factura/Recibo */}
+              <div
+                className={`${rowDiffs?.has('numeroFacturaRecibo') ? 'bg-amber-50 dark:bg-amber-900/30 border-l-2 border-amber-400 pl-1' : ''}`}
+              >
+                <div className="text-[9px] text-slate-400 uppercase">Factura/Recibo</div>
+                {renderEditableCell(
+                  row,
+                  'numeroFacturaRecibo',
+                  row.numeroFacturaRecibo,
+                  displayIndex,
+                  actualIndex,
+                  rowDiffs?.has('numeroFacturaRecibo') ?? false,
+                  rowDiffs?.has('numeroFacturaRecibo') ? getAlternateValues(rowKey, 'numeroFacturaRecibo') : {},
+                  'string',
+                )}
+              </div>
+
+              {/* Cédula/RUC */}
+              <div
+                className={`${rowDiffs?.has('cedulaRuc') ? 'bg-amber-50 dark:bg-amber-900/30 border-l-2 border-amber-400 pl-1' : ''}`}
+              >
+                <div className="text-[9px] text-slate-400 uppercase">Cédula/RUC</div>
+                {renderEditableCell(
+                  row,
+                  'cedulaRuc',
+                  row.cedulaRuc,
+                  displayIndex,
+                  actualIndex,
+                  rowDiffs?.has('cedulaRuc') ?? false,
+                  rowDiffs?.has('cedulaRuc') ? getAlternateValues(rowKey, 'cedulaRuc') : {},
+                  'string',
+                )}
+              </div>
+
+              {/* Proveedor */}
+              <div
+                className={`${rowDiffs?.has('proveedorNombre') ? 'bg-amber-50 dark:bg-amber-900/30 border-l-2 border-amber-400 pl-1' : ''}`}
+              >
+                <div className="text-[9px] text-slate-400 uppercase">Proveedor</div>
+                {renderEditableCell(
+                  row,
+                  'proveedorNombre',
+                  row.proveedorNombre,
+                  displayIndex,
+                  actualIndex,
+                  rowDiffs?.has('proveedorNombre') ?? false,
+                  rowDiffs?.has('proveedorNombre') ? getAlternateValues(rowKey, 'proveedorNombre') : {},
+                  'string',
+                )}
+              </div>
+
+              {/* Detalle */}
+              <div
+                className={`${rowDiffs?.has('detalleGasto') ? 'bg-amber-50 dark:bg-amber-900/30 border-l-2 border-amber-400 pl-1' : ''}`}
+              >
+                <div className="text-[9px] text-slate-400 uppercase">Detalle</div>
+                {renderEditableCell(
+                  row,
+                  'detalleGasto',
+                  row.detalleGasto,
+                  displayIndex,
+                  actualIndex,
+                  rowDiffs?.has('detalleGasto') ?? false,
+                  rowDiffs?.has('detalleGasto') ? getAlternateValues(rowKey, 'detalleGasto') : {},
+                  'string',
+                )}
+              </div>
+
+              {/* Tipo Pago */}
+              <div
+                className={`${rowDiffs?.has('pagoTipo') ? 'bg-amber-50 dark:bg-amber-900/30 border-l-2 border-amber-400 pl-1' : ''}`}
+              >
+                <div className="text-[9px] text-slate-400 uppercase">Tipo</div>
+                {renderEditableCell(
+                  row,
+                  'pagoTipo',
+                  row.pagoTipo,
+                  displayIndex,
+                  actualIndex,
+                  rowDiffs?.has('pagoTipo') ?? false,
+                  rowDiffs?.has('pagoTipo') ? getAlternateValues(rowKey, 'pagoTipo') : {},
+                  'string',
+                )}
+              </div>
+
+              {/* Delete button */}
+              <div className="flex items-center">
+                <Button
+                  onClick={() => onDelete(actualIndex)}
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity h-5 w-5"
+                  title="Eliminar fila"
+                >
+                  ×
+                </Button>
+              </div>
+            </div>
+
+            {/* Spend grid: 2 rows x 6 columns */}
+            <div className="px-2 pb-2">
+              <div className="bg-slate-50 dark:bg-slate-800/50 rounded-md p-1.5 border border-slate-200 dark:border-slate-700">
+                {/* Row 1: Campaign expenses */}
+                <div className="grid grid-cols-6 gap-1 mb-1">
+                  {EGRESS_SPEND_COLUMNS.slice(0, 6).map((col) => {
+                    const hasDiff = rowDiffs?.has(col.key);
+                    const value = row[col.key];
+                    return (
+                      <div
+                        key={col.key}
+                        className={`rounded px-1 py-0.5 ${hasDiff ? 'bg-amber-100 dark:bg-amber-900/40 border border-amber-300' : 'bg-white dark:bg-slate-700/50'}`}
+                      >
+                        <div className="text-[8px] text-slate-400 dark:text-slate-500 truncate" title={col.label}>
+                          {col.label}
+                        </div>
+                        {renderEditableCell(
+                          row,
+                          col.key,
+                          value,
+                          displayIndex,
+                          actualIndex,
+                          hasDiff ?? false,
+                          hasDiff ? getAlternateValues(rowKey, col.key) : {},
+                          'number',
+                          true,
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Row 2: More expenses + totals */}
+                <div className="grid grid-cols-6 gap-1">
+                  {EGRESS_SPEND_COLUMNS.slice(6).map((col) => {
+                    const hasDiff = rowDiffs?.has(col.key);
+                    const value = row[col.key];
+                    const isTotal = col.key.startsWith('total');
+                    return (
+                      <div
+                        key={col.key}
+                        className={`rounded px-1 py-0.5 ${hasDiff ? 'bg-amber-100 dark:bg-amber-900/40 border border-amber-300' : isTotal ? 'bg-emerald-50 dark:bg-emerald-900/30' : 'bg-white dark:bg-slate-700/50'}`}
+                      >
+                        <div
+                          className={`text-[8px] truncate ${isTotal ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-slate-400 dark:text-slate-500'}`}
+                          title={col.label}
+                        >
+                          {col.label}
+                        </div>
+                        {renderEditableCell(
+                          row,
+                          col.key,
+                          value,
+                          displayIndex,
+                          actualIndex,
+                          hasDiff ?? false,
+                          hasDiff ? getAlternateValues(rowKey, col.key) : {},
+                          'number',
+                          true,
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Grand total */}
+                <div className="mt-1 pt-1 border-t border-slate-200 dark:border-slate-600">
+                  <div className="flex justify-end">
+                    <div
+                      className={`rounded px-2 py-1 ${rowDiffs?.has(EGRESS_TOTAL_COLUMN.key) ? 'bg-amber-100 dark:bg-amber-900/40 border border-amber-300' : 'bg-indigo-50 dark:bg-indigo-900/30'}`}
+                    >
+                      <div className="text-[8px] text-indigo-600 dark:text-indigo-400 font-semibold">
+                        {EGRESS_TOTAL_COLUMN.label}
+                      </div>
+                      <div className="text-sm font-bold text-indigo-700 dark:text-indigo-300">
+                        {renderEditableCell(
+                          row,
+                          EGRESS_TOTAL_COLUMN.key,
+                          row[EGRESS_TOTAL_COLUMN.key],
+                          displayIndex,
+                          actualIndex,
+                          rowDiffs?.has(EGRESS_TOTAL_COLUMN.key) ?? false,
+                          rowDiffs?.has(EGRESS_TOTAL_COLUMN.key)
+                            ? getAlternateValues(rowKey, EGRESS_TOTAL_COLUMN.key)
+                            : {},
+                          'number',
+                          false,
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 function DataTable({
