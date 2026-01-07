@@ -1,8 +1,8 @@
 import { defineSchema, defineTable } from 'convex/server';
 import { v } from 'convex/values';
 
-// Ingress row validator (matching IngresoRowSchema from process-pdf.ts)
-const ingressRowValidator = v.object({
+// Base ingress row fields (shared between extraction and validated data)
+const ingressRowBaseFields = {
   pageNumber: v.number(),
   fecha: v.optional(v.union(v.string(), v.null())),
   reciboNumero: v.optional(v.union(v.string(), v.null())),
@@ -18,12 +18,10 @@ const ingressRowValidator = v.object({
   recursosPropiosEfectivoCheque: v.optional(v.union(v.number(), v.null())),
   recursosPropiosEspecie: v.optional(v.union(v.number(), v.null())),
   total: v.optional(v.union(v.number(), v.null())),
-  // Fields marked as unreadable/illegible in the source PDF by human validators
-  humanUnreadableFields: v.optional(v.array(v.string())),
-});
+};
 
-// Egress row validator (matching EgresoRowSchema from process-pdf.ts)
-const egressRowValidator = v.object({
+// Base egress row fields (shared between extraction and validated data)
+const egressRowBaseFields = {
   pageNumber: v.number(),
   fecha: v.optional(v.union(v.string(), v.null())),
   numeroFacturaRecibo: v.optional(v.union(v.string(), v.null())),
@@ -44,7 +42,29 @@ const egressRowValidator = v.object({
   propagandaElectoral: v.optional(v.union(v.number(), v.null())),
   totalGastosPropaganda: v.optional(v.union(v.number(), v.null())),
   totalDeGastosDePropagandaYCampania: v.optional(v.union(v.number(), v.null())),
-  // Fields marked as unreadable/illegible in the source PDF by human validators
+};
+
+// Extraction row validators (with AI-detected unreadableFields)
+const extractionIngressRowValidator = v.object({
+  ...ingressRowBaseFields,
+  unreadableFields: v.optional(v.array(v.string())),
+});
+
+const extractionEgressRowValidator = v.object({
+  ...egressRowBaseFields,
+  unreadableFields: v.optional(v.array(v.string())),
+});
+
+// Validated row validators (with human-marked humanUnreadableFields)
+const validatedIngressRowValidator = v.object({
+  ...ingressRowBaseFields,
+  // Fields marked as unreadable/illegible by human validators
+  humanUnreadableFields: v.optional(v.array(v.string())),
+});
+
+const validatedEgressRowValidator = v.object({
+  ...egressRowBaseFields,
+  // Fields marked as unreadable/illegible by human validators
   humanUnreadableFields: v.optional(v.array(v.string())),
 });
 
@@ -60,23 +80,28 @@ export default defineSchema({
     pageRotations: v.optional(v.record(v.string(), v.number())),
   }),
 
-  // Raw extraction results from each model
+  // Raw extraction results from each model (with AI-detected unreadableFields)
   extractions: defineTable({
     documentId: v.id('documents'),
     model: v.string(), // e.g., "gemini-2.0-flash", "gemini-3-flash"
-    ingress: v.array(ingressRowValidator),
-    egress: v.array(egressRowValidator),
+    ingress: v.array(extractionIngressRowValidator),
+    egress: v.array(extractionEgressRowValidator),
     completedAt: v.number(),
   }).index('by_document', ['documentId']),
 
-  // User-validated final data
+  // User-validated final data (with human-marked humanUnreadableFields)
   validatedData: defineTable({
     documentId: v.id('documents'),
-    ingress: v.array(ingressRowValidator),
-    egress: v.array(egressRowValidator),
+    ingress: v.array(validatedIngressRowValidator),
+    egress: v.array(validatedEgressRowValidator),
     validatedAt: v.number(),
   }).index('by_document', ['documentId']),
 });
 
 // Export validators for use in other files
-export { ingressRowValidator, egressRowValidator };
+export {
+  extractionIngressRowValidator,
+  extractionEgressRowValidator,
+  validatedIngressRowValidator,
+  validatedEgressRowValidator,
+};

@@ -23,7 +23,9 @@ Extract rows from "INFORME DE INGRESOS" and "INFORME DE GASTOS" tables. Don't ex
 "INFORME DE GASTOS" (Formulario Pre-18/Pre-8) columns:
 1. Fecha, 2. No. de Factura/Recibo, 3. Cédula/RUC, 4. Nombre del Proveedor, 5. Detalle del Gasto, 6. Pago en Efectivo, Especie o Cheque, 7. Movilización, 8. Combustible, 9. Hospedaje, 10. Activistas, 11. Caravana y concentraciones, 12. Comida y Brindis, 13. Alquiler de Local / servicios básicos, 14. Cargos Bancarios, 15. Total de Gastos de Campaña (totalGastosCampania), 16. Personalización de artículos promocionales, 17. Propaganda Electoral, 18. Total de Gastos de Propaganda (totalGastosPropaganda), 19. Total de Gastos de Propaganda y Campaña (totalDeGastosDePropagandaYCampania)
 
-Do not confuse Total de Gastos de Campaña (totalGastosCampania) with Total de Gastos de Propaganda y Campaña (totalDeGastosDePropagandaYCampania). Read each cell as-is, don't try to guess the value if it's not clear.`;
+Do not confuse Total de Gastos de Campaña (totalGastosCampania) with Total de Gastos de Propaganda y Campaña (totalDeGastosDePropagandaYCampania). Read each cell as-is, don't try to guess the value if it's not clear.
+
+For each row, if any fields are illegible, unreadable, or unclear in the source document (e.g., due to poor scan quality, handwriting that can't be deciphered, or obscured text), list the field names in the "unreadableFields" array. Only include fields that you genuinely cannot read - do not include fields that are simply empty.`;
 
 // Zod schemas for validation
 const IngresoRowSchema = z.object({
@@ -44,6 +46,8 @@ const IngresoRowSchema = z.object({
   recursosPropiosEfectivoCheque: z.number().nullish(),
   recursosPropiosEspecie: z.number().nullish(),
   total: z.number().nullish(),
+  // Fields that the AI model couldn't read (illegible, unclear, etc.)
+  unreadableFields: z.array(z.string()).nullish(),
 });
 
 const EgresoRowSchema = z.object({
@@ -69,6 +73,8 @@ const EgresoRowSchema = z.object({
   propagandaElectoral: z.number().nullish(),
   totalGastosPropaganda: z.number().nullish(),
   totalDeGastosDePropagandaYCampania: z.number().nullish(),
+  // Fields that the AI model couldn't read (illegible, unclear, etc.)
+  unreadableFields: z.array(z.string()).nullish(),
 });
 
 const ResponseSchema = z.object({
@@ -102,8 +108,9 @@ const RESPONSE_JSON_SCHEMA = {
           recursosPropiosEfectivoCheque: { type: ['number', 'null'] },
           recursosPropiosEspecie: { type: ['number', 'null'] },
           total: { type: ['number', 'null'] },
+          unreadableFields: { type: 'array', items: { type: 'string' } },
         },
-        required: ['reciboNumero'],
+        required: [],
       },
     },
     egress: {
@@ -130,8 +137,9 @@ const RESPONSE_JSON_SCHEMA = {
           propagandaElectoral: { type: ['number', 'null'] },
           totalGastosPropaganda: { type: ['number', 'null'] },
           totalDeGastosDePropagandaYCampania: { type: ['number', 'null'] },
+          unreadableFields: { type: 'array', items: { type: 'string' } },
         },
-        required: ['numeroFacturaRecibo'],
+        required: [],
       },
     },
   },
