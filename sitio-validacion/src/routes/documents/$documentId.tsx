@@ -43,7 +43,7 @@ export const Route = createFileRoute('/documents/$documentId')({
 type IngressRow = {
   pageNumber: number;
   fecha?: string | null;
-  reciboNumero: string;
+  reciboNumero?: string | null;
   contribuyenteNombre?: string | null;
   representanteLegal?: string | null;
   cedulaRuc?: string | null;
@@ -56,13 +56,16 @@ type IngressRow = {
   recursosPropiosEfectivoCheque?: number | null;
   recursosPropiosEspecie?: number | null;
   total?: number | null;
+  // AI-detected unreadable fields (from extractions)
+  unreadableFields?: string[];
+  // Human-marked unreadable fields (for validations)
   humanUnreadableFields?: string[];
 };
 
 type EgressRow = {
   pageNumber: number;
   fecha?: string | null;
-  numeroFacturaRecibo: string;
+  numeroFacturaRecibo?: string | null;
   cedulaRuc?: string | null;
   proveedorNombre?: string | null;
   detalleGasto?: string | null;
@@ -80,6 +83,9 @@ type EgressRow = {
   propagandaElectoral?: number | null;
   totalGastosPropaganda?: number | null;
   totalDeGastosDePropagandaYCampania?: number | null;
+  // AI-detected unreadable fields (from extractions)
+  unreadableFields?: string[];
+  // Human-marked unreadable fields (for validations)
   humanUnreadableFields?: string[];
 };
 
@@ -468,6 +474,27 @@ function DocumentValidationPage() {
     return Array.from(pageSet).sort((a, b) => a - b);
   }, [ingressDiffs, egressDiffs, currentIngress, currentEgress]);
 
+  // Find pages with AI-detected unreadable fields for quick navigation
+  const pagesWithUnreadables = useMemo(() => {
+    const pageSet = new Set<number>();
+
+    // Check ingress rows for unreadable fields
+    for (const row of currentIngress) {
+      if (row.unreadableFields && row.unreadableFields.length > 0) {
+        pageSet.add(row.pageNumber);
+      }
+    }
+
+    // Check egress rows for unreadable fields
+    for (const row of currentEgress) {
+      if (row.unreadableFields && row.unreadableFields.length > 0) {
+        pageSet.add(row.pageNumber);
+      }
+    }
+
+    return Array.from(pageSet).sort((a, b) => a - b);
+  }, [currentIngress, currentEgress]);
+
   // Get rows for current page (both ingress and egress)
   const currentPageIngressRows = useMemo(() => {
     return currentIngress.filter((row) => row.pageNumber === currentPage);
@@ -514,6 +541,11 @@ function DocumentValidationPage() {
             {pagesWithDiffs.length > 0 && (
               <span className="text-sm text-amber-600 dark:text-amber-400">
                 ⚠ {pagesWithDiffs.length} páginas con diferencias
+              </span>
+            )}
+            {pagesWithUnreadables.length > 0 && (
+              <span className="text-sm text-orange-600 dark:text-orange-400">
+                ? {pagesWithUnreadables.length} páginas con campos ilegibles
               </span>
             )}
 
@@ -628,6 +660,33 @@ function DocumentValidationPage() {
                 ))}
                 {pagesWithDiffs.length > 15 && (
                   <span className="text-xs text-amber-600">+{pagesWithDiffs.length - 15} más</span>
+                )}
+              </div>
+            )}
+
+            {/* AI Unreadable Fields Navigation */}
+            {pagesWithUnreadables.length > 0 && (
+              <div className="px-2 py-1 bg-orange-50 dark:bg-orange-900/20 border-b border-orange-200 dark:border-orange-800 flex items-center gap-1 overflow-x-auto">
+                <span className="text-xs text-orange-700 dark:text-orange-400 whitespace-nowrap">
+                  IA detectó ilegible:
+                </span>
+                {pagesWithUnreadables.slice(0, 15).map((pageNum) => (
+                  <Button
+                    key={pageNum}
+                    onClick={() => goToPage(pageNum)}
+                    variant={pageNum === currentPage ? 'default' : 'outline'}
+                    size="sm"
+                    className={`text-xs h-6 px-2 ${
+                      pageNum === currentPage
+                        ? 'bg-orange-400 dark:bg-orange-600 text-orange-900 dark:text-orange-100 hover:bg-orange-500'
+                        : 'bg-orange-200 dark:bg-orange-800 text-orange-800 dark:text-orange-200 hover:bg-orange-300'
+                    }`}
+                  >
+                    {pageNum}
+                  </Button>
+                ))}
+                {pagesWithUnreadables.length > 15 && (
+                  <span className="text-xs text-orange-600">+{pagesWithUnreadables.length - 15} más</span>
                 )}
               </div>
             )}
@@ -865,14 +924,15 @@ function DataTable({
                   const altValues = hasDiff ? getAlternateValues(rowKey, col.key) : {};
                   const isEditing = editingCell?.row === displayIndex && editingCell?.col === col.key;
 
-                  const isUnreadable = row.humanUnreadableFields?.includes(col.key) ?? false;
+                  const isHumanUnreadable = row.humanUnreadableFields?.includes(col.key) ?? false;
+                  const isAiUnreadable = row.unreadableFields?.includes(col.key) ?? false;
 
                   return (
                     <td
                       key={col.key}
                       className={`px-1 py-0.5 relative ${
                         hasDiff ? 'bg-amber-50 dark:bg-amber-900/30 border-l-2 border-amber-400' : ''
-                      } ${isUnreadable ? 'bg-red-50 dark:bg-red-900/20' : ''}`}
+                      } ${isHumanUnreadable ? 'bg-red-50 dark:bg-red-900/20' : ''} ${isAiUnreadable && !isHumanUnreadable ? 'bg-orange-50 dark:bg-orange-900/20' : ''}`}
                     >
                       {/* Unreadable toggle button - superscript in top-right */}
                       <button
@@ -882,11 +942,19 @@ function DataTable({
                           onToggleUnreadable(actualIndex, col.key);
                         }}
                         className={`absolute -top-0.5 -right-0.5 text-sm leading-none w-5 h-5 flex items-center justify-center rounded-full transition-colors ${
-                          isUnreadable
+                          isHumanUnreadable
                             ? 'bg-red-400 dark:bg-red-700 text-white font-bold shadow-sm'
-                            : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                            : isAiUnreadable
+                              ? 'bg-orange-400 dark:bg-orange-600 text-white font-bold shadow-sm'
+                              : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
                         }`}
-                        title={isUnreadable ? 'Marcar como legible' : 'Marcar como ilegible'}
+                        title={
+                          isHumanUnreadable
+                            ? 'Marcar como legible'
+                            : isAiUnreadable
+                              ? 'IA detectó ilegible - Click para confirmar'
+                              : 'Marcar como ilegible'
+                        }
                       >
                         ?
                       </button>
