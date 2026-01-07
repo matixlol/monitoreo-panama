@@ -9,6 +9,10 @@ export const generateUploadUrl = mutation({
   args: {},
   returns: v.string(),
   handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error('Unauthorized');
+    }
     return await ctx.storage.generateUploadUrl();
   },
 });
@@ -24,6 +28,10 @@ export const createDocument = mutation({
   },
   returns: v.id('documents'),
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error('Unauthorized');
+    }
     const documentId = await ctx.db.insert('documents', {
       fileId: args.fileId,
       name: args.name,
@@ -49,6 +57,10 @@ export const retryExtraction = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error('Unauthorized');
+    }
     const doc = await ctx.db.get(args.documentId);
     if (!doc) {
       throw new Error('Document not found');
@@ -85,6 +97,10 @@ export const retryExtraction = mutation({
 export const listDocuments = query({
   args: {},
   handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error('Unauthorized');
+    }
     const documents = await ctx.db.query('documents').order('desc').collect();
 
     return await Promise.all(
@@ -137,6 +153,10 @@ export const getDocument = query({
     documentId: v.id('documents'),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error('Unauthorized');
+    }
     const doc = await ctx.db.get(args.documentId);
     if (!doc) {
       return null;
@@ -162,6 +182,10 @@ export const setPageRotation = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error('Unauthorized');
+    }
     const doc = await ctx.db.get(args.documentId);
     if (!doc) {
       throw new Error('Document not found');
