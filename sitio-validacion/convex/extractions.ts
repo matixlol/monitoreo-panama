@@ -26,6 +26,10 @@ export const getExtractions = query({
     }),
   ),
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error('Unauthorized');
+    }
     return await ctx.db
       .query('extractions')
       .withIndex('by_document', (q) => q.eq('documentId', args.documentId))
@@ -52,6 +56,10 @@ export const getValidatedData = query({
     v.null(),
   ),
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error('Unauthorized');
+    }
     return await ctx.db
       .query('validatedData')
       .withIndex('by_document', (q) => q.eq('documentId', args.documentId))
@@ -70,6 +78,10 @@ export const saveValidatedData = mutation({
   },
   returns: v.id('validatedData'),
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error('Unauthorized');
+    }
     // Check if validated data already exists
     const existing = await ctx.db
       .query('validatedData')
