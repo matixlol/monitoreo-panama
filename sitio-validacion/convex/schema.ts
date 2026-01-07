@@ -45,11 +45,6 @@ const egressRowValidator = v.object({
 });
 
 export default defineSchema({
-  // Legacy table from template
-  numbers: defineTable({
-    value: v.number(),
-  }),
-
   // PDF documents metadata
   documents: defineTable({
     fileId: v.id('_storage'),
