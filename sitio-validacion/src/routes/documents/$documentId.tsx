@@ -56,6 +56,7 @@ type IngressRow = {
   recursosPropiosEfectivoCheque?: number | null;
   recursosPropiosEspecie?: number | null;
   total?: number | null;
+  humanUnreadableFields?: string[];
 };
 
 type EgressRow = {
@@ -79,6 +80,7 @@ type EgressRow = {
   propagandaElectoral?: number | null;
   totalGastosPropaganda?: number | null;
   totalDeGastosDePropagandaYCampania?: number | null;
+  humanUnreadableFields?: string[];
 };
 
 // Column definitions
@@ -376,6 +378,36 @@ function DocumentValidationPage() {
     }
   };
 
+  const handleToggleUnreadable = (type: 'ingress' | 'egress', rowIndex: number, field: string) => {
+    if (type === 'ingress') {
+      const rows = [...(editedIngress || currentIngress)];
+      const row = { ...rows[rowIndex] };
+      const unreadableFields = row.humanUnreadableFields ? [...row.humanUnreadableFields] : [];
+      const fieldIndex = unreadableFields.indexOf(field);
+      if (fieldIndex === -1) {
+        unreadableFields.push(field);
+      } else {
+        unreadableFields.splice(fieldIndex, 1);
+      }
+      row.humanUnreadableFields = unreadableFields;
+      rows[rowIndex] = row;
+      setEditedIngress(rows);
+    } else {
+      const rows = [...(editedEgress || currentEgress)];
+      const row = { ...rows[rowIndex] };
+      const unreadableFields = row.humanUnreadableFields ? [...row.humanUnreadableFields] : [];
+      const fieldIndex = unreadableFields.indexOf(field);
+      if (fieldIndex === -1) {
+        unreadableFields.push(field);
+      } else {
+        unreadableFields.splice(fieldIndex, 1);
+      }
+      row.humanUnreadableFields = unreadableFields;
+      rows[rowIndex] = row;
+      setEditedEgress(rows);
+    }
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -627,6 +659,7 @@ function DocumentValidationPage() {
                         getModelsForRow={(rowKey) => getModelsForRow('ingress', 'reciboNumero', rowKey)}
                         onEdit={(rowIndex, field, value) => handleCellEdit('ingress', rowIndex, field, value)}
                         onDelete={(rowIndex) => handleDeleteRow('ingress', rowIndex)}
+                        onToggleUnreadable={(rowIndex, field) => handleToggleUnreadable('ingress', rowIndex, field)}
                       />
                     </div>
                   )}
@@ -650,6 +683,7 @@ function DocumentValidationPage() {
                         getModelsForRow={(rowKey) => getModelsForRow('egress', 'numeroFacturaRecibo', rowKey)}
                         onEdit={(rowIndex, field, value) => handleCellEdit('egress', rowIndex, field, value)}
                         onDelete={(rowIndex) => handleDeleteRow('egress', rowIndex)}
+                        onToggleUnreadable={(rowIndex, field) => handleToggleUnreadable('egress', rowIndex, field)}
                       />
                     </div>
                   )}
@@ -699,6 +733,7 @@ interface DataTableProps {
   getModelsForRow: (rowKey: string) => string[];
   onEdit: (rowIndex: number, field: string, value: string | number | null) => void;
   onDelete: (rowIndex: number) => void;
+  onToggleUnreadable: (rowIndex: number, field: string) => void;
 }
 
 // Normalization functions for comparison and display
@@ -760,6 +795,7 @@ function DataTable({
   getModelsForRow,
   onEdit,
   onDelete,
+  onToggleUnreadable,
 }: DataTableProps) {
   const [editingCell, setEditingCell] = useState<{ row: number; col: string } | null>(null);
 
@@ -829,13 +865,32 @@ function DataTable({
                   const altValues = hasDiff ? getAlternateValues(rowKey, col.key) : {};
                   const isEditing = editingCell?.row === displayIndex && editingCell?.col === col.key;
 
+                  const isUnreadable = row.humanUnreadableFields?.includes(col.key) ?? false;
+
                   return (
                     <td
                       key={col.key}
-                      className={`px-1 py-0.5 ${
+                      className={`px-1 py-0.5 relative ${
                         hasDiff ? 'bg-amber-50 dark:bg-amber-900/30 border-l-2 border-amber-400' : ''
-                      }`}
+                      } ${isUnreadable ? 'bg-red-50 dark:bg-red-900/20' : ''}`}
                     >
+                      {/* Unreadable toggle button - superscript in top-right */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleUnreadable(actualIndex, col.key);
+                        }}
+                        className={`absolute -top-0.5 -right-0.5 text-sm leading-none w-5 h-5 flex items-center justify-center rounded-full transition-colors ${
+                          isUnreadable
+                            ? 'bg-red-400 dark:bg-red-700 text-white font-bold shadow-sm'
+                            : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                        }`}
+                        title={isUnreadable ? 'Marcar como legible' : 'Marcar como ilegible'}
+                      >
+                        ?
+                      </button>
+
                       {/* Show model indicators on the first column */}
                       {colIndex === 0 && isMissingFromSomeModels && (
                         <div className="flex items-center gap-1 mb-0.5">
@@ -886,7 +941,7 @@ function DataTable({
                       ) : (
                         <div
                           onClick={() => setEditingCell({ row: displayIndex, col: col.key })}
-                          className="cursor-text min-h-[16px]"
+                          className="cursor-text min-h-[16px] pr-5"
                         >
                           <span className={value === null ? 'text-slate-400 italic' : ''}>
                             {normalizeValueForDisplay(col.key, value)}

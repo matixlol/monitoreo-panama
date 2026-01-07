@@ -108,6 +108,7 @@ export type IngressRow = {
   recursosPropiosEfectivoCheque?: number | null;
   recursosPropiosEspecie?: number | null;
   total?: number | null;
+  humanUnreadableFields?: string[];
 };
 
 export type EgressRow = {
@@ -131,5 +132,6 @@ export type EgressRow = {
   propagandaElectoral?: number | null;
   totalGastosPropaganda?: number | null;
   totalDeGastosDePropagandaYCampania?: number | null;
+  humanUnreadableFields?: string[];
 };
 
