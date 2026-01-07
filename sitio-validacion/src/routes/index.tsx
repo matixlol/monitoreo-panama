@@ -30,7 +30,6 @@ function Home() {
 
 function SignInForm() {
   const { signIn } = useAuthActions();
-  const [flow, setFlow] = useState<'signIn' | 'signUp'>('signIn');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -40,7 +39,7 @@ function SignInForm() {
     setIsLoading(true);
 
     const formData = new FormData(event.currentTarget);
-    formData.set('flow', flow);
+    formData.set('flow', 'signIn');
 
     try {
       await signIn('password', formData);
@@ -54,10 +53,8 @@ function SignInForm() {
   return (
     <div className="flex flex-col gap-6 w-full max-w-sm mx-auto">
       <div className="text-center">
-        <h1 className="text-2xl font-bold mb-2">{flow === 'signIn' ? 'Sign In' : 'Create Account'}</h1>
-        <p className="text-slate-600 dark:text-slate-400">
-          {flow === 'signIn' ? 'Enter your credentials to continue' : 'Create a new account to get started'}
-        </p>
+        <h1 className="text-2xl font-bold mb-2">Sign In</h1>
+        <p className="text-slate-600 dark:text-slate-400">Enter your credentials to continue</p>
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -97,22 +94,9 @@ function SignInForm() {
           disabled={isLoading}
           className="bg-foreground text-background px-4 py-2 rounded-md font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
         >
-          {isLoading ? 'Loading...' : flow === 'signIn' ? 'Sign In' : 'Sign Up'}
+          {isLoading ? 'Loading...' : 'Sign In'}
         </button>
       </form>
-
-      <div className="text-center">
-        <button
-          type="button"
-          onClick={() => {
-            setFlow(flow === 'signIn' ? 'signUp' : 'signIn');
-            setError(null);
-          }}
-          className="text-sm text-slate-600 dark:text-slate-400 hover:underline"
-        >
-          {flow === 'signIn' ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
-        </button>
-      </div>
     </div>
   );
 }
