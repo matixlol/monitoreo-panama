@@ -1,16 +1,39 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, lazy, Suspense } from 'react';
 import type { Id } from '../../../convex/_generated/dataModel';
-import { Document, Page, pdfjs } from 'react-pdf';
-import 'react-pdf/dist/Page/AnnotationLayer.css';
-import 'react-pdf/dist/Page/TextLayer.css';
 import { Button } from '@/components/ui/button';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 
-// Configure PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+// Lazy load react-pdf components to avoid SSR issues
+const PDFViewer = lazy(() =>
+  import('react-pdf').then((mod) => {
+    // Configure PDF.js worker
+    mod.pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${mod.pdfjs.version}/build/pdf.worker.min.mjs`;
+    // Import styles
+    import('react-pdf/dist/Page/AnnotationLayer.css');
+    import('react-pdf/dist/Page/TextLayer.css');
+    return {
+      default: ({ fileUrl, currentPage, rotation }: { fileUrl: string; currentPage: number; rotation: number }) => (
+        <mod.Document
+          file={fileUrl}
+          loading={<div className="flex items-center justify-center h-full text-slate-500">Cargando PDF...</div>}
+          error={<div className="flex items-center justify-center h-full text-red-500">Error al cargar el PDF</div>}
+        >
+          <mod.Page
+            pageNumber={currentPage}
+            className="rounded-lg shadow-lg"
+            renderTextLayer={true}
+            renderAnnotationLayer={true}
+            rotate={rotation}
+            loading={<div className="flex items-center justify-center h-64 text-slate-500">Cargando página...</div>}
+          />
+        </mod.Document>
+      ),
+    };
+  }),
+);
 
 export const Route = createFileRoute('/documents/$documentId')({
   component: DocumentValidationPage,
@@ -514,26 +537,13 @@ function DocumentValidationPage() {
             <div className="flex-1 overflow-auto p-4">
               <div className="min-w-fit flex justify-center">
                 {document.fileUrl ? (
-                  <Document
-                    file={document.fileUrl}
-                    loading={
+                  <Suspense
+                    fallback={
                       <div className="flex items-center justify-center h-full text-slate-500">Cargando PDF...</div>
                     }
-                    error={
-                      <div className="flex items-center justify-center h-full text-red-500">Error al cargar el PDF</div>
-                    }
                   >
-                    <Page
-                      pageNumber={currentPage}
-                      className="rounded-lg shadow-lg"
-                      renderTextLayer={true}
-                      renderAnnotationLayer={true}
-                      rotate={getCurrentRotation()}
-                      loading={
-                        <div className="flex items-center justify-center h-64 text-slate-500">Cargando página...</div>
-                      }
-                    />
-                  </Document>
+                    <PDFViewer fileUrl={document.fileUrl} currentPage={currentPage} rotation={getCurrentRotation()} />
+                  </Suspense>
                 ) : (
                   <div className="flex items-center justify-center h-full text-slate-500">No se pudo cargar el PDF</div>
                 )}
