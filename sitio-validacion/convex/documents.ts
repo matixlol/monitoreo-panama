@@ -54,6 +54,16 @@ export const retryExtraction = mutation({
       throw new Error('Document not found');
     }
 
+    // Delete existing extractions for this document
+    const existingExtractions = await ctx.db
+      .query('extractions')
+      .withIndex('by_document', (q) => q.eq('documentId', args.documentId))
+      .collect();
+
+    for (const extraction of existingExtractions) {
+      await ctx.db.delete(extraction._id);
+    }
+
     // Reset status and clear any previous error
     await ctx.db.patch(args.documentId, {
       status: 'pending',

@@ -131,6 +131,7 @@ function DocumentValidationPage() {
     documentId: documentId as Id<'documents'>,
   });
   const saveValidatedData = useMutation(api.extractions.saveValidatedData);
+  const retryExtraction = useMutation(api.documents.retryExtraction);
 
   // Rotation mutation with optimistic update
   const setPageRotation = useMutation(api.documents.setPageRotation).withOptimisticUpdate((localStore, args) => {
@@ -431,6 +432,23 @@ function DocumentValidationPage() {
     }
   };
 
+  const handleRerunExtraction = async () => {
+    if (
+      !confirm(
+        '¿Estás seguro de que quieres volver a ejecutar la extracción? Esto eliminará las extracciones anteriores.',
+      )
+    ) {
+      return;
+    }
+    try {
+      await retryExtraction({
+        documentId: documentId as Id<'documents'>,
+      });
+    } catch (error) {
+      console.error('Rerun failed:', error);
+    }
+  };
+
   const goToPage = (pageNumber: number) => {
     setCurrentPage(pageNumber);
   };
@@ -538,6 +556,16 @@ function DocumentValidationPage() {
           </div>
 
           <div className="flex items-center gap-4">
+            {(document.status === 'processing' || document.status === 'pending') && (
+              <span className="px-2 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 rounded-full text-xs animate-pulse">
+                {document.status === 'pending' ? 'Pendiente...' : 'Procesando...'}
+              </span>
+            )}
+            {document.status === 'failed' && (
+              <span className="px-2 py-1 bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 rounded-full text-xs">
+                Error
+              </span>
+            )}
             {pagesWithDiffs.length > 0 && (
               <span className="text-sm text-amber-600 dark:text-amber-400">
                 ⚠ {pagesWithDiffs.length} páginas con diferencias
@@ -548,6 +576,57 @@ function DocumentValidationPage() {
                 ? {pagesWithUnreadables.length} páginas con campos ilegibles
               </span>
             )}
+
+            <Button
+              onClick={handleRerunExtraction}
+              disabled={document.status === 'processing' || document.status === 'pending'}
+              variant="outline"
+              className="text-amber-600 border-amber-300 hover:bg-amber-50 dark:text-amber-400 dark:border-amber-700 dark:hover:bg-amber-900/20"
+            >
+              {document.status === 'processing' || document.status === 'pending' ? (
+                <>
+                  <svg
+                    className="animate-spin -ml-1 mr-2 h-4 w-4"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  Re-extrayendo...
+                </>
+              ) : (
+                <>
+                  <svg
+                    className="mr-2 h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                    />
+                  </svg>
+                  Re-extraer
+                </>
+              )}
+            </Button>
 
             <Button onClick={handleSave} disabled={!hasEdits || isSaving} variant={hasEdits ? 'default' : 'outline'}>
               {isSaving ? 'Guardando...' : 'Guardar Validación'}
