@@ -1,5 +1,4 @@
 import { createRouter } from '@tanstack/react-router';
-import { ConvexQueryClient } from '@convex-dev/react-query';
 import { QueryClient } from '@tanstack/react-query';
 import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query';
 import { ConvexProvider, ConvexProviderWithAuth, ConvexReactClient } from 'convex/react';
@@ -13,18 +12,14 @@ export function getRouter() {
     throw new Error('missing VITE_CONVEX_URL env var');
   }
   const convex = new ConvexReactClient(CONVEX_URL);
-  const convexQueryClient = new ConvexQueryClient(convex);
 
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
-        queryKeyHashFn: convexQueryClient.hashFn(),
-        queryFn: convexQueryClient.queryFn(),
         gcTime: 5000,
       },
     },
   });
-  convexQueryClient.connect(queryClient);
 
   const router = createRouter({
     routeTree,
@@ -33,10 +28,10 @@ export function getRouter() {
     defaultPreloadStaleTime: 0, // Let React Query handle all caching
     defaultErrorComponent: (err) => <p>{err.error.stack}</p>,
     defaultNotFoundComponent: () => <p>not found</p>,
-    context: { queryClient, convexClient: convex, convexQueryClient },
+    context: { queryClient, convexClient: convex },
     Wrap: ({ children }) => (
       <AuthKitProvider>
-        <ConvexProviderWithAuth client={convexQueryClient.convexClient} useAuth={useAuthFromWorkOS}>
+        <ConvexProviderWithAuth client={convex} useAuth={useAuthFromWorkOS}>
           {children}
         </ConvexProviderWithAuth>
       </AuthKitProvider>

@@ -1,8 +1,7 @@
 import { Link, createFileRoute } from '@tanstack/react-router';
-import { Authenticated, Unauthenticated, useMutation } from 'convex/react';
+import { Authenticated, Unauthenticated, useMutation, useQuery } from 'convex/react';
 import { useAuth } from '@workos/authkit-tanstack-react-start/client';
 import { getAuth, getSignInUrl, getSignUpUrl } from '@workos/authkit-tanstack-react-start';
-import { convexQuery } from '@convex-dev/react-query';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { api } from '../../convex/_generated/api';
 import type { User } from '@workos/authkit-tanstack-react-start';
@@ -58,14 +57,12 @@ function SignInForm({ signInUrl, signUpUrl }: { signInUrl: string; signUpUrl: st
 }
 
 function Content() {
-  const {
-    data: { viewer, numbers },
-  } = useSuspenseQuery(
-    convexQuery(api.myFunctions.listNumbers, {
-      count: 10,
-    }),
-  );
+  const data = useQuery(api.myFunctions.listNumbers, {
+    count: 10,
+  });
   const addNumber = useMutation(api.myFunctions.addNumber);
+  if (!data) return <div>Loading...</div>;
+  const { viewer, numbers } = data;
 
   return (
     <div className="flex flex-col gap-8 max-w-lg mx-auto">
