@@ -48,6 +48,38 @@ export const createDocument = mutation({
   },
 });
 
+export const retryAllExtractions = mutation({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error('Unauthorized');
+    }
+
+    // Delete existing extractions for this document
+    const existingExtractions = await ctx.db.query('extractions').collect();
+
+    for (const extraction of existingExtractions) {
+      await ctx.db.delete(extraction._id);
+    }
+
+    // Reset status and clear any previous error
+    const documents = await ctx.db.query('documents').collect();
+
+    for (const document of documents) {
+      await ctx.db.patch(document._id, {
+        status: 'pending',
+        errorMessage: undefined,
+      });
+      await ctx.scheduler.runAfter(0, internal.extraction.startExtraction, {
+        documentId: document._id,
+      });
+    }
+    return null;
+  },
+});
+
 /**
  * Manually trigger re-extraction for a document
  */
