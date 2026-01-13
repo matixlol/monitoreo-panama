@@ -178,6 +178,73 @@ export const listDocuments = query({
 });
 
 /**
+ * Export-ready data for all documents (validated data preferred, otherwise Gemini 3)
+ */
+export const getDocumentsForCsvExport = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error('Unauthorized');
+    }
+    const documents = await ctx.db.query('documents').order('desc').collect();
+
+    return await Promise.all(
+      documents.map(async (doc) => {
+        const validatedData = await ctx.db
+          .query('validatedData')
+          .withIndex('by_document', (q) => q.eq('documentId', doc._id))
+          .unique();
+
+        if (validatedData) {
+          return {
+            ...doc,
+            source: 'validated',
+            sourceModel: null,
+            sourceCompletedAt: validatedData.validatedAt,
+            ingress: validatedData.ingress,
+            egress: validatedData.egress,
+          };
+        }
+
+        const extractions = await ctx.db
+          .query('extractions')
+          .withIndex('by_document', (q) => q.eq('documentId', doc._id))
+          .collect();
+
+        const gemini3Extractions = extractions
+          .filter((extraction) => extraction.model.startsWith('gemini-3'))
+          .sort((a, b) => b.completedAt - a.completedAt);
+
+        const latestExtraction = gemini3Extractions[0]
+          ? { extraction: gemini3Extractions[0], source: 'gemini-3' }
+          : null;
+
+        if (!latestExtraction) {
+          return {
+            ...doc,
+            source: 'none',
+            sourceModel: null,
+            sourceCompletedAt: null,
+            ingress: [],
+            egress: [],
+          };
+        }
+
+        return {
+          ...doc,
+          source: latestExtraction.source,
+          sourceModel: latestExtraction.extraction.model,
+          sourceCompletedAt: latestExtraction.extraction.completedAt,
+          ingress: latestExtraction.extraction.ingress,
+          egress: latestExtraction.extraction.egress,
+        };
+      }),
+    );
+  },
+});
+
+/**
  * Get a single document by ID
  */
 export const getDocument = query({

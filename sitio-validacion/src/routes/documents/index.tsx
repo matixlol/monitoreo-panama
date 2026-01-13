@@ -3,8 +3,10 @@ import { Authenticated, useConvexAuth } from 'convex/react';
 import { useMutation, useQuery } from 'convex/react';
 import { useAuthActions } from '@convex-dev/auth/react';
 import { api } from '../../../convex/_generated/api';
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import { PDFDocument } from 'pdf-lib';
+import { createEgressCsvStream, createIngressCsvStream, type CsvExportDocument } from '../../lib/csvExport';
+import type { Id } from '../../../convex/_generated/dataModel';
 
 export const Route = createFileRoute('/documents/')({
   component: DocumentsPage,
@@ -18,6 +20,8 @@ type UploadProgress = {
 
 function DocumentsPage() {
   const documents = useQuery(api.documents.listDocuments);
+  const [exportRequested, setExportRequested] = useState(false);
+  const exportData = useQuery(api.documents.getDocumentsForCsvExport, exportRequested ? {} : undefined);
   const generateUploadUrl = useMutation(api.documents.generateUploadUrl);
   const createDocument = useMutation(api.documents.createDocument);
   const retryExtraction = useMutation(api.documents.retryExtraction);
@@ -26,6 +30,8 @@ function DocumentsPage() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
   const [uploadStats, setUploadStats] = useState<{ completed: number; failed: number; total: number } | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const uploadSingleFile = useCallback(
@@ -161,12 +167,82 @@ function DocumentsPage() {
     }
   };
 
-  const handleRetry = async (documentId: string) => {
+  const handleRetry = async (documentId: Id<'documents'>) => {
     try {
-      await retryExtraction({ documentId: documentId as any });
+      await retryExtraction({ documentId });
     } catch (error) {
       console.error('Retry failed:', error);
     }
+  };
+
+  const hasFilePicker = (
+    value: Window,
+  ): value is Window & {
+    showSaveFilePicker: (options?: SaveFilePickerOptions) => Promise<FileSystemFileHandle>;
+  } => 'showSaveFilePicker' in value;
+
+  useEffect(() => {
+    if (!exportRequested || !exportData || isExporting) return;
+    const runExport = async () => {
+      setIsExporting(true);
+      setExportError(null);
+      try {
+        const exportPayload: CsvExportDocument[] = exportData;
+        const dateStamp = new Date().toISOString().slice(0, 10);
+        const ingressFileName = `documentos-ingresos-${dateStamp}.csv`;
+        const egressFileName = `documentos-egresos-${dateStamp}.csv`;
+        const ingressStream = createIngressCsvStream(exportPayload);
+        const egressStream = createEgressCsvStream(exportPayload);
+
+        if (hasFilePicker(window)) {
+          const saveStream = async (stream: ReadableStream<Uint8Array>, suggestedName: string) => {
+            const handle = await window.showSaveFilePicker({
+              suggestedName,
+              types: [
+                {
+                  description: 'CSV',
+                  accept: { 'text/csv': ['.csv'] },
+                },
+              ],
+            });
+            const writable = await handle.createWritable();
+            const reader = stream.getReader();
+            while (true) {
+              const { value, done } = await reader.read();
+              if (done) break;
+              await writable.write(value);
+            }
+            await writable.close();
+          };
+
+          await saveStream(ingressStream, ingressFileName);
+          await saveStream(egressStream, egressFileName);
+        } else {
+          const downloadStream = async (stream: ReadableStream<Uint8Array>, fileName: string) => {
+            const blob = await new Response(stream).blob();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = fileName;
+            link.click();
+            URL.revokeObjectURL(url);
+          };
+          await downloadStream(ingressStream, ingressFileName);
+          await downloadStream(egressStream, egressFileName);
+        }
+      } catch (error) {
+        setExportError(error instanceof Error ? error.message : 'Export failed');
+      } finally {
+        setIsExporting(false);
+        setExportRequested(false);
+      }
+    };
+    void runExport();
+  }, [exportRequested, exportData, isExporting]);
+
+  const handleExportCsv = () => {
+    setExportError(null);
+    setExportRequested(true);
   };
 
   const getStatusBadge = (status: string) => {
@@ -394,8 +470,22 @@ function DocumentsPage() {
 
           {/* Documents List */}
           <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex flex-wrap gap-3 items-center justify-between">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Documentos</h2>
+              <div className="flex items-center gap-3">
+                {exportError && <span className="text-sm text-red-600 dark:text-red-400">{exportError}</span>}
+                <button
+                  onClick={handleExportCsv}
+                  disabled={isExporting || exportRequested || documents === undefined || documents.length === 0}
+                  className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                    isExporting || exportRequested || documents === undefined || documents.length === 0
+                      ? 'bg-slate-200 text-slate-500 cursor-not-allowed dark:bg-slate-700 dark:text-slate-400'
+                      : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                  }`}
+                >
+                  {isExporting || exportRequested ? 'Exportando...' : 'Exportar CSVs'}
+                </button>
+              </div>
             </div>
 
             {documents === undefined ? (
