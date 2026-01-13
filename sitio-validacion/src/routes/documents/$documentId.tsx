@@ -1091,7 +1091,7 @@ function EgressDataTable({
                 ? Number(value).toLocaleString('es-PA', { minimumFractionDigits: 2 })
                 : normalizeValueForDisplay(field, value)}
             </span>
-            {hasDiff && Object.keys(altValues).length > 0 && (
+            {Object.keys(altValues).length > 0 && (
               <div className="text-[9px] space-y-0.5 mt-0.5">
                 {Object.entries(altValues).map(([modelName, modelValue]) => {
                   const shortName = getShortModelName(modelName);
@@ -1109,7 +1109,9 @@ function EgressDataTable({
                       className={`block w-full text-left py-0 px-0.5 rounded border transition-colors cursor-pointer ${
                         isSelected
                           ? 'border-emerald-400 dark:border-emerald-500 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300'
-                          : 'border-amber-300 dark:border-amber-600 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 hover:bg-amber-200'
+                          : hasDiff
+                            ? 'border-amber-300 dark:border-amber-600 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 hover:bg-amber-200'
+                            : 'border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100'
                       }`}
                     >
                       {isSelected && <span className="mr-0.5">✓</span>}
@@ -1181,7 +1183,7 @@ function EgressDataTable({
                   displayIndex,
                   actualIndex,
                   rowDiffs?.has('fecha') ?? false,
-                  rowDiffs?.has('fecha') ? getAlternateValues(rowKey, 'fecha') : {},
+                  getAlternateValues(rowKey, 'fecha'),
                   'string',
                 )}
               </div>
@@ -1198,7 +1200,7 @@ function EgressDataTable({
                   displayIndex,
                   actualIndex,
                   rowDiffs?.has('numeroFacturaRecibo') ?? false,
-                  rowDiffs?.has('numeroFacturaRecibo') ? getAlternateValues(rowKey, 'numeroFacturaRecibo') : {},
+                  getAlternateValues(rowKey, 'numeroFacturaRecibo'),
                   'string',
                 )}
               </div>
@@ -1215,7 +1217,7 @@ function EgressDataTable({
                   displayIndex,
                   actualIndex,
                   rowDiffs?.has('cedulaRuc') ?? false,
-                  rowDiffs?.has('cedulaRuc') ? getAlternateValues(rowKey, 'cedulaRuc') : {},
+                  getAlternateValues(rowKey, 'cedulaRuc'),
                   'string',
                 )}
               </div>
@@ -1232,7 +1234,7 @@ function EgressDataTable({
                   displayIndex,
                   actualIndex,
                   rowDiffs?.has('proveedorNombre') ?? false,
-                  rowDiffs?.has('proveedorNombre') ? getAlternateValues(rowKey, 'proveedorNombre') : {},
+                  getAlternateValues(rowKey, 'proveedorNombre'),
                   'string',
                 )}
               </div>
@@ -1249,7 +1251,7 @@ function EgressDataTable({
                   displayIndex,
                   actualIndex,
                   rowDiffs?.has('detalleGasto') ?? false,
-                  rowDiffs?.has('detalleGasto') ? getAlternateValues(rowKey, 'detalleGasto') : {},
+                  getAlternateValues(rowKey, 'detalleGasto'),
                   'string',
                 )}
               </div>
@@ -1266,7 +1268,7 @@ function EgressDataTable({
                   displayIndex,
                   actualIndex,
                   rowDiffs?.has('pagoTipo') ?? false,
-                  rowDiffs?.has('pagoTipo') ? getAlternateValues(rowKey, 'pagoTipo') : {},
+                  getAlternateValues(rowKey, 'pagoTipo'),
                   'string',
                 )}
               </div>
@@ -1308,7 +1310,7 @@ function EgressDataTable({
                           displayIndex,
                           actualIndex,
                           hasDiff ?? false,
-                          hasDiff ? getAlternateValues(rowKey, col.key) : {},
+                          getAlternateValues(rowKey, col.key),
                           'number',
                           true,
                         )}
@@ -1341,7 +1343,7 @@ function EgressDataTable({
                           displayIndex,
                           actualIndex,
                           hasDiff ?? false,
-                          hasDiff ? getAlternateValues(rowKey, col.key) : {},
+                          getAlternateValues(rowKey, col.key),
                           'number',
                           true,
                         )}
@@ -1367,9 +1369,7 @@ function EgressDataTable({
                           displayIndex,
                           actualIndex,
                           rowDiffs?.has(EGRESS_TOTAL_COLUMN.key) ?? false,
-                          rowDiffs?.has(EGRESS_TOTAL_COLUMN.key)
-                            ? getAlternateValues(rowKey, EGRESS_TOTAL_COLUMN.key)
-                            : {},
+                          getAlternateValues(rowKey, EGRESS_TOTAL_COLUMN.key),
                           'number',
                           false,
                         )}
@@ -1464,7 +1464,7 @@ function DataTable({
                 .map((col, colIndex) => {
                   const value = (row as Record<string, unknown>)[col.key];
                   const hasDiff = rowDiffs?.has(col.key);
-                  const altValues = hasDiff ? getAlternateValues(rowKey, col.key) : {};
+                  const altValues = getAlternateValues(rowKey, col.key);
                   const isEditing = editingCell?.row === displayIndex && editingCell?.col === col.key;
 
                   const isHumanUnreadable = row.humanUnreadableFields?.includes(col.key) ?? false;
@@ -1566,7 +1566,7 @@ function DataTable({
                           <span className={value === null ? 'text-slate-400 italic' : ''}>
                             {normalizeValueForDisplay(col.key, value)}
                           </span>
-                          {hasDiff && Object.keys(altValues).length > 0 && (
+                          {Object.keys(altValues).length > 0 && (
                             <div className="text-[10px] space-y-1 mt-1">
                               {Object.entries(altValues).map(([modelName, modelValue]) => {
                                 const shortName = getShortModelName(modelName);
@@ -1585,7 +1585,9 @@ function DataTable({
                                     className={`block w-full text-left py-0.5 rounded border transition-colors cursor-pointer ${
                                       isSelected
                                         ? 'border-emerald-400 dark:border-emerald-500 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-400 dark:ring-emerald-500'
-                                        : 'border-amber-300 dark:border-amber-600 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-800 hover:border-amber-400 dark:hover:border-amber-500'
+                                        : hasDiff
+                                          ? 'border-amber-300 dark:border-amber-600 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-800 hover:border-amber-400 dark:hover:border-amber-500'
+                                          : 'border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
                                     }`}
                                     title={isSelected ? `Valor actual (de ${modelName})` : `Usar valor de ${modelName}`}
                                   >
