@@ -16,10 +16,8 @@ echo "📂 Extracting and filtering tables..."
 cd "$TEMP_DIR"
 unzip -o backup.zip
 
-# Remove tables we don't want to sync
-rm -rf authVerifiers authRateLimits authVerificationCodes users authSessions authAccounts authRefreshTokens
 # Remove documents and storage (already synced)
-rm -rf documents _storage
+rm -rf _storage
 
 # Repackage
 zip -r filtered.zip .
