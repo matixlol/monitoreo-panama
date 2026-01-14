@@ -55,6 +55,11 @@ export type CsvExportDocument = {
   sourceCompletedAt: number | null;
   ingress: CsvIngressRow[];
   egress: CsvEgressRow[];
+  candidateName?: string | null;
+  candidatePosition?: string | null;
+  candidateParty?: string | null;
+  candidateProvince?: string | null;
+  candidateDistrict?: string | null;
 };
 
 type CsvRow = CsvIngressRow | CsvEgressRow;
@@ -66,6 +71,11 @@ const BASE_CSV_COLUMNS = [
   'documentPageCount',
   'documentCreatedAt',
   'documentErrorMessage',
+  'candidateName',
+  'candidatePosition',
+  'candidateParty',
+  'candidateProvince',
+  'candidateDistrict',
   'source',
   'sourceModel',
   'sourceCompletedAt',
@@ -142,6 +152,16 @@ const getCsvValue = (column: string, doc: CsvExportDocument, row: CsvIngressRow 
       return doc._creationTime;
     case 'documentErrorMessage':
       return doc.errorMessage ?? null;
+    case 'candidateName':
+      return doc.candidateName ?? null;
+    case 'candidatePosition':
+      return doc.candidatePosition ?? null;
+    case 'candidateParty':
+      return doc.candidateParty ?? null;
+    case 'candidateProvince':
+      return doc.candidateProvince ?? null;
+    case 'candidateDistrict':
+      return doc.candidateDistrict ?? null;
     case 'source':
       return doc.source;
     case 'sourceModel':
