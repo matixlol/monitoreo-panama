@@ -1,9 +1,26 @@
-import { createRouter } from '@tanstack/react-router';
+import { createRouter, useRouter } from '@tanstack/react-router';
 import { QueryClient } from '@tanstack/react-query';
 import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query';
 import { ConvexReactClient } from 'convex/react';
 import { ConvexAuthProvider } from '@convex-dev/auth/react';
+import { useEffect } from 'react';
 import { routeTree } from './routeTree.gen';
+
+function DefaultErrorComponent({ error }: { error: Error }) {
+  const router = useRouter();
+
+  useEffect(() => {
+    if (error.message.includes('Unauthorized')) {
+      router.navigate({ to: '/' });
+    }
+  }, [error, router]);
+
+  if (error.message.includes('Unauthorized')) {
+    return <p>Redirecting to login...</p>;
+  }
+
+  return <p>{error.stack}</p>;
+}
 
 export function getRouter() {
   const CONVEX_URL = import.meta.env.VITE_CONVEX_URL!;
@@ -25,7 +42,7 @@ export function getRouter() {
     defaultPreload: 'intent',
     scrollRestoration: true,
     defaultPreloadStaleTime: 0, // Let React Query handle all caching
-    defaultErrorComponent: (err) => <p>{err.error.stack}</p>,
+    defaultErrorComponent: ({ error }) => <DefaultErrorComponent error={error} />,
     defaultNotFoundComponent: () => <p>not found</p>,
     context: { queryClient, convexClient: convex },
     Wrap: ({ children }) => <ConvexAuthProvider client={convex}>{children}</ConvexAuthProvider>,
