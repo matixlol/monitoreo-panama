@@ -3,10 +3,64 @@ import { Authenticated, useConvexAuth } from 'convex/react';
 import { useMutation, useQuery } from 'convex/react';
 import { useAuthActions } from '@convex-dev/auth/react';
 import { api } from '../../../convex/_generated/api';
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { PDFDocument } from 'pdf-lib';
 import { createEgressCsvStream, createIngressCsvStream, type CsvExportDocument } from '../../lib/csvExport';
 import type { Id } from '../../../convex/_generated/dataModel';
+import documentsIndex from '../../data/documents-index.json';
+
+type CandidateMetadata = {
+  id: string;
+  candidateName: string;
+  documentId: string;
+  position: string;
+  party: string;
+  province: string | null;
+  district: string | null;
+  township: string | null;
+  status: string;
+  isProclaimed: boolean;
+  dateSent: string | null;
+  totalIngress: number;
+  totalEgress: number;
+  pdfUrl: string | null;
+};
+
+function normalizeForComparison(str: string): string {
+  // Normalize unicode, remove accents, and lowercase
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Remove combining diacritical marks
+    .replace(/[ÃÂ]/g, '') // Remove mojibake artifacts
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function findCandidateByFilename(filename: string): CandidateMetadata | null {
+  const normalizedFilename = normalizeForComparison(filename);
+  
+  for (const candidate of documentsIndex as CandidateMetadata[]) {
+    if (!candidate.pdfUrl) continue;
+    
+    // Double decode to handle double-encoded URLs
+    let pdfFilename = candidate.pdfUrl.split('/').pop() || '';
+    try {
+      pdfFilename = decodeURIComponent(decodeURIComponent(pdfFilename));
+    } catch {
+      try {
+        pdfFilename = decodeURIComponent(pdfFilename);
+      } catch {
+        // Use as-is if decoding fails
+      }
+    }
+    
+    if (normalizeForComparison(pdfFilename) === normalizedFilename) {
+      return candidate;
+    }
+  }
+  return null;
+}
 
 export const Route = createFileRoute('/documents/')({
   component: DocumentsPage,
@@ -187,7 +241,17 @@ function DocumentsPage() {
       setIsExporting(true);
       setExportError(null);
       try {
-        const exportPayload: CsvExportDocument[] = exportData;
+        const exportPayload: CsvExportDocument[] = exportData.map((doc) => {
+          const candidate = findCandidateByFilename(doc.name);
+          return {
+            ...doc,
+            candidateName: candidate?.candidateName ?? null,
+            candidatePosition: candidate?.position ?? null,
+            candidateParty: candidate?.party ?? null,
+            candidateProvince: candidate?.province ?? null,
+            candidateDistrict: candidate?.district ?? null,
+          };
+        });
         const dateStamp = new Date().toISOString().slice(0, 10);
         const ingressFileName = `documentos-ingresos-${dateStamp}.csv`;
         const egressFileName = `documentos-egresos-${dateStamp}.csv`;
@@ -494,69 +558,82 @@ function DocumentsPage() {
               <div className="p-8 text-center text-slate-500">No hay documentos. Sube un PDF para comenzar.</div>
             ) : (
               <div className="divide-y divide-slate-200 dark:divide-slate-700">
-                {documents.map((doc) => (
-                  <div
-                    key={doc._id}
-                    className="px-6 py-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <Link
-                        to="/documents/$documentId"
-                        params={{ documentId: doc._id }}
-                        className="text-lg font-medium text-indigo-600 dark:text-indigo-400 hover:underline truncate block"
-                      >
-                        {doc.name}
-                      </Link>
-                      <div className="flex items-center gap-4 mt-1 text-sm text-slate-500 dark:text-slate-400">
-                        <span>{doc.pageCount} páginas</span>
-                        <span>•</span>
-                        {(doc.ingressCount > 0 || doc.egressCount > 0) && (
-                          <>
-                            <span>{doc.ingressCount} ingresos</span>
-                            <span>•</span>
-                            <span>{doc.egressCount} egresos</span>
-                            <span>•</span>
-                          </>
-                        )}
-                        <span>
-                          {new Date(doc._creationTime).toLocaleDateString('es-PA', {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </span>
-                      </div>
-                      {doc.errorMessage && (
-                        <p className="mt-1 text-sm text-red-600 dark:text-red-400">{doc.errorMessage}</p>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                      {getStatusBadge(doc.status)}
-
-                      {doc.status === 'failed' && (
-                        <button
-                          onClick={() => handleRetry(doc._id)}
-                          className="px-3 py-1 text-sm font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400"
-                        >
-                          Reintentar
-                        </button>
-                      )}
-
-                      {doc.status === 'completed' && (
+                {documents.map((doc) => {
+                  const candidate = findCandidateByFilename(doc.name);
+                  return (
+                    <div
+                      key={doc._id}
+                      className="px-6 py-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                    >
+                      <div className="flex-1 min-w-0">
                         <Link
                           to="/documents/$documentId"
                           params={{ documentId: doc._id }}
-                          className="px-3 py-1 text-sm font-medium bg-indigo-100 text-indigo-700 rounded-md hover:bg-indigo-200 dark:bg-indigo-900 dark:text-indigo-300"
+                          className="text-lg font-medium text-indigo-600 dark:text-indigo-400 hover:underline truncate block"
                         >
-                          Validar
+                          {candidate?.candidateName || doc.name}
                         </Link>
-                      )}
+                        {candidate && (
+                          <div className="flex items-center gap-2 mt-1 text-sm">
+                            <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                              {candidate.position}
+                            </span>
+                            <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                              {candidate.party}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-4 mt-1 text-sm text-slate-500 dark:text-slate-400">
+                          <span>{doc.pageCount} páginas</span>
+                          <span>•</span>
+                          {(doc.ingressCount > 0 || doc.egressCount > 0) && (
+                            <>
+                              <span>{doc.ingressCount} ingresos</span>
+                              <span>•</span>
+                              <span>{doc.egressCount} egresos</span>
+                              <span>•</span>
+                            </>
+                          )}
+                          <span>
+                            {new Date(doc._creationTime).toLocaleDateString('es-PA', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </span>
+                        </div>
+                        {doc.errorMessage && (
+                          <p className="mt-1 text-sm text-red-600 dark:text-red-400">{doc.errorMessage}</p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-4">
+                        {getStatusBadge(doc.status)}
+
+                        {doc.status === 'failed' && (
+                          <button
+                            onClick={() => handleRetry(doc._id)}
+                            className="px-3 py-1 text-sm font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400"
+                          >
+                            Reintentar
+                          </button>
+                        )}
+
+                        {doc.status === 'completed' && (
+                          <Link
+                            to="/documents/$documentId"
+                            params={{ documentId: doc._id }}
+                            className="px-3 py-1 text-sm font-medium bg-indigo-100 text-indigo-700 rounded-md hover:bg-indigo-200 dark:bg-indigo-900 dark:text-indigo-300"
+                          >
+                            Validar
+                          </Link>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
