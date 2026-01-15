@@ -82,7 +82,9 @@ export default defineSchema({
     errorMessage: v.optional(v.string()),
     // Page rotations stored as page number -> degrees (0, 90, 180, 270)
     pageRotations: v.optional(v.record(v.string(), v.number())),
-  }),
+    // Timestamp when processing started (for detecting stuck items)
+    processingStartedAt: v.optional(v.number()),
+  }).index('by_status', ['status']),
 
   // Raw extraction results from each model (with AI-detected unreadableFields)
   extractions: defineTable({

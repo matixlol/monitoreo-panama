@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { Authenticated, Unauthenticated, useConvexAuth } from 'convex/react';
-import { useAction } from 'convex/react';
+import { useAction, useMutation } from 'convex/react';
 import { useAuthActions } from '@convex-dev/auth/react';
 import { useState } from 'react';
 import { api } from '../../convex/_generated/api';
@@ -23,6 +23,7 @@ function AdminPage() {
       </header>
       <main className="p-8 flex flex-col gap-8">
         <Authenticated>
+          <ReprocessStuckDocuments />
           <CreateUserForm />
         </Authenticated>
         <Unauthenticated>
@@ -37,6 +38,58 @@ function AdminPage() {
         </Unauthenticated>
       </main>
     </>
+  );
+}
+
+function ReprocessStuckDocuments() {
+  const reprocess = useMutation(api.documents.reprocessStuckDocuments);
+  const [isLoading, setIsLoading] = useState(false);
+  const [result, setResult] = useState<{ reprocessed: number } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleClick = async () => {
+    setIsLoading(true);
+    setError(null);
+    setResult(null);
+    try {
+      const res = await reprocess();
+      setResult(res);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to reprocess');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-4 w-full max-w-md mx-auto">
+      <div className="text-center">
+        <h2 className="text-xl font-bold mb-2">Reprocess Stuck Documents</h2>
+        <p className="text-slate-600 dark:text-slate-400 text-sm">
+          Reset documents stuck in "processing" state and retry extraction
+        </p>
+      </div>
+
+      {error && (
+        <div className="text-red-500 text-sm bg-red-50 dark:bg-red-950 p-3 rounded-md">{error}</div>
+      )}
+
+      {result && (
+        <div className="text-emerald-700 dark:text-emerald-300 text-sm bg-emerald-50 dark:bg-emerald-950 p-3 rounded-md">
+          {result.reprocessed === 0
+            ? 'No documents were stuck in processing'
+            : `Reprocessed ${result.reprocessed} document(s)`}
+        </div>
+      )}
+
+      <button
+        onClick={handleClick}
+        disabled={isLoading}
+        className="bg-amber-600 text-white px-4 py-2 rounded-md font-medium hover:bg-amber-700 transition-colors disabled:opacity-50"
+      >
+        {isLoading ? 'Reprocessing...' : 'Reprocess Stuck Documents'}
+      </button>
+    </div>
   );
 }
 
