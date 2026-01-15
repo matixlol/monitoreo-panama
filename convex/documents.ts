@@ -1,18 +1,41 @@
 import { v } from 'convex/values';
-import { mutation, query } from './_generated/server';
 import { internal } from './_generated/api';
+import { authMutation, authQuery } from './lib/withAuth';
+
+export const getDocumentStats = authQuery({
+  args: {},
+  returns: v.object({
+    pending: v.number(),
+    processing: v.number(),
+    completed: v.number(),
+    failed: v.number(),
+    summaryPending: v.number(),
+    summaryProcessing: v.number(),
+    summaryCompleted: v.number(),
+    summaryFailed: v.number(),
+  }),
+  handler: async (ctx) => {
+    const documents = await ctx.db.query('documents').collect();
+    return {
+      pending: documents.filter((d) => d.status === 'pending').length,
+      processing: documents.filter((d) => d.status === 'processing').length,
+      completed: documents.filter((d) => d.status === 'completed').length,
+      failed: documents.filter((d) => d.status === 'failed').length,
+      summaryPending: documents.filter((d) => d.summaryStatus === 'pending').length,
+      summaryProcessing: documents.filter((d) => d.summaryStatus === 'processing').length,
+      summaryCompleted: documents.filter((d) => d.summaryStatus === 'completed').length,
+      summaryFailed: documents.filter((d) => d.summaryStatus === 'failed').length,
+    };
+  },
+});
 
 /**
  * Generate an upload URL for a PDF file
  */
-export const generateUploadUrl = mutation({
+export const generateUploadUrl = authMutation({
   args: {},
   returns: v.string(),
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Unauthorized');
-    }
     return await ctx.storage.generateUploadUrl();
   },
 });
@@ -20,7 +43,7 @@ export const generateUploadUrl = mutation({
 /**
  * Create a new document record after uploading a PDF
  */
-export const createDocument = mutation({
+export const createDocument = authMutation({
   args: {
     fileId: v.id('_storage'),
     name: v.string(),
@@ -28,10 +51,6 @@ export const createDocument = mutation({
   },
   returns: v.id('documents'),
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Unauthorized');
-    }
     const documentId = await ctx.db.insert('documents', {
       fileId: args.fileId,
       name: args.name,
@@ -48,15 +67,10 @@ export const createDocument = mutation({
   },
 });
 
-export const retryAllExtractions = mutation({
+export const retryAllExtractions = authMutation({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Unauthorized');
-    }
-
     // Delete existing extractions for this document
     const existingExtractions = await ctx.db.query('extractions').collect();
 
@@ -83,16 +97,12 @@ export const retryAllExtractions = mutation({
 /**
  * Manually trigger re-extraction for a document
  */
-export const retryExtraction = mutation({
+export const retryExtraction = authMutation({
   args: {
     documentId: v.id('documents'),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Unauthorized');
-    }
     const doc = await ctx.db.get(args.documentId);
     if (!doc) {
       throw new Error('Document not found');
@@ -126,13 +136,9 @@ export const retryExtraction = mutation({
 /**
  * List all documents
  */
-export const listDocuments = query({
+export const listDocuments = authQuery({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Unauthorized');
-    }
     const documents = await ctx.db.query('documents').order('desc').collect();
 
     return await Promise.all(
@@ -143,11 +149,25 @@ export const listDocuments = query({
           .withIndex('by_document', (q) => q.eq('documentId', doc._id))
           .unique();
 
+        // Get summary extraction for total amounts
+        const summaryExtraction = await ctx.db
+          .query('summaryExtractions')
+          .withIndex('by_document', (q) => q.eq('documentId', doc._id))
+          .first();
+
+        const summaryTotals = summaryExtraction
+          ? {
+              totalIngresos: summaryExtraction.summary.totalIngresos ?? null,
+              totalGastos: summaryExtraction.summary.totalGastos ?? null,
+            }
+          : { totalIngresos: null, totalGastos: null };
+
         if (validatedData) {
           return {
             ...doc,
             ingressCount: validatedData.ingress.length,
             egressCount: validatedData.egress.length,
+            ...summaryTotals,
           };
         }
 
@@ -163,6 +183,7 @@ export const listDocuments = query({
             ...doc,
             ingressCount: extractions.ingress.length,
             egressCount: extractions.egress.length,
+            ...summaryTotals,
           };
         }
 
@@ -171,6 +192,7 @@ export const listDocuments = query({
           ...doc,
           ingressCount: 0,
           egressCount: 0,
+          ...summaryTotals,
         };
       }),
     );
@@ -180,13 +202,9 @@ export const listDocuments = query({
 /**
  * Export-ready data for all documents (validated data preferred, otherwise Gemini 3)
  */
-export const getDocumentsForCsvExport = query({
+export const getDocumentsForCsvExport = authQuery({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Unauthorized');
-    }
     const documents = await ctx.db.query('documents').order('desc').collect();
 
     return await Promise.all(
@@ -247,15 +265,11 @@ export const getDocumentsForCsvExport = query({
 /**
  * Get a single document by ID
  */
-export const getDocument = query({
+export const getDocument = authQuery({
   args: {
     documentId: v.id('documents'),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Unauthorized');
-    }
     const doc = await ctx.db.get(args.documentId);
     if (!doc) {
       return null;
@@ -273,7 +287,7 @@ export const getDocument = query({
 /**
  * Set the rotation for a specific page (rotates by 90 degrees each call)
  */
-export const setPageRotation = mutation({
+export const setPageRotation = authMutation({
   args: {
     documentId: v.id('documents'),
     pageNumber: v.number(),
@@ -281,10 +295,6 @@ export const setPageRotation = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Unauthorized');
-    }
     const doc = await ctx.db.get(args.documentId);
     if (!doc) {
       throw new Error('Document not found');
@@ -309,17 +319,12 @@ export const setPageRotation = mutation({
 /**
  * Reprocess all documents stuck in "processing" state
  */
-export const reprocessStuckDocuments = mutation({
+export const reprocessStuckDocuments = authMutation({
   args: {},
   returns: v.object({
     reprocessed: v.number(),
   }),
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Unauthorized');
-    }
-
     const processingDocs = await ctx.db
       .query('documents')
       .withIndex('by_status', (q) => q.eq('status', 'processing'))
@@ -349,5 +354,65 @@ export const reprocessStuckDocuments = mutation({
     return {
       reprocessed: processingDocs.length,
     };
+  },
+});
+
+/**
+ * Process summaries for all documents that have completed extraction but no summary
+ */
+export const processAllSummaries = authMutation({
+  args: {
+    force: v.optional(v.boolean()),
+  },
+  returns: v.object({ queued: v.number() }),
+  handler: async (ctx, args) => {
+    const completedDocs = await ctx.db
+      .query('documents')
+      .withIndex('by_status', (q) => q.eq('status', 'completed'))
+      .collect();
+
+    const docsNeedingSummary = args.force
+      ? completedDocs
+      : completedDocs.filter(
+          (doc) => doc.summaryStatus === undefined || doc.summaryStatus === null || doc.summaryStatus === 'failed',
+        );
+
+    for (const doc of docsNeedingSummary) {
+      await ctx.db.patch(doc._id, {
+        summaryStatus: 'pending',
+      });
+
+      await ctx.scheduler.runAfter(0, internal.summaryExtraction.startSummaryExtraction, {
+        documentId: doc._id,
+      });
+    }
+
+    return {
+      queued: docsNeedingSummary.length,
+    };
+  },
+});
+
+/**
+ * Process summary for a single document
+ */
+export const processSingleSummary = authMutation({
+  args: { documentId: v.id('documents') },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const doc = await ctx.db.get(args.documentId);
+    if (!doc) {
+      throw new Error('Document not found');
+    }
+
+    await ctx.db.patch(args.documentId, {
+      summaryStatus: 'pending',
+    });
+
+    await ctx.scheduler.runAfter(0, internal.summaryExtraction.startSummaryExtraction, {
+      documentId: args.documentId,
+    });
+
+    return null;
   },
 });

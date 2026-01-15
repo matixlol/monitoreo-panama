@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { Authenticated, Unauthenticated, useConvexAuth } from 'convex/react';
-import { useAction, useMutation } from 'convex/react';
+import { useAction, useMutation, useQuery } from 'convex/react';
 import { useAuthActions } from '@convex-dev/auth/react';
 import { useState } from 'react';
 import { api } from '../../convex/_generated/api';
@@ -8,6 +8,66 @@ import { api } from '../../convex/_generated/api';
 export const Route = createFileRoute('/admin')({
   component: AdminPage,
 });
+
+function DocumentStats() {
+  const stats = useQuery(api.documents.getDocumentStats);
+
+  if (!stats) return <div className="text-center text-slate-500">Loading stats...</div>;
+
+  return (
+    <div className="w-full max-w-2xl mx-auto">
+      <h2 className="text-xl font-bold mb-4 text-center">Document Stats</h2>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <h3 className="font-semibold mb-2">Extraction Status</h3>
+          <table className="w-full text-sm border border-slate-300 dark:border-slate-700">
+            <tbody>
+              <tr className="border-b border-slate-200 dark:border-slate-700">
+                <td className="p-2">Pending</td>
+                <td className="p-2 text-right font-mono">{stats.pending}</td>
+              </tr>
+              <tr className="border-b border-slate-200 dark:border-slate-700">
+                <td className="p-2">Processing</td>
+                <td className="p-2 text-right font-mono">{stats.processing}</td>
+              </tr>
+              <tr className="border-b border-slate-200 dark:border-slate-700">
+                <td className="p-2">Completed</td>
+                <td className="p-2 text-right font-mono">{stats.completed}</td>
+              </tr>
+              <tr>
+                <td className="p-2">Failed</td>
+                <td className="p-2 text-right font-mono">{stats.failed}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <h3 className="font-semibold mb-2">Summary Status</h3>
+          <table className="w-full text-sm border border-slate-300 dark:border-slate-700">
+            <tbody>
+              <tr className="border-b border-slate-200 dark:border-slate-700">
+                <td className="p-2">Pending</td>
+                <td className="p-2 text-right font-mono">{stats.summaryPending}</td>
+              </tr>
+              <tr className="border-b border-slate-200 dark:border-slate-700">
+                <td className="p-2">Processing</td>
+                <td className="p-2 text-right font-mono">{stats.summaryProcessing}</td>
+              </tr>
+              <tr className="border-b border-slate-200 dark:border-slate-700">
+                <td className="p-2">Completed</td>
+                <td className="p-2 text-right font-mono">{stats.summaryCompleted}</td>
+              </tr>
+              <tr>
+                <td className="p-2">Failed</td>
+                <td className="p-2 text-right font-mono">{stats.summaryFailed}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function AdminPage() {
   return (
@@ -23,7 +83,9 @@ function AdminPage() {
       </header>
       <main className="p-8 flex flex-col gap-8">
         <Authenticated>
+          <DocumentStats />
           <ReprocessStuckDocuments />
+          <ProcessAllSummaries />
           <CreateUserForm />
         </Authenticated>
         <Unauthenticated>
@@ -89,6 +151,67 @@ function ReprocessStuckDocuments() {
       >
         {isLoading ? 'Reprocessing...' : 'Reprocess Stuck Documents'}
       </button>
+    </div>
+  );
+}
+
+function ProcessAllSummaries() {
+  const processAll = useMutation(api.documents.processAllSummaries);
+  const [isLoading, setIsLoading] = useState(false);
+  const [result, setResult] = useState<{ queued: number } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleClick = async (force: boolean) => {
+    setIsLoading(true);
+    setError(null);
+    setResult(null);
+    try {
+      const res = await processAll({ force });
+      setResult(res);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to process summaries');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-4 w-full max-w-md mx-auto">
+      <div className="text-center">
+        <h2 className="text-xl font-bold mb-2">Process All Document Summaries</h2>
+        <p className="text-slate-600 dark:text-slate-400 text-sm">
+          Extract income/expense summaries from all completed documents that haven't been processed yet
+        </p>
+      </div>
+
+      {error && (
+        <div className="text-red-500 text-sm bg-red-50 dark:bg-red-950 p-3 rounded-md">{error}</div>
+      )}
+
+      {result && (
+        <div className="text-emerald-700 dark:text-emerald-300 text-sm bg-emerald-50 dark:bg-emerald-950 p-3 rounded-md">
+          {result.queued === 0
+            ? 'No documents needed processing'
+            : `Queued ${result.queued} document(s) for processing`}
+        </div>
+      )}
+
+      <div className="flex gap-2">
+        <button
+          onClick={() => handleClick(false)}
+          disabled={isLoading}
+          className="flex-1 bg-amber-600 text-white px-4 py-2 rounded-md font-medium hover:bg-amber-700 transition-colors disabled:opacity-50"
+        >
+          {isLoading ? 'Processing...' : 'Process All Summaries'}
+        </button>
+        <button
+          onClick={() => handleClick(true)}
+          disabled={isLoading}
+          className="flex-1 bg-red-600 text-white px-4 py-2 rounded-md font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
+        >
+          {isLoading ? 'Processing...' : 'Force Reprocess All'}
+        </button>
+      </div>
     </div>
   );
 }

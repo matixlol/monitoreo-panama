@@ -1,9 +1,9 @@
 'use node';
 
 import { v } from 'convex/values';
-import { action } from './_generated/server';
-import { createAccount, getAuthUserId } from '@convex-dev/auth/server';
+import { createAccount } from '@convex-dev/auth/server';
 import Crypto from 'node:crypto';
+import { authAction } from './lib/withAuth';
 
 /**
  * Generate a random password of specified length
@@ -21,7 +21,7 @@ function generatePassword(length: number = 16): string {
 /**
  * Create a new user with a generated password (admin only, requires authentication)
  */
-export const createUser = action({
+export const createUser = authAction({
   args: {
     email: v.string(),
   },
@@ -30,12 +30,6 @@ export const createUser = action({
     password: v.string(),
   }),
   handler: async (ctx, args) => {
-    // Check if the caller is authenticated
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error('Unauthorized: You must be logged in to create users');
-    }
-
     // Generate a random password
     const password = generatePassword(16);
 

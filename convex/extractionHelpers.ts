@@ -55,6 +55,53 @@ export const storeExtraction = internalMutation({
 });
 
 /**
+ * Update summary extraction status
+ */
+export const updateSummaryStatus = internalMutation({
+  args: {
+    documentId: v.id('documents'),
+    summaryStatus: v.union(v.literal('pending'), v.literal('processing'), v.literal('completed'), v.literal('failed')),
+    summaryErrorMessage: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const patch: {
+      summaryStatus: 'pending' | 'processing' | 'completed' | 'failed';
+      summaryErrorMessage?: string;
+    } = {
+      summaryStatus: args.summaryStatus,
+      summaryErrorMessage: args.summaryErrorMessage,
+    };
+
+    await ctx.db.patch(args.documentId, patch);
+    return null;
+  },
+});
+
+/**
+ * Store summary extraction results
+ */
+export const storeSummaryExtraction = internalMutation({
+  args: {
+    documentId: v.id('documents'),
+    model: v.string(),
+    summary: v.any(),
+    pageNumber: v.number(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.insert('summaryExtractions', {
+      documentId: args.documentId,
+      model: args.model,
+      summary: args.summary,
+      pageNumber: args.pageNumber,
+      completedAt: Date.now(),
+    });
+    return null;
+  },
+});
+
+/**
  * Internal query to get document (for use in actions)
  */
 export const getDocumentInternal = internalQuery({
