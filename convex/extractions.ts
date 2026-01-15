@@ -1,16 +1,16 @@
 import { v } from 'convex/values';
-import { query, mutation } from './_generated/server';
 import {
   extractionIngressRowValidator,
   extractionEgressRowValidator,
   validatedIngressRowValidator,
   validatedEgressRowValidator,
 } from './schema';
+import { authMutation, authQuery } from './lib/withAuth';
 
 /**
  * Get all extractions for a document
  */
-export const getExtractions = query({
+export const getExtractions = authQuery({
   args: {
     documentId: v.id('documents'),
   },
@@ -26,10 +26,6 @@ export const getExtractions = query({
     }),
   ),
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Unauthorized');
-    }
     return await ctx.db
       .query('extractions')
       .withIndex('by_document', (q) => q.eq('documentId', args.documentId))
@@ -40,7 +36,7 @@ export const getExtractions = query({
 /**
  * Get validated data for a document
  */
-export const getValidatedData = query({
+export const getValidatedData = authQuery({
   args: {
     documentId: v.id('documents'),
   },
@@ -56,10 +52,6 @@ export const getValidatedData = query({
     v.null(),
   ),
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Unauthorized');
-    }
     return await ctx.db
       .query('validatedData')
       .withIndex('by_document', (q) => q.eq('documentId', args.documentId))
@@ -70,7 +62,7 @@ export const getValidatedData = query({
 /**
  * Save validated data for a document
  */
-export const saveValidatedData = mutation({
+export const saveValidatedData = authMutation({
   args: {
     documentId: v.id('documents'),
     ingress: v.array(validatedIngressRowValidator),
@@ -78,10 +70,6 @@ export const saveValidatedData = mutation({
   },
   returns: v.id('validatedData'),
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Unauthorized');
-    }
     // Check if validated data already exists
     const existing = await ctx.db
       .query('validatedData')

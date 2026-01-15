@@ -39,10 +39,10 @@ function normalizeForComparison(str: string): string {
 
 function findCandidateByFilename(filename: string): CandidateMetadata | null {
   const normalizedFilename = normalizeForComparison(filename);
-  
+
   for (const candidate of documentsIndex as CandidateMetadata[]) {
     if (!candidate.pdfUrl) continue;
-    
+
     // Double decode to handle double-encoded URLs
     let pdfFilename = candidate.pdfUrl.split('/').pop() || '';
     try {
@@ -54,7 +54,7 @@ function findCandidateByFilename(filename: string): CandidateMetadata | null {
         // Use as-is if decoding fails
       }
     }
-    
+
     if (normalizeForComparison(pdfFilename) === normalizedFilename) {
       return candidate;
     }
@@ -232,7 +232,7 @@ function DocumentsPage() {
   const hasFilePicker = (
     value: Window,
   ): value is Window & {
-    showSaveFilePicker: (options?: SaveFilePickerOptions) => Promise<FileSystemFileHandle>;
+    showSaveFilePicker: (options?: {}) => Promise<FileSystemFileHandle>;
   } => 'showSaveFilePicker' in value;
 
   useEffect(() => {
@@ -260,7 +260,7 @@ function DocumentsPage() {
 
         if (hasFilePicker(window)) {
           const saveStream = async (stream: ReadableStream<Uint8Array>, suggestedName: string) => {
-            const handle = await window.showSaveFilePicker({
+            const handle = await (window as any).showSaveFilePicker({
               suggestedName,
               types: [
                 {
@@ -329,7 +329,7 @@ function DocumentsPage() {
           <UserMenu />
         </Authenticated>
       </header>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
+      <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
         <div className="max-w-6xl mx-auto p-8">
           {/* Page Header */}
           <div className="mb-8">
@@ -591,6 +591,21 @@ function DocumentsPage() {
                               <span>{doc.ingressCount} ingresos</span>
                               <span>•</span>
                               <span>{doc.egressCount} egresos</span>
+                              <span>•</span>
+                            </>
+                          )}
+                          {(doc.totalIngresos != null || doc.totalGastos != null) && (
+                            <>
+                              {doc.totalIngresos != null && (
+                                <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                                  +${doc.totalIngresos.toLocaleString('es-PA', { minimumFractionDigits: 2 })}
+                                </span>
+                              )}
+                              {doc.totalGastos != null && (
+                                <span className="text-red-600 dark:text-red-400 font-medium">
+                                  -${doc.totalGastos.toLocaleString('es-PA', { minimumFractionDigits: 2 })}
+                                </span>
+                              )}
                               <span>•</span>
                             </>
                           )}

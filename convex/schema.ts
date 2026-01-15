@@ -69,6 +69,42 @@ const validatedEgressRowValidator = v.object({
   humanUnreadableFields: v.optional(v.array(v.string())),
 });
 
+// Summary extraction (Resumen de Ingresos y Gastos from page ~5)
+const summaryExtractionValidator = v.object({
+  // Ingresos summary
+  saldoPrimariasRecoleccionFirmas: v.optional(v.union(v.number(), v.null())),
+  donacionesRecibidasEfectivoChequeAch: v.optional(v.union(v.number(), v.null())),
+  donacionesEnEspecie: v.optional(v.union(v.number(), v.null())),
+  aporteRecursosPropios: v.optional(v.union(v.number(), v.null())),
+  totalIngresos: v.optional(v.union(v.number(), v.null())),
+
+  // Gastos summary
+  gastosComprasEfectuadas: v.optional(v.union(v.number(), v.null())),
+  gastosDonatcionEnEspecie: v.optional(v.union(v.number(), v.null())),
+  cargosBancarios: v.optional(v.union(v.number(), v.null())),
+  totalGastos: v.optional(v.union(v.number(), v.null())),
+  totalResultado: v.optional(v.union(v.number(), v.null())), // ingresos - gastos
+
+  // Metadata
+  formType: v.optional(v.union(v.string(), v.null())), // e.g. "Pre-15", "Pre-15-A", "Pre-16", "Pre-5"
+  candidatoNombre: v.optional(v.union(v.string(), v.null())),
+  candidatoCedula: v.optional(v.union(v.string(), v.null())),
+  candidatoFecha: v.optional(v.union(v.string(), v.null())),
+  contadorNombre: v.optional(v.union(v.string(), v.null())),
+  contadorCedula: v.optional(v.union(v.string(), v.null())),
+  contadorCpaNo: v.optional(v.union(v.string(), v.null())),
+  contadorFecha: v.optional(v.union(v.string(), v.null())),
+  contadorCelular: v.optional(v.union(v.string(), v.null())),
+  tesoreroNombre: v.optional(v.union(v.string(), v.null())),
+  tesoreroCedula: v.optional(v.union(v.string(), v.null())),
+  tesoreroFecha: v.optional(v.union(v.string(), v.null())),
+
+  // Fields marked as unreadable by AI
+  unreadableFields: v.optional(v.array(v.string())),
+  // Page number where the summary was found (reported by AI)
+  pageNumber: v.optional(v.union(v.number(), v.null())),
+});
+
 export default defineSchema({
   // Convex Auth tables
   ...authTables,
@@ -84,6 +120,9 @@ export default defineSchema({
     pageRotations: v.optional(v.record(v.string(), v.number())),
     // Timestamp when processing started (for detecting stuck items)
     processingStartedAt: v.optional(v.number()),
+    // Summary extraction status
+    summaryStatus: v.optional(v.union(v.literal('pending'), v.literal('processing'), v.literal('completed'), v.literal('failed'))),
+    summaryErrorMessage: v.optional(v.string()),
   }).index('by_status', ['status']),
 
   // Raw extraction results from each model (with AI-detected unreadableFields)
@@ -92,6 +131,15 @@ export default defineSchema({
     model: v.string(), // e.g., "gemini-2.0-flash", "gemini-3-flash"
     ingress: v.array(extractionIngressRowValidator),
     egress: v.array(extractionEgressRowValidator),
+    completedAt: v.number(),
+  }).index('by_document', ['documentId']),
+
+  // Summary extraction results (Resumen de Ingresos y Gastos)
+  summaryExtractions: defineTable({
+    documentId: v.id('documents'),
+    model: v.string(),
+    summary: summaryExtractionValidator,
+    pageNumber: v.number(), // which page was extracted (usually 3-5)
     completedAt: v.number(),
   }).index('by_document', ['documentId']),
 
@@ -110,4 +158,5 @@ export {
   extractionEgressRowValidator,
   validatedIngressRowValidator,
   validatedEgressRowValidator,
+  summaryExtractionValidator,
 };

@@ -5,6 +5,10 @@ import { internalAction } from './_generated/server';
 import { internal } from './_generated/api';
 import { PDFDocument } from 'pdf-lib';
 import { z } from 'zod';
+import pLimit from 'p-limit';
+
+// Concurrency limit for parallel page processing
+const PAGE_CONCURRENCY = 50;
 
 // Models to use for extraction
 const MODELS = [
@@ -281,51 +285,73 @@ export const startExtraction = internalAction({
       console.log(`Split PDF into ${pages.length} pages`);
 
       // Process with each model
-      for (const model of MODELS) {
-        console.log(`Processing with ${model.id}...`);
+      await Promise.all(
+        MODELS.map(async (model) => {
+          console.log(`Processing with ${model.id}...`);
 
-        const allIngress: IngressRow[] = [];
-        const allEgress: EgressRow[] = [];
+          const allIngress: IngressRow[] = [];
+          const allEgress: EgressRow[] = [];
 
-        // Process each page
-        for (const page of pages) {
-          const pdfBase64 = Buffer.from(page.pageBytes).toString('base64');
+          // Process pages concurrently with limit
+          const limit = pLimit(PAGE_CONCURRENCY);
 
-          try {
-            const result = await callOpenRouter(pdfBase64, model.openrouterId);
+          const pageResults = await Promise.all(
+            pages.map((page) =>
+              limit(async () => {
+                const pdfBase64 = Buffer.from(page.pageBytes).toString('base64');
 
-            // Add page number to each row
+                try {
+                  const result = await callOpenRouter(pdfBase64, model.openrouterId);
+
+                  console.log(
+                    `[${model.id}] Page ${page.pageNumber}: ${result.ingress.length} ingress, ${result.egress.length} egress`,
+                  );
+
+                  return {
+                    pageNumber: page.pageNumber,
+                    ingress: result.ingress,
+                    egress: result.egress,
+                  };
+                } catch (error) {
+                  console.error(`[${model.id}] Error processing page ${page.pageNumber}:`, error);
+                  // Return empty results for failed pages
+                  return { pageNumber: page.pageNumber, ingress: [], egress: [] };
+                }
+              }),
+            ),
+          );
+
+          // Aggregate results from all pages
+          for (const result of pageResults) {
             for (const row of result.ingress) {
-              allIngress.push({ ...row, pageNumber: page.pageNumber });
+              allIngress.push({ ...row, pageNumber: result.pageNumber });
             }
             for (const row of result.egress) {
-              allEgress.push({ ...row, pageNumber: page.pageNumber });
+              allEgress.push({ ...row, pageNumber: result.pageNumber });
             }
-
-            console.log(
-              `[${model.id}] Page ${page.pageNumber}: ${result.ingress.length} ingress, ${result.egress.length} egress`,
-            );
-          } catch (error) {
-            console.error(`[${model.id}] Error processing page ${page.pageNumber}:`, error);
-            // Continue with other pages even if one fails
           }
-        }
 
-        // Store extraction results
-        await ctx.runMutation(internal.extractionHelpers.storeExtraction, {
-          documentId: args.documentId,
-          model: model.id,
-          ingress: allIngress,
-          egress: allEgress,
-        });
+          // Store extraction results
+          await ctx.runMutation(internal.extractionHelpers.storeExtraction, {
+            documentId: args.documentId,
+            model: model.id,
+            ingress: allIngress,
+            egress: allEgress,
+          });
 
-        console.log(`[${model.id}] Completed: ${allIngress.length} ingress, ${allEgress.length} egress total`);
-      }
+          console.log(`[${model.id}] Completed: ${allIngress.length} ingress, ${allEgress.length} egress total`);
+        }),
+      );
 
       // Update status to completed
       await ctx.runMutation(internal.extractionHelpers.updateDocumentStatus, {
         documentId: args.documentId,
         status: 'completed',
+      });
+
+      // Also trigger summary extraction as a separate process
+      await ctx.scheduler.runAfter(0, internal.summaryExtraction.startSummaryExtraction, {
+        documentId: args.documentId,
       });
     } catch (error) {
       console.error('Extraction failed:', error);
