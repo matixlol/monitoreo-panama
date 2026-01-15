@@ -305,3 +305,49 @@ export const setPageRotation = mutation({
     return null;
   },
 });
+
+/**
+ * Reprocess all documents stuck in "processing" state
+ */
+export const reprocessStuckDocuments = mutation({
+  args: {},
+  returns: v.object({
+    reprocessed: v.number(),
+  }),
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error('Unauthorized');
+    }
+
+    const processingDocs = await ctx.db
+      .query('documents')
+      .withIndex('by_status', (q) => q.eq('status', 'processing'))
+      .collect();
+
+    for (const doc of processingDocs) {
+      const existingExtractions = await ctx.db
+        .query('extractions')
+        .withIndex('by_document', (q) => q.eq('documentId', doc._id))
+        .collect();
+
+      for (const extraction of existingExtractions) {
+        await ctx.db.delete(extraction._id);
+      }
+
+      await ctx.db.patch(doc._id, {
+        status: 'pending',
+        errorMessage: undefined,
+        processingStartedAt: undefined,
+      });
+
+      await ctx.scheduler.runAfter(0, internal.extraction.startExtraction, {
+        documentId: doc._id,
+      });
+    }
+
+    return {
+      reprocessed: processingDocs.length,
+    };
+  },
+});

@@ -1,6 +1,7 @@
 import { v } from 'convex/values';
 import { internalMutation, internalQuery } from './_generated/server';
 
+
 /**
  * Update document status
  */
@@ -12,10 +13,20 @@ export const updateDocumentStatus = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.documentId, {
+    const patch: {
+      status: 'pending' | 'processing' | 'completed' | 'failed';
+      errorMessage?: string;
+      processingStartedAt?: number;
+    } = {
       status: args.status,
       errorMessage: args.errorMessage,
-    });
+    };
+
+    if (args.status === 'processing') {
+      patch.processingStartedAt = Date.now();
+    }
+
+    await ctx.db.patch(args.documentId, patch);
     return null;
   },
 });
@@ -74,3 +85,5 @@ export const getDocumentInternal = internalQuery({
     };
   },
 });
+
+
