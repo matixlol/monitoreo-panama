@@ -416,3 +416,100 @@ export const processSingleSummary = authMutation({
     return null;
   },
 });
+
+/**
+ * Get documents with discrepancy calculations between summary totals and row sums
+ */
+export const getDocumentsWithDiscrepancies = authQuery({
+  args: {},
+  handler: async (ctx) => {
+    const documents = await ctx.db.query('documents').collect();
+
+    const results = await Promise.all(
+      documents.map(async (doc) => {
+        // Get summary extraction
+        const summaryExtraction = await ctx.db
+          .query('summaryExtractions')
+          .withIndex('by_document', (q) => q.eq('documentId', doc._id))
+          .first();
+
+        if (!summaryExtraction) {
+          return null;
+        }
+
+        const summaryTotalIngresos = summaryExtraction.summary.totalIngresos ?? null;
+        const summaryTotalGastos = summaryExtraction.summary.totalGastos ?? null;
+
+        // Get best row data: validated first, then gemini-3-flash
+        const validatedData = await ctx.db
+          .query('validatedData')
+          .withIndex('by_document', (q) => q.eq('documentId', doc._id))
+          .unique();
+
+        let ingress: { total?: number | null }[] = [];
+        let egress: { totalDeGastosDePropagandaYCampania?: number | null }[] = [];
+        let dataSource: 'validated' | 'gemini-3-flash' | 'none' = 'none';
+
+        if (validatedData) {
+          ingress = validatedData.ingress;
+          egress = validatedData.egress;
+          dataSource = 'validated';
+        } else {
+          const extractions = await ctx.db
+            .query('extractions')
+            .withIndex('by_document', (q) => q.eq('documentId', doc._id))
+            .collect();
+
+          const gemini3Extraction = extractions
+            .filter((e) => e.model.startsWith('gemini-3'))
+            .sort((a, b) => b.completedAt - a.completedAt)[0];
+
+          if (gemini3Extraction) {
+            ingress = gemini3Extraction.ingress;
+            egress = gemini3Extraction.egress;
+            dataSource = 'gemini-3-flash';
+          }
+        }
+
+        // Calculate sums from rows
+        const summedIngresos = ingress.reduce((sum, row) => sum + (row.total ?? 0), 0);
+        const summedGastos = egress.reduce(
+          (sum, row) => sum + (row.totalDeGastosDePropagandaYCampania ?? 0),
+          0,
+        );
+
+        // Calculate discrepancies
+        const ingressDiscrepancy =
+          summaryTotalIngresos != null ? summaryTotalIngresos - summedIngresos : null;
+        const egressDiscrepancy =
+          summaryTotalGastos != null ? summaryTotalGastos - summedGastos : null;
+
+        // Calculate max absolute discrepancy for sorting
+        const maxAbsDiscrepancy = Math.max(
+          Math.abs(ingressDiscrepancy ?? 0),
+          Math.abs(egressDiscrepancy ?? 0),
+        );
+
+        return {
+          _id: doc._id,
+          name: doc.name,
+          dataSource,
+          summaryTotalIngresos,
+          summaryTotalGastos,
+          summedIngresos,
+          summedGastos,
+          ingressDiscrepancy,
+          egressDiscrepancy,
+          maxAbsDiscrepancy,
+          ingressRowCount: ingress.length,
+          egressRowCount: egress.length,
+        };
+      }),
+    );
+
+    // Filter out nulls and sort by max absolute discrepancy descending
+    return results
+      .filter((r): r is NonNullable<typeof r> => r !== null)
+      .sort((a, b) => b.maxAbsDiscrepancy - a.maxAbsDiscrepancy);
+  },
+});
