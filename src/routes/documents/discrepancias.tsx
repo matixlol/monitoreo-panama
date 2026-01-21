@@ -112,8 +112,7 @@ function DiscrepanciasPage() {
             <tr>
               <th className="px-4 py-3 text-left font-medium text-slate-600 dark:text-slate-300">Documento</th>
               <th className="px-4 py-3 text-left font-medium text-slate-600 dark:text-slate-300">Fuente</th>
-              <th className="px-4 py-3 text-right font-medium text-slate-600 dark:text-slate-300">Resumen Ingresos</th>
-              <th className="px-4 py-3 text-right font-medium text-slate-600 dark:text-slate-300">− Saldo Ant.</th>
+              <th className="px-4 py-3 text-right font-medium text-slate-600 dark:text-slate-300">Resumen Ingresos (− saldo ant.)</th>
               <th className="px-4 py-3 text-right font-medium text-slate-600 dark:text-slate-300">Σ Totales</th>
               <th className="px-4 py-3 text-right font-medium text-slate-600 dark:text-slate-300">Δ Totales</th>
               <th className="px-4 py-3 text-right font-medium text-slate-600 dark:text-slate-300">Σ Categorías</th>
@@ -155,9 +154,6 @@ function DiscrepanciasPage() {
                   </td>
                   <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300">
                     {formatCurrency(doc.summaryTotalIngresos)}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-slate-500 dark:text-slate-400">
-                    {doc.saldoAnterior ? `−${formatCurrency(doc.saldoAnterior).slice(1)}` : '—'}
                   </td>
                   <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300">
                     {formatCurrency(doc.summedIngresos)}
