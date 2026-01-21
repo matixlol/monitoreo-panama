@@ -16,7 +16,8 @@
     "strictNullChecks": true,
     "paths": {
       "@/*": ["./src/*"],
-      "~/*": ["./src/*"]
+      "~/*": ["./src/*"],
+      "@convex/*": ["./convex/_generated/*"]
     },
     "types": ["vite/client"]
   },

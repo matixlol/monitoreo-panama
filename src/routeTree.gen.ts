@@ -9,13 +9,20 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as DocumentsRouteImport } from './routes/documents'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DocumentsIndexRouteImport } from './routes/documents/index'
-import { Route as DocumentsDocumentIdRouteImport } from './routes/documents/$documentId'
+import { Route as DocumentsDocumentIdRouteImport } from './routes/documents_.$documentId'
+import { Route as DocumentsDiscrepanciasRouteImport } from './routes/documents/discrepancias'
 import { Route as AuthenticatedAuthenticatedRouteImport } from './routes/_authenticated/authenticated'
 
+const DocumentsRoute = DocumentsRouteImport.update({
+  id: '/documents',
+  path: '/documents',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -31,14 +38,19 @@ const IndexRoute = IndexRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const DocumentsIndexRoute = DocumentsIndexRouteImport.update({
-  id: '/documents/',
-  path: '/documents/',
-  getParentRoute: () => rootRouteImport,
+  id: '/',
+  path: '/',
+  getParentRoute: () => DocumentsRoute,
 } as any)
 const DocumentsDocumentIdRoute = DocumentsDocumentIdRouteImport.update({
-  id: '/documents/$documentId',
+  id: '/documents_/$documentId',
   path: '/documents/$documentId',
   getParentRoute: () => rootRouteImport,
+} as any)
+const DocumentsDiscrepanciasRoute = DocumentsDiscrepanciasRouteImport.update({
+  id: '/discrepancias',
+  path: '/discrepancias',
+  getParentRoute: () => DocumentsRoute,
 } as any)
 const AuthenticatedAuthenticatedRoute =
   AuthenticatedAuthenticatedRouteImport.update({
@@ -50,14 +62,17 @@ const AuthenticatedAuthenticatedRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/documents': typeof DocumentsRouteWithChildren
   '/authenticated': typeof AuthenticatedAuthenticatedRoute
+  '/documents/discrepancias': typeof DocumentsDiscrepanciasRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRoute
-  '/documents': typeof DocumentsIndexRoute
+  '/documents/': typeof DocumentsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/authenticated': typeof AuthenticatedAuthenticatedRoute
+  '/documents/discrepancias': typeof DocumentsDiscrepanciasRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRoute
   '/documents': typeof DocumentsIndexRoute
 }
@@ -66,8 +81,10 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/admin': typeof AdminRoute
+  '/documents': typeof DocumentsRouteWithChildren
   '/_authenticated/authenticated': typeof AuthenticatedAuthenticatedRoute
-  '/documents/$documentId': typeof DocumentsDocumentIdRoute
+  '/documents/discrepancias': typeof DocumentsDiscrepanciasRoute
+  '/documents_/$documentId': typeof DocumentsDocumentIdRoute
   '/documents/': typeof DocumentsIndexRoute
 }
 export interface FileRouteTypes {
@@ -75,14 +92,17 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
-    | '/authenticated'
-    | '/documents/$documentId'
     | '/documents'
+    | '/authenticated'
+    | '/documents/discrepancias'
+    | '/documents/$documentId'
+    | '/documents/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/admin'
     | '/authenticated'
+    | '/documents/discrepancias'
     | '/documents/$documentId'
     | '/documents'
   id:
@@ -90,8 +110,10 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/admin'
+    | '/documents'
     | '/_authenticated/authenticated'
-    | '/documents/$documentId'
+    | '/documents/discrepancias'
+    | '/documents_/$documentId'
     | '/documents/'
   fileRoutesById: FileRoutesById
 }
@@ -99,12 +121,19 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   AdminRoute: typeof AdminRoute
+  DocumentsRoute: typeof DocumentsRouteWithChildren
   DocumentsDocumentIdRoute: typeof DocumentsDocumentIdRoute
-  DocumentsIndexRoute: typeof DocumentsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/documents': {
+      id: '/documents'
+      path: '/documents'
+      fullPath: '/documents'
+      preLoaderRoute: typeof DocumentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin': {
       id: '/admin'
       path: '/admin'
@@ -128,17 +157,24 @@ declare module '@tanstack/react-router' {
     }
     '/documents/': {
       id: '/documents/'
-      path: '/documents'
-      fullPath: '/documents'
+      path: '/'
+      fullPath: '/documents/'
       preLoaderRoute: typeof DocumentsIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof DocumentsRoute
     }
-    '/documents/$documentId': {
-      id: '/documents/$documentId'
+    '/documents_/$documentId': {
+      id: '/documents_/$documentId'
       path: '/documents/$documentId'
       fullPath: '/documents/$documentId'
       preLoaderRoute: typeof DocumentsDocumentIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/documents/discrepancias': {
+      id: '/documents/discrepancias'
+      path: '/discrepancias'
+      fullPath: '/documents/discrepancias'
+      preLoaderRoute: typeof DocumentsDiscrepanciasRouteImport
+      parentRoute: typeof DocumentsRoute
     }
     '/_authenticated/authenticated': {
       id: '/_authenticated/authenticated'
@@ -162,12 +198,26 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
   AuthenticatedRouteChildren,
 )
 
+interface DocumentsRouteChildren {
+  DocumentsDiscrepanciasRoute: typeof DocumentsDiscrepanciasRoute
+  DocumentsIndexRoute: typeof DocumentsIndexRoute
+}
+
+const DocumentsRouteChildren: DocumentsRouteChildren = {
+  DocumentsDiscrepanciasRoute: DocumentsDiscrepanciasRoute,
+  DocumentsIndexRoute: DocumentsIndexRoute,
+}
+
+const DocumentsRouteWithChildren = DocumentsRoute._addFileChildren(
+  DocumentsRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   AdminRoute: AdminRoute,
+  DocumentsRoute: DocumentsRouteWithChildren,
   DocumentsDocumentIdRoute: DocumentsDocumentIdRoute,
-  DocumentsIndexRoute: DocumentsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
