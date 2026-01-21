@@ -1,28 +1,41 @@
-import { createFileRoute, Link } from '@tanstack/react-router';
-import { Authenticated, Unauthenticated, useConvexAuth } from 'convex/react';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { useConvexAuth } from 'convex/react';
 import { useAuthActions } from '@convex-dev/auth/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export const Route = createFileRoute('/')({
   component: Home,
 });
 
 function Home() {
+  const { isAuthenticated, isLoading } = useConvexAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      void navigate({ to: '/documents', replace: true });
+    }
+  }, [isAuthenticated, navigate]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p>Loading...</p>
+      </div>
+    );
+  }
+
+  if (isAuthenticated) {
+    return null;
+  }
+
   return (
     <>
       <header className="sticky top-0 z-10 bg-background p-4 border-b-2 border-slate-200 dark:border-slate-800 flex flex-row justify-between items-center">
         Monitoreo Panama
-        <Authenticated>
-          <UserMenu />
-        </Authenticated>
       </header>
       <main className="p-8 flex flex-col gap-8">
-        <Authenticated>
-          <Content />
-        </Authenticated>
-        <Unauthenticated>
-          <SignInForm />
-        </Unauthenticated>
+        <SignInForm />
       </main>
     </>
   );
@@ -101,34 +114,4 @@ function SignInForm() {
   );
 }
 
-function Content() {
-  return (
-    <div className="flex flex-col gap-8 max-w-lg mx-auto">
-      <p>Welcome!</p>
-      <Link
-        to="/documents"
-        className="bg-foreground text-background px-6 py-3 rounded-md text-center hover:opacity-90 transition-opacity"
-      >
-        Go to Documents
-      </Link>
-    </div>
-  );
-}
 
-function UserMenu() {
-  const { signOut } = useAuthActions();
-  const { isAuthenticated } = useConvexAuth();
-
-  if (!isAuthenticated) return null;
-
-  return (
-    <div className="flex items-center gap-2">
-      <button
-        onClick={() => void signOut()}
-        className="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600"
-      >
-        Sign out
-      </button>
-    </div>
-  );
-}
