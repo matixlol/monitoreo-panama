@@ -106,9 +106,9 @@ function DiscrepanciasPage() {
         </p>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="overflow-auto max-h-[calc(100vh-12rem)]">
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 dark:bg-slate-700/50">
+          <thead className="bg-slate-50 dark:bg-slate-700/50 sticky top-0 z-10 shadow-sm">
             <tr>
               <th className="px-4 py-3 text-left font-medium text-slate-600 dark:text-slate-300">Documento</th>
               <th className="px-4 py-3 text-left font-medium text-slate-600 dark:text-slate-300">Fuente</th>
