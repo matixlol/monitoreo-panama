@@ -1,7 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { Authenticated, useConvexAuth } from 'convex/react';
 import { useMutation, useQuery } from 'convex/react';
-import { useAuthActions } from '@convex-dev/auth/react';
 import { api } from '../../../convex/_generated/api';
 import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { PDFDocument } from 'pdf-lib';
@@ -72,8 +70,6 @@ type UploadProgress = {
   error?: string;
 };
 
-type TabId = 'documents' | 'discrepancies';
-
 function DocumentsPage() {
   const documents = useQuery(api.documents.listDocuments);
   const [exportRequested, setExportRequested] = useState(false);
@@ -81,8 +77,6 @@ function DocumentsPage() {
   const generateUploadUrl = useMutation(api.documents.generateUploadUrl);
   const createDocument = useMutation(api.documents.createDocument);
   const retryExtraction = useMutation(api.documents.retryExtraction);
-
-  const [activeTab, setActiveTab] = useState<TabId>('documents');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
@@ -324,53 +318,7 @@ function DocumentsPage() {
 
   return (
     <>
-      <header className="sticky top-0 z-10 bg-background p-4 border-b-2 border-slate-200 dark:border-slate-800 flex flex-row justify-between items-center">
-        <Link to="/" className="hover:opacity-80 transition-opacity">
-          Monitoreo Panama
-        </Link>
-        <Authenticated>
-          <UserMenu />
-        </Authenticated>
-      </header>
-      <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
-        <div className="max-w-6xl mx-auto p-8">
-          {/* Page Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Documentos PDF</h1>
-            <p className="mt-2 text-slate-600 dark:text-slate-400">
-              Sube documentos PDF para extraer datos financieros
-            </p>
-          </div>
-
-          {/* Tab Navigation */}
-          <div className="mb-6 border-b border-slate-200 dark:border-slate-700">
-            <nav className="-mb-px flex gap-4">
-              <button
-                onClick={() => setActiveTab('documents')}
-                className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === 'documents'
-                    ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
-                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-slate-400 dark:hover:text-slate-300'
-                }`}
-              >
-                Documentos
-              </button>
-              <button
-                onClick={() => setActiveTab('discrepancies')}
-                className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === 'discrepancies'
-                    ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
-                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-slate-400 dark:hover:text-slate-300'
-                }`}
-              >
-                Discrepancias
-              </button>
-            </nav>
-          </div>
-
-          {activeTab === 'documents' && (
-            <>
-              {/* Upload Section */}
+      {/* Upload Section */}
           <div className="mb-8 p-6 bg-white dark:bg-slate-800 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600">
             <div className="text-center">
               <input
@@ -683,166 +631,6 @@ function DocumentsPage() {
               </div>
             )}
           </div>
-            </>
-          )}
-
-          {activeTab === 'discrepancies' && <DiscrepanciesTab />}
-        </div>
-      </div>
     </>
-  );
-}
-
-function DiscrepanciesTab() {
-  const discrepancies = useQuery(api.documents.getDocumentsWithDiscrepancies);
-
-  const formatCurrency = (value: number | null) => {
-    if (value === null) return '—';
-    return `$${value.toLocaleString('es-PA', { minimumFractionDigits: 2 })}`;
-  };
-
-  const formatDiscrepancy = (value: number | null) => {
-    if (value === null) return '—';
-    const formatted = formatCurrency(Math.abs(value));
-    if (value > 0) return `+${formatted}`;
-    if (value < 0) return `-${formatted.slice(1)}`;
-    return formatted;
-  };
-
-  const getDiscrepancyColor = (value: number | null) => {
-    if (value === null || value === 0) return 'text-slate-500';
-    const absValue = Math.abs(value);
-    if (absValue > 1000) return 'text-red-600 dark:text-red-400 font-semibold';
-    if (absValue > 100) return 'text-amber-600 dark:text-amber-400';
-    return 'text-slate-600 dark:text-slate-400';
-  };
-
-  if (discrepancies === undefined) {
-    return <div className="p-8 text-center text-slate-500">Cargando discrepancias...</div>;
-  }
-
-  if (discrepancies.length === 0) {
-    return (
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-8 text-center text-slate-500">
-        No hay documentos con datos de resumen para comparar.
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm overflow-hidden">
-      <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700">
-        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-          Discrepancias entre Resumen y Filas
-        </h2>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Comparación entre los totales del resumen y la suma de filas individuales. Ordenado por mayor discrepancia.
-        </p>
-      </div>
-
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 dark:bg-slate-700/50">
-            <tr>
-              <th className="px-4 py-3 text-left font-medium text-slate-600 dark:text-slate-300">
-                Documento
-              </th>
-              <th className="px-4 py-3 text-left font-medium text-slate-600 dark:text-slate-300">
-                Fuente
-              </th>
-              <th className="px-4 py-3 text-right font-medium text-slate-600 dark:text-slate-300">
-                Resumen Ingresos
-              </th>
-              <th className="px-4 py-3 text-right font-medium text-slate-600 dark:text-slate-300">
-                Suma Filas
-              </th>
-              <th className="px-4 py-3 text-right font-medium text-slate-600 dark:text-slate-300">
-                Δ Ingresos
-              </th>
-              <th className="px-4 py-3 text-right font-medium text-slate-600 dark:text-slate-300">
-                Resumen Gastos
-              </th>
-              <th className="px-4 py-3 text-right font-medium text-slate-600 dark:text-slate-300">
-                Suma Filas
-              </th>
-              <th className="px-4 py-3 text-right font-medium text-slate-600 dark:text-slate-300">
-                Δ Gastos
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-            {discrepancies.map((doc) => {
-              const candidate = findCandidateByFilename(doc.name);
-              return (
-                <tr
-                  key={doc._id}
-                  className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors"
-                >
-                  <td className="px-4 py-3">
-                    <Link
-                      to="/documents/$documentId"
-                      params={{ documentId: doc._id }}
-                      className="text-indigo-600 dark:text-indigo-400 hover:underline font-medium"
-                    >
-                      {candidate?.candidateName || doc.name}
-                    </Link>
-                    <div className="text-xs text-slate-400 mt-0.5">
-                      {doc.ingressRowCount} ingresos, {doc.egressRowCount} egresos
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`px-2 py-0.5 rounded text-xs font-medium ${
-                        doc.dataSource === 'validated'
-                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200'
-                          : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                      }`}
-                    >
-                      {doc.dataSource === 'validated' ? 'Validado' : 'Gemini 3'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300">
-                    {formatCurrency(doc.summaryTotalIngresos)}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300">
-                    {formatCurrency(doc.summedIngresos)}
-                  </td>
-                  <td className={`px-4 py-3 text-right font-mono ${getDiscrepancyColor(doc.ingressDiscrepancy)}`}>
-                    {formatDiscrepancy(doc.ingressDiscrepancy)}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300">
-                    {formatCurrency(doc.summaryTotalGastos)}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300">
-                    {formatCurrency(doc.summedGastos)}
-                  </td>
-                  <td className={`px-4 py-3 text-right font-mono ${getDiscrepancyColor(doc.egressDiscrepancy)}`}>
-                    {formatDiscrepancy(doc.egressDiscrepancy)}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function UserMenu() {
-  const { signOut } = useAuthActions();
-  const { isAuthenticated } = useConvexAuth();
-
-  if (!isAuthenticated) return null;
-
-  return (
-    <div className="flex items-center gap-2">
-      <button
-        onClick={() => void signOut()}
-        className="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600"
-      >
-        Sign out
-      </button>
-    </div>
   );
 }

@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useMutation, useQuery } from 'convex/react';
-import { api } from '../../../convex/_generated/api';
+import { api } from '@convex/api';
 import { useState, useCallback, useMemo, lazy, Suspense, useEffect } from 'react';
-import type { Id } from '../../../convex/_generated/dataModel';
+import type { Id } from '@convex/dataModel';
 import { Button } from '@/components/ui/button';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 
@@ -35,7 +35,7 @@ const PDFViewer = lazy(() =>
   }),
 );
 
-export const Route = createFileRoute('/documents/$documentId')({
+export const Route = createFileRoute('/documents_/$documentId')({
   component: DocumentValidationPage,
 });
 
