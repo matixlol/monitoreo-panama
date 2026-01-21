@@ -61,22 +61,23 @@ export const Route = createFileRoute('/documents/discrepancias')({
 function DiscrepanciasPage() {
   const discrepancies = useQuery(api.documents.getDocumentsWithDiscrepancies);
 
-  const formatCurrency = (value: number | null) => {
-    if (value === null) return '—';
+  const formatCurrency = (value: number | null | undefined) => {
+    if (value == null) return '—';
     return `$${value.toLocaleString('es-PA', { minimumFractionDigits: 2 })}`;
   };
 
-  const formatDiscrepancy = (value: number | null) => {
-    if (value === null) return '—';
+  const formatDiscrepancy = (value: number | null | undefined) => {
+    if (value == null) return '—';
     const formatted = formatCurrency(Math.abs(value));
     if (value > 0) return `+${formatted}`;
     if (value < 0) return `-${formatted.slice(1)}`;
     return formatted;
   };
 
-  const getDiscrepancyColor = (value: number | null) => {
-    if (value === null || value === 0) return 'text-slate-500';
-    const absValue = Math.abs(value);
+  const getDiscrepancyColor = (value: number | null | undefined) => {
+    const absValue = Math.abs(value ?? 0);
+    if (absValue < 10) return 'text-green-600 dark:text-green-400';
+    if (value == null || value === 0) return 'text-slate-500';
     if (absValue > 1000) return 'text-red-600 dark:text-red-400 font-semibold';
     if (absValue > 100) return 'text-amber-600 dark:text-amber-400';
     return 'text-slate-600 dark:text-slate-400';
@@ -109,40 +110,26 @@ function DiscrepanciasPage() {
         <table className="w-full text-sm">
           <thead className="bg-slate-50 dark:bg-slate-700/50">
             <tr>
-              <th className="px-4 py-3 text-left font-medium text-slate-600 dark:text-slate-300">
-                Documento
-              </th>
-              <th className="px-4 py-3 text-left font-medium text-slate-600 dark:text-slate-300">
-                Fuente
-              </th>
-              <th className="px-4 py-3 text-right font-medium text-slate-600 dark:text-slate-300">
-                Resumen Ingresos
-              </th>
-              <th className="px-4 py-3 text-right font-medium text-slate-600 dark:text-slate-300">
-                Suma Filas
-              </th>
-              <th className="px-4 py-3 text-right font-medium text-slate-600 dark:text-slate-300">
-                Δ Ingresos
-              </th>
-              <th className="px-4 py-3 text-right font-medium text-slate-600 dark:text-slate-300">
-                Resumen Gastos
-              </th>
-              <th className="px-4 py-3 text-right font-medium text-slate-600 dark:text-slate-300">
-                Suma Filas
-              </th>
-              <th className="px-4 py-3 text-right font-medium text-slate-600 dark:text-slate-300">
-                Δ Gastos
-              </th>
+              <th className="px-4 py-3 text-left font-medium text-slate-600 dark:text-slate-300">Documento</th>
+              <th className="px-4 py-3 text-left font-medium text-slate-600 dark:text-slate-300">Fuente</th>
+              <th className="px-4 py-3 text-right font-medium text-slate-600 dark:text-slate-300">Resumen Ingresos</th>
+              <th className="px-4 py-3 text-right font-medium text-slate-600 dark:text-slate-300">− Saldo Ant.</th>
+              <th className="px-4 py-3 text-right font-medium text-slate-600 dark:text-slate-300">Σ Totales</th>
+              <th className="px-4 py-3 text-right font-medium text-slate-600 dark:text-slate-300">Δ Totales</th>
+              <th className="px-4 py-3 text-right font-medium text-slate-600 dark:text-slate-300">Σ Categorías</th>
+              <th className="px-4 py-3 text-right font-medium text-slate-600 dark:text-slate-300">Δ Categorías</th>
+              <th className="px-4 py-3 text-right font-medium text-slate-600 dark:text-slate-300">Resumen Gastos</th>
+              <th className="px-4 py-3 text-right font-medium text-slate-600 dark:text-slate-300">Σ Totales</th>
+              <th className="px-4 py-3 text-right font-medium text-slate-600 dark:text-slate-300">Δ Totales</th>
+              <th className="px-4 py-3 text-right font-medium text-slate-600 dark:text-slate-300">Σ Categorías</th>
+              <th className="px-4 py-3 text-right font-medium text-slate-600 dark:text-slate-300">Δ Categorías</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
             {discrepancies.map((doc) => {
               const candidate = findCandidateByFilename(doc.name);
               return (
-                <tr
-                  key={doc._id}
-                  className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors"
-                >
+                <tr key={doc._id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
                   <td className="px-4 py-3">
                     <Link
                       to="/documents/$documentId"
@@ -169,11 +156,22 @@ function DiscrepanciasPage() {
                   <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300">
                     {formatCurrency(doc.summaryTotalIngresos)}
                   </td>
+                  <td className="px-4 py-3 text-right font-mono text-slate-500 dark:text-slate-400">
+                    {doc.saldoAnterior ? `−${formatCurrency(doc.saldoAnterior).slice(1)}` : '—'}
+                  </td>
                   <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300">
                     {formatCurrency(doc.summedIngresos)}
                   </td>
                   <td className={`px-4 py-3 text-right font-mono ${getDiscrepancyColor(doc.ingressDiscrepancy)}`}>
                     {formatDiscrepancy(doc.ingressDiscrepancy)}
+                  </td>
+                  <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300">
+                    {formatCurrency(doc.summedIngresosByCategory)}
+                  </td>
+                  <td
+                    className={`px-4 py-3 text-right font-mono ${getDiscrepancyColor(doc.ingressDiscrepancyByCategory)}`}
+                  >
+                    {formatDiscrepancy(doc.ingressDiscrepancyByCategory)}
                   </td>
                   <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300">
                     {formatCurrency(doc.summaryTotalGastos)}
@@ -183,6 +181,14 @@ function DiscrepanciasPage() {
                   </td>
                   <td className={`px-4 py-3 text-right font-mono ${getDiscrepancyColor(doc.egressDiscrepancy)}`}>
                     {formatDiscrepancy(doc.egressDiscrepancy)}
+                  </td>
+                  <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300">
+                    {formatCurrency(doc.summedGastosByCategory)}
+                  </td>
+                  <td
+                    className={`px-4 py-3 text-right font-mono ${getDiscrepancyColor(doc.egressDiscrepancyByCategory)}`}
+                  >
+                    {formatDiscrepancy(doc.egressDiscrepancyByCategory)}
                   </td>
                 </tr>
               );

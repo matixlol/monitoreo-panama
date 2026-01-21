@@ -21,7 +21,7 @@ function DocumentsLayout() {
         </Authenticated>
       </header>
       <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
-        <div className="max-w-6xl mx-auto p-8">
+        <div className="mx-auto p-8">
           <div className="mb-8">
             <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Documentos PDF</h1>
             <p className="mt-2 text-slate-600 dark:text-slate-400">

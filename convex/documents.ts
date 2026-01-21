@@ -1,6 +1,7 @@
 import { v } from 'convex/values';
 import { internal } from './_generated/api';
 import { authMutation, authQuery } from './lib/withAuth';
+import { EgressRow, IngressRow } from './extractions';
 
 export const getDocumentStats = authQuery({
   args: {},
@@ -439,6 +440,10 @@ export const getDocumentsWithDiscrepancies = authQuery({
 
         const summaryTotalIngresos = summaryExtraction.summary.totalIngresos ?? null;
         const summaryTotalGastos = summaryExtraction.summary.totalGastos ?? null;
+        const saldoAnterior = summaryExtraction.summary.saldoPrimariasRecoleccionFirmas ?? 0;
+
+        // Adjusted summary ingresos: subtract saldo anterior (carry-over from primaries)
+        const adjustedSummaryIngresos = summaryTotalIngresos != null ? summaryTotalIngresos - saldoAnterior : null;
 
         // Get best row data: validated first, then gemini-3-flash
         const validatedData = await ctx.db
@@ -446,8 +451,8 @@ export const getDocumentsWithDiscrepancies = authQuery({
           .withIndex('by_document', (q) => q.eq('documentId', doc._id))
           .unique();
 
-        let ingress: { total?: number | null }[] = [];
-        let egress: { totalDeGastosDePropagandaYCampania?: number | null }[] = [];
+        let ingress: IngressRow[] = [];
+        let egress: EgressRow[] = [];
         let dataSource: 'validated' | 'gemini-3-flash' | 'none' = 'none';
 
         if (validatedData) {
@@ -471,23 +476,51 @@ export const getDocumentsWithDiscrepancies = authQuery({
           }
         }
 
-        // Calculate sums from rows
+        // Calculate sums from rows using self-reported totals
         const summedIngresos = ingress.reduce((sum, row) => sum + (row.total ?? 0), 0);
-        const summedGastos = egress.reduce(
-          (sum, row) => sum + (row.totalDeGastosDePropagandaYCampania ?? 0),
-          0,
-        );
+        const summedGastos = egress.reduce((sum, row) => sum + (row.totalDeGastosDePropagandaYCampania ?? 0), 0);
 
-        // Calculate discrepancies
-        const ingressDiscrepancy =
-          summaryTotalIngresos != null ? summaryTotalIngresos - summedIngresos : null;
-        const egressDiscrepancy =
-          summaryTotalGastos != null ? summaryTotalGastos - summedGastos : null;
+        // Calculate sums from category fields (not self-reported totals)
+        const summedIngresosByCategory = ingress.reduce((sum, row) => {
+          const rowCategorySum =
+            (row.donacionesPrivadasEfectivo ?? 0) +
+            (row.donacionesPrivadasChequeAch ?? 0) +
+            (row.donacionesPrivadasEspecie ?? 0) +
+            (row.recursosPropiosEfectivoCheque ?? 0) +
+            (row.recursosPropiosEspecie ?? 0);
+          return sum + rowCategorySum;
+        }, 0);
 
-        // Calculate max absolute discrepancy for sorting
+        const summedGastosByCategory = egress.reduce((sum, row) => {
+          let rowCategorySum =
+            (row.movilizacion ?? 0) +
+            (row.combustible ?? 0) +
+            (row.hospedaje ?? 0) +
+            (row.activistas ?? 0) +
+            (row.caravanaConcentraciones ?? 0) +
+            (row.comidaBrindis ?? 0) +
+            (row.alquilerLocalServiciosBasicos ?? 0) +
+            (row.cargosBancarios ?? 0) +
+            (row.personalizacionArticulosPromocionales ?? 0) +
+            (row.propagandaElectoral ?? 0);
+          if (rowCategorySum === 0) rowCategorySum = (row.totalGastosCampania ?? 0) + (row.totalGastosPropaganda ?? 0);
+          return sum + rowCategorySum;
+        }, 0);
+
+        // Calculate discrepancies using self-reported totals (adjusted for saldo anterior)
+        const ingressDiscrepancy = adjustedSummaryIngresos != null ? adjustedSummaryIngresos - summedIngresos : null;
+        const egressDiscrepancy = summaryTotalGastos != null ? summaryTotalGastos - summedGastos : null;
+
+        // Calculate discrepancies using category sums (adjusted for saldo anterior)
+        const ingressDiscrepancyByCategory =
+          adjustedSummaryIngresos != null ? adjustedSummaryIngresos - summedIngresosByCategory : null;
+        const egressDiscrepancyByCategory =
+          summaryTotalGastos != null ? summaryTotalGastos - summedGastosByCategory : null;
+
+        // Calculate max absolute discrepancy for sorting (use category-based for better accuracy)
         const maxAbsDiscrepancy = Math.max(
-          Math.abs(ingressDiscrepancy ?? 0),
-          Math.abs(egressDiscrepancy ?? 0),
+          Math.abs(ingressDiscrepancyByCategory ?? 0),
+          Math.abs(egressDiscrepancyByCategory ?? 0),
         );
 
         return {
@@ -495,11 +528,17 @@ export const getDocumentsWithDiscrepancies = authQuery({
           name: doc.name,
           dataSource,
           summaryTotalIngresos,
+          saldoAnterior,
+          adjustedSummaryIngresos,
           summaryTotalGastos,
           summedIngresos,
           summedGastos,
+          summedIngresosByCategory,
+          summedGastosByCategory,
           ingressDiscrepancy,
           egressDiscrepancy,
+          ingressDiscrepancyByCategory,
+          egressDiscrepancyByCategory,
           maxAbsDiscrepancy,
           ingressRowCount: ingress.length,
           egressRowCount: egress.length,
