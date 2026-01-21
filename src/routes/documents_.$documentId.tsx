@@ -216,12 +216,21 @@ function DocumentValidationPage() {
   // Get model names
   const modelNames = Object.keys(extractionsByModel);
 
-  // Merge rows from all models to get the union
+  // Merge rows from all models to get the union (prioritize gemini-3)
   const mergeRowsFromAllModels = useCallback(
     (type: 'ingress' | 'egress', keyField: string): (IngressRow | EgressRow)[] => {
       const rowMap = new Map<string, IngressRow | EgressRow>();
 
-      for (const modelName of modelNames) {
+      // Sort model names so gemini-3 comes first
+      const sortedModelNames = [...modelNames].sort((a, b) => {
+        const aIsGemini3 = a.startsWith('gemini-3');
+        const bIsGemini3 = b.startsWith('gemini-3');
+        if (aIsGemini3 && !bIsGemini3) return -1;
+        if (!aIsGemini3 && bIsGemini3) return 1;
+        return 0;
+      });
+
+      for (const modelName of sortedModelNames) {
         const modelData = extractionsByModel[modelName];
         if (!modelData) continue;
 
