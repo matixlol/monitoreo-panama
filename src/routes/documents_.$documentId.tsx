@@ -468,15 +468,20 @@ function DocumentValidationPage() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
+      // Strip unreadableFields (AI-detected) before sending - only humanUnreadableFields is accepted
+      const stripUnreadableFields = <T extends Record<string, unknown>>(rows: T[]): T[] =>
+        rows.map(({ unreadableFields, ...rest }) => rest as T);
+
       await saveValidatedData({
         documentId: documentId as Id<'documents'>,
-        ingress: (editedIngress || currentIngress) as any,
-        egress: (editedEgress || currentEgress) as any,
+        ingress: stripUnreadableFields(editedIngress || currentIngress) as any,
+        egress: stripUnreadableFields(editedEgress || currentEgress) as any,
       });
       setEditedIngress(null);
       setEditedEgress(null);
     } catch (error) {
       console.error('Save failed:', error);
+      alert(`Error al guardar: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     } finally {
       setIsSaving(false);
     }
