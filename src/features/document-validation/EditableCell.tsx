@@ -1,4 +1,4 @@
-import { normalizeValueForComparison, normalizeValueForDisplay, getShortModelName } from './utils';
+import { normalizeValueForDisplay } from './utils';
 
 export type EditableCellVariant = 'table' | 'compact';
 
@@ -12,8 +12,6 @@ type Props = {
   onStartEdit: () => void;
   onStopEdit: () => void;
   onEdit: (value: string | number | null) => void;
-  hasDiff: boolean;
-  altValues: Record<string, unknown>;
   isHumanUnreadable: boolean;
   isAiUnreadable: boolean;
   onToggleUnreadable: () => void;
@@ -33,8 +31,6 @@ export function EditableCell({
   onStartEdit,
   onStopEdit,
   onEdit,
-  hasDiff,
-  altValues,
   isHumanUnreadable,
   isAiUnreadable,
   onToggleUnreadable,
@@ -129,45 +125,6 @@ export function EditableCell({
           } ${isAiUnreadable && !isHumanUnreadable ? unreadableClassName.ai : ''}`}
         >
           <span className={isEmpty ? 'text-slate-400 italic' : ''}>{formattedValue}</span>
-          {Object.keys(altValues).length > 0 && (
-            <div className={variant === 'compact' ? 'text-[9px] space-y-0.5 mt-0.5' : 'text-[10px] space-y-1 mt-1'}>
-              {Object.entries(altValues).map(([modelName, modelValue]) => {
-                const shortName = getShortModelName(modelName);
-                const normalizedCurrent = normalizeValueForComparison(field, value);
-                const normalizedModel = normalizeValueForComparison(field, modelValue);
-                const isSelected = normalizedModel === normalizedCurrent;
-                return (
-                  <button
-                    key={modelName}
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEdit(modelValue as string | number | null);
-                    }}
-                    className={`block w-full text-left rounded border transition-colors cursor-pointer ${
-                      variant === 'compact' ? 'py-0 px-0.5 text-[9px]' : 'py-0.5 px-1'
-                    } ${
-                      isSelected
-                        ? variant === 'compact'
-                          ? 'border-emerald-400 dark:border-emerald-500 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300'
-                          : 'border-emerald-400 dark:border-emerald-500 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-400 dark:ring-emerald-500'
-                        : hasDiff
-                          ? variant === 'compact'
-                            ? 'border-amber-300 dark:border-amber-600 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 hover:bg-amber-200'
-                            : 'border-amber-300 dark:border-amber-600 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-800 hover:border-amber-400 dark:hover:border-amber-500'
-                          : variant === 'compact'
-                            ? 'border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100'
-                            : 'border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
-                    }`}
-                    title={isSelected ? `Valor actual (de ${modelName})` : `Usar valor de ${modelName}`}
-                  >
-                    {isSelected && <span className={variant === 'compact' ? 'mr-0.5' : 'mr-1'}>✓</span>}
-                    <span className="font-medium">{shortName}:</span> {formatValue(field, modelValue, type)}
-                  </button>
-                );
-              })}
-            </div>
-          )}
         </div>
       )}
     </div>

@@ -72,13 +72,6 @@ export const retryAllExtractions = authMutation({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
-    // Delete existing extractions for this document
-    const existingExtractions = await ctx.db.query('extractions').collect();
-
-    for (const extraction of existingExtractions) {
-      await ctx.db.delete(extraction._id);
-    }
-
     // Reset status and clear any previous error
     const documents = await ctx.db.query('documents').collect();
 
@@ -86,6 +79,7 @@ export const retryAllExtractions = authMutation({
       await ctx.db.patch(document._id, {
         status: 'pending',
         errorMessage: undefined,
+        processingStartedAt: undefined,
       });
       await ctx.scheduler.runAfter(0, internal.extraction.startExtraction, {
         documentId: document._id,
@@ -109,20 +103,11 @@ export const retryExtraction = authMutation({
       throw new Error('Document not found');
     }
 
-    // Delete existing extractions for this document
-    const existingExtractions = await ctx.db
-      .query('extractions')
-      .withIndex('by_document', (q) => q.eq('documentId', args.documentId))
-      .collect();
-
-    for (const extraction of existingExtractions) {
-      await ctx.db.delete(extraction._id);
-    }
-
     // Reset status and clear any previous error
     await ctx.db.patch(args.documentId, {
       status: 'pending',
       errorMessage: undefined,
+      processingStartedAt: undefined,
     });
 
     // Trigger the extraction workflow
@@ -172,18 +157,21 @@ export const listDocuments = authQuery({
           };
         }
 
-        // Otherwise, get the latest extraction
+        // Otherwise, use the latest Gemini 3 extraction
         const extractions = await ctx.db
           .query('extractions')
           .withIndex('by_document', (q) => q.eq('documentId', doc._id))
-          .order('desc')
-          .first();
+          .collect();
 
-        if (extractions) {
+        const gemini3Extraction = extractions
+          .filter((e) => e.model.startsWith('gemini-3'))
+          .sort((a, b) => b.completedAt - a.completedAt)[0];
+
+        if (gemini3Extraction) {
           return {
             ...doc,
-            ingressCount: extractions.ingress.length,
-            egressCount: extractions.egress.length,
+            ingressCount: gemini3Extraction.ingress.length,
+            egressCount: gemini3Extraction.egress.length,
             ...summaryTotals,
           };
         }
@@ -218,7 +206,7 @@ export const getDocumentsForCsvExport = authQuery({
         if (validatedData) {
           return {
             ...doc,
-            source: 'validated',
+            source: 'validated' as const,
             sourceModel: null,
             sourceCompletedAt: validatedData.validatedAt,
             ingress: validatedData.ingress,
@@ -231,18 +219,14 @@ export const getDocumentsForCsvExport = authQuery({
           .withIndex('by_document', (q) => q.eq('documentId', doc._id))
           .collect();
 
-        const gemini3Extractions = extractions
+        const latestGemini3Extraction = extractions
           .filter((extraction) => extraction.model.startsWith('gemini-3'))
-          .sort((a, b) => b.completedAt - a.completedAt);
+          .sort((a, b) => b.completedAt - a.completedAt)[0];
 
-        const latestExtraction = gemini3Extractions[0]
-          ? { extraction: gemini3Extractions[0], source: 'gemini-3' }
-          : null;
-
-        if (!latestExtraction) {
+        if (!latestGemini3Extraction) {
           return {
             ...doc,
-            source: 'none',
+            source: 'none' as const,
             sourceModel: null,
             sourceCompletedAt: null,
             ingress: [],
@@ -252,11 +236,11 @@ export const getDocumentsForCsvExport = authQuery({
 
         return {
           ...doc,
-          source: latestExtraction.source,
-          sourceModel: latestExtraction.extraction.model,
-          sourceCompletedAt: latestExtraction.extraction.completedAt,
-          ingress: latestExtraction.extraction.ingress,
-          egress: latestExtraction.extraction.egress,
+          source: 'gemini-3' as const,
+          sourceModel: latestGemini3Extraction.model,
+          sourceCompletedAt: latestGemini3Extraction.completedAt,
+          ingress: latestGemini3Extraction.ingress,
+          egress: latestGemini3Extraction.egress,
         };
       }),
     );
@@ -332,15 +316,6 @@ export const reprocessStuckDocuments = authMutation({
       .collect();
 
     for (const doc of processingDocs) {
-      const existingExtractions = await ctx.db
-        .query('extractions')
-        .withIndex('by_document', (q) => q.eq('documentId', doc._id))
-        .collect();
-
-      for (const extraction of existingExtractions) {
-        await ctx.db.delete(extraction._id);
-      }
-
       await ctx.db.patch(doc._id, {
         status: 'pending',
         errorMessage: undefined,

@@ -7,17 +7,18 @@ import {
   EGRESS_SPEND_COLUMNS,
   EGRESS_TOTAL_COLUMN,
   type EgressRow,
-  type ModelExtractions,
 } from './types';
-import { getAlternateValues, getShortModelName, normalizeValueForDisplay } from './utils';
+import { normalizeValueForDisplay } from './utils';
+
+type EgressColumnMeta = {
+  group: 'info' | 'spend1' | 'spend2' | 'total';
+  type: 'string' | 'number';
+  label: string;
+};
 
 type Props = {
   rows: EgressRow[];
   allRows: EgressRow[];
-  diffs: Map<string, Set<string>>;
-  modelData: ModelExtractions;
-  modelNames: string[];
-  getModelsForRow: (stableRowKey: string) => string[];
   onEdit: (rowIndex: number, field: string, value: string | number | null) => void;
   onDelete: (rowIndex: number) => void;
   onToggleUnreadable: (rowIndex: number, field: string) => void;
@@ -35,22 +36,18 @@ const formatEgressValue = (field: string, value: unknown, type: 'string' | 'numb
 export function EgressTable({
   rows,
   allRows,
-  diffs,
-  modelData,
-  modelNames,
-  getModelsForRow,
   onEdit,
   onDelete,
   onToggleUnreadable,
 }: Props) {
   const [editingCell, setEditingCell] = useState<{ row: number; col: string } | null>(null);
 
-  const columns = useMemo<ColumnDef<EgressRow>[]>(() => {
+  const columns = useMemo<ColumnDef<EgressRow, any>[]>(() => {
     const infoColumns = EGRESS_INFO_COLUMNS.filter((col) => col.key !== 'pageNumber').map((col) =>
       columnHelper.accessor(col.key, {
         id: col.key,
         header: col.label,
-        meta: { group: 'info', type: col.type, label: col.label },
+        meta: { group: 'info', type: col.type, label: col.label } satisfies EgressColumnMeta,
       }),
     );
 
@@ -62,14 +59,14 @@ export function EgressTable({
           group: index < 6 ? 'spend1' : 'spend2',
           type: 'number',
           label: col.label,
-        },
+        } satisfies EgressColumnMeta,
       }),
     );
 
     const totalColumn = columnHelper.accessor(EGRESS_TOTAL_COLUMN.key, {
       id: EGRESS_TOTAL_COLUMN.key,
       header: EGRESS_TOTAL_COLUMN.label,
-      meta: { group: 'total', type: 'number', label: EGRESS_TOTAL_COLUMN.label },
+      meta: { group: 'total', type: 'number', label: EGRESS_TOTAL_COLUMN.label } satisfies EgressColumnMeta,
     });
 
     return [...infoColumns, ...spendColumns, totalColumn];
@@ -81,59 +78,33 @@ export function EgressTable({
     getCoreRowModel: getCoreRowModel(),
   });
 
-  const infoColumns = table.getAllLeafColumns().filter((col) => col.columnDef.meta?.group === 'info');
-  const spendRow1Columns = table.getAllLeafColumns().filter((col) => col.columnDef.meta?.group === 'spend1');
-  const spendRow2Columns = table.getAllLeafColumns().filter((col) => col.columnDef.meta?.group === 'spend2');
-  const totalColumn = table.getAllLeafColumns().find((col) => col.columnDef.meta?.group === 'total');
+  const infoColumns = table
+    .getAllLeafColumns()
+    .filter((col) => (col.columnDef.meta as EgressColumnMeta | undefined)?.group === 'info');
+  const spendRow1Columns = table
+    .getAllLeafColumns()
+    .filter((col) => (col.columnDef.meta as EgressColumnMeta | undefined)?.group === 'spend1');
+  const spendRow2Columns = table
+    .getAllLeafColumns()
+    .filter((col) => (col.columnDef.meta as EgressColumnMeta | undefined)?.group === 'spend2');
+  const totalColumn = table
+    .getAllLeafColumns()
+    .find((col) => (col.columnDef.meta as EgressColumnMeta | undefined)?.group === 'total');
 
   return (
     <div className="w-full text-xs">
       {table.getRowModel().rows.map((row) => {
-        const stableRowKey = row.original.__stableRowKey;
-        const rowDiffs = stableRowKey ? diffs.get(stableRowKey) : undefined;
         const actualIndex = allRows.indexOf(row.original);
-        const modelsFound = stableRowKey ? getModelsForRow(stableRowKey) : [];
-        const isMissingFromSomeModels =
-          stableRowKey != null && modelsFound.length > 0 && modelsFound.length < modelNames.length;
 
         return (
           <div
             key={row.id}
-            className={`group border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 ${
-              isMissingFromSomeModels ? 'bg-orange-50 dark:bg-orange-900/20' : ''
-            }`}
+            className="group border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50"
           >
-            {isMissingFromSomeModels && (
-              <div className="flex items-center gap-1 px-2 py-0.5 bg-orange-100 dark:bg-orange-900/30">
-                {modelNames.map((modelName) => {
-                  const found = modelsFound.includes(modelName);
-                  const shortName = getShortModelName(modelName);
-                  return (
-                    <span
-                      key={modelName}
-                      className={`text-[9px] px-1 py-0 rounded ${
-                        found
-                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300'
-                          : 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 line-through'
-                      }`}
-                      title={`${modelName}: ${found ? 'Found' : 'Missing'}`}
-                    >
-                      {shortName}
-                    </span>
-                  );
-                })}
-              </div>
-            )}
-
             <div className="grid grid-cols-[auto_1fr_1fr_1fr_2fr_auto_auto] gap-1 px-2 py-1 items-start">
               {infoColumns.map((col) => {
                 const field = col.id;
                 const value = row.getValue(field);
-                const hasDiff = rowDiffs?.has(field) ?? false;
-                const altValues =
-                  stableRowKey != null
-                    ? getAlternateValues('egress', stableRowKey, 'numeroFacturaRecibo', field, modelNames, modelData)
-                    : {};
                 const isEditing = editingCell?.row === row.index && editingCell?.col === field;
                 const isHumanUnreadable = row.original.humanUnreadableFields?.includes(field) ?? false;
                 const isAiUnreadable = row.original.unreadableFields?.includes(field) ?? false;
@@ -146,21 +117,19 @@ export function EgressTable({
                 return (
                   <div
                     key={col.id}
-                    className={`${
-                      hasDiff ? 'bg-amber-50 dark:bg-amber-900/30 border-l-2 border-amber-400 pl-1' : ''
-                    } ${unreadableClassName}`}
+                    className={unreadableClassName}
                   >
-                    <div className="text-[9px] text-slate-400 uppercase">{col.columnDef.meta?.label}</div>
+                    <div className="text-[9px] text-slate-400 uppercase">
+                      {(col.columnDef.meta as EgressColumnMeta | undefined)?.label}
+                    </div>
                     <EditableCell
                       field={field}
                       value={value}
-                      type={col.columnDef.meta?.type ?? 'string'}
+                      type={(col.columnDef.meta as EgressColumnMeta | undefined)?.type ?? 'string'}
                       isEditing={isEditing}
                       onStartEdit={() => setEditingCell({ row: row.index, col: field })}
                       onStopEdit={() => setEditingCell(null)}
                       onEdit={(next) => onEdit(actualIndex, field, next)}
-                      hasDiff={hasDiff}
-                      altValues={altValues}
                       isHumanUnreadable={isHumanUnreadable}
                       isAiUnreadable={isAiUnreadable}
                       onToggleUnreadable={() => onToggleUnreadable(actualIndex, field)}
@@ -192,11 +161,6 @@ export function EgressTable({
                   {spendRow1Columns.map((col) => {
                     const field = col.id;
                     const value = row.getValue(field);
-                    const hasDiff = rowDiffs?.has(field) ?? false;
-                    const altValues =
-                      stableRowKey != null
-                        ? getAlternateValues('egress', stableRowKey, 'numeroFacturaRecibo', field, modelNames, modelData)
-                        : {};
                     const isEditing = editingCell?.row === row.index && editingCell?.col === field;
                     const isHumanUnreadable = row.original.humanUnreadableFields?.includes(field) ?? false;
                     const isAiUnreadable = row.original.unreadableFields?.includes(field) ?? false;
@@ -210,13 +174,14 @@ export function EgressTable({
                       <div
                         key={col.id}
                         className={`rounded px-1 py-0.5 ${
-                          hasDiff
-                            ? 'bg-amber-100 dark:bg-amber-900/40 border border-amber-300'
-                            : unreadableClassName || 'bg-white dark:bg-slate-700/50'
+                          unreadableClassName || 'bg-white dark:bg-slate-700/50'
                         }`}
                       >
-                        <div className="text-[8px] text-slate-400 dark:text-slate-500 truncate" title={col.columnDef.meta?.label}>
-                          {col.columnDef.meta?.label}
+                        <div
+                          className="text-[8px] text-slate-400 dark:text-slate-500 truncate"
+                          title={(col.columnDef.meta as EgressColumnMeta | undefined)?.label}
+                        >
+                          {(col.columnDef.meta as EgressColumnMeta | undefined)?.label}
                         </div>
                         <EditableCell
                           field={field}
@@ -226,8 +191,6 @@ export function EgressTable({
                           onStartEdit={() => setEditingCell({ row: row.index, col: field })}
                           onStopEdit={() => setEditingCell(null)}
                           onEdit={(next) => onEdit(actualIndex, field, next)}
-                          hasDiff={hasDiff}
-                          altValues={altValues}
                           isHumanUnreadable={isHumanUnreadable}
                           isAiUnreadable={isAiUnreadable}
                           onToggleUnreadable={() => onToggleUnreadable(actualIndex, field)}
@@ -245,11 +208,6 @@ export function EgressTable({
                   {spendRow2Columns.map((col) => {
                     const field = col.id;
                     const value = row.getValue(field);
-                    const hasDiff = rowDiffs?.has(field) ?? false;
-                    const altValues =
-                      stableRowKey != null
-                        ? getAlternateValues('egress', stableRowKey, 'numeroFacturaRecibo', field, modelNames, modelData)
-                        : {};
                     const isEditing = editingCell?.row === row.index && editingCell?.col === field;
                     const isHumanUnreadable = row.original.humanUnreadableFields?.includes(field) ?? false;
                     const isAiUnreadable = row.original.unreadableFields?.includes(field) ?? false;
@@ -264,11 +222,9 @@ export function EgressTable({
                       <div
                         key={col.id}
                         className={`rounded px-1 py-0.5 ${
-                          hasDiff
-                            ? 'bg-amber-100 dark:bg-amber-900/40 border border-amber-300'
-                            : isTotal
-                              ? 'bg-emerald-50 dark:bg-emerald-900/30'
-                              : unreadableClassName || 'bg-white dark:bg-slate-700/50'
+                          isTotal
+                            ? 'bg-emerald-50 dark:bg-emerald-900/30'
+                            : unreadableClassName || 'bg-white dark:bg-slate-700/50'
                         }`}
                       >
                         <div
@@ -277,9 +233,9 @@ export function EgressTable({
                               ? 'text-emerald-600 dark:text-emerald-400 font-medium'
                               : 'text-slate-400 dark:text-slate-500'
                           }`}
-                          title={col.columnDef.meta?.label}
+                          title={(col.columnDef.meta as EgressColumnMeta | undefined)?.label}
                         >
-                          {col.columnDef.meta?.label}
+                          {(col.columnDef.meta as EgressColumnMeta | undefined)?.label}
                         </div>
                         <EditableCell
                           field={field}
@@ -289,8 +245,6 @@ export function EgressTable({
                           onStartEdit={() => setEditingCell({ row: row.index, col: field })}
                           onStopEdit={() => setEditingCell(null)}
                           onEdit={(next) => onEdit(actualIndex, field, next)}
-                          hasDiff={hasDiff}
-                          altValues={altValues}
                           isHumanUnreadable={isHumanUnreadable}
                           isAiUnreadable={isAiUnreadable}
                           onToggleUnreadable={() => onToggleUnreadable(actualIndex, field)}
@@ -309,13 +263,11 @@ export function EgressTable({
                     <div className="flex justify-end">
                       <div
                         className={`rounded px-2 py-1 ${
-                          rowDiffs?.has(totalColumn.id)
-                            ? 'bg-amber-100 dark:bg-amber-900/40 border border-amber-300'
-                            : 'bg-indigo-50 dark:bg-indigo-900/30'
+                          'bg-indigo-50 dark:bg-indigo-900/30'
                         }`}
                       >
                         <div className="text-[8px] text-indigo-600 dark:text-indigo-400 font-semibold">
-                          {totalColumn.columnDef.meta?.label}
+                          {(totalColumn.columnDef.meta as EgressColumnMeta | undefined)?.label}
                         </div>
                         <div className="text-sm font-bold text-indigo-700 dark:text-indigo-300">
                           <EditableCell
@@ -326,19 +278,6 @@ export function EgressTable({
                             onStartEdit={() => setEditingCell({ row: row.index, col: totalColumn.id })}
                             onStopEdit={() => setEditingCell(null)}
                             onEdit={(next) => onEdit(actualIndex, totalColumn.id, next)}
-                            hasDiff={rowDiffs?.has(totalColumn.id) ?? false}
-                            altValues={
-                              stableRowKey
-                                ? getAlternateValues(
-                                    'egress',
-                                    stableRowKey,
-                                    'numeroFacturaRecibo',
-                                    totalColumn.id,
-                                    modelNames,
-                                    modelData,
-                                  )
-                                : {}
-                            }
                             isHumanUnreadable={row.original.humanUnreadableFields?.includes(totalColumn.id) ?? false}
                             isAiUnreadable={row.original.unreadableFields?.includes(totalColumn.id) ?? false}
                             onToggleUnreadable={() => onToggleUnreadable(actualIndex, totalColumn.id)}

@@ -128,7 +128,7 @@ export default defineSchema({
   // Raw extraction results from each model (with AI-detected unreadableFields)
   extractions: defineTable({
     documentId: v.id('documents'),
-    model: v.string(), // e.g., "gemini-2.0-flash", "gemini-3-flash"
+    model: v.string(), // e.g., "gemini-3-flash"
     ingress: v.array(extractionIngressRowValidator),
     egress: v.array(extractionEgressRowValidator),
     completedAt: v.number(),

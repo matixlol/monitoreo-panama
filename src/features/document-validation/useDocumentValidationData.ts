@@ -5,19 +5,15 @@ import type { Id } from '@convex/dataModel';
 import {
   createEgressRow,
   createIngressRow,
-  EGRESS_KEY_FIELD,
-  INGRESS_KEY_FIELD,
   type EgressRow,
   type IngressRow,
-  type ModelExtractions,
 } from './types';
-import { computeDiffs, getModelsForStableRowKey, mergeRowsFromAllModels } from './utils';
 
 type RowType = 'ingress' | 'egress';
 
 type DocumentValidationState = {
   document: any;
-  extractions: any;
+  extraction: any;
   validatedData: any;
   isSaving: boolean;
   hasEdits: boolean;
@@ -26,16 +22,9 @@ type DocumentValidationState = {
   currentPageEgressRows: EgressRow[];
   currentIngress: IngressRow[];
   currentEgress: EgressRow[];
-  ingressDiffs: Map<string, Set<string>>;
-  egressDiffs: Map<string, Set<string>>;
-  pagesWithDiffs: number[];
   pagesWithUnreadables: number[];
   hasIngressOnPage: boolean;
   hasEgressOnPage: boolean;
-  modelNames: string[];
-  extractionsByModel: ModelExtractions;
-  getIngressModelsForRow: (rowKey: string) => string[];
-  getEgressModelsForRow: (rowKey: string) => string[];
   handleCellEdit: (type: RowType, rowIndex: number, field: string, value: string | number | null) => void;
   handleAddRow: (type: RowType) => void;
   handleDeleteRow: (type: RowType, rowIndex: number) => void;
@@ -52,7 +41,7 @@ export function useDocumentValidationData(documentId: string): DocumentValidatio
   const document = useQuery(api.documents.getDocument, {
     documentId: documentId as Id<'documents'>,
   });
-  const extractions = useQuery(api.extractions.getExtractions, {
+  const extraction = useQuery(api.extractions.getGemini3Extraction, {
     documentId: documentId as Id<'documents'>,
   });
   const validatedData = useQuery(api.extractions.getValidatedData, {
@@ -98,48 +87,20 @@ export function useDocumentValidationData(documentId: string): DocumentValidatio
   const [editedEgress, setEditedEgress] = useState<EgressRow[] | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  const extractionsByModel = useMemo((): ModelExtractions => {
-    if (!extractions) return {};
-    const result: ModelExtractions = {};
-    for (const ext of extractions) {
-      result[ext.model] = {
-        ingress: ext.ingress as unknown as IngressRow[],
-        egress: ext.egress as unknown as EgressRow[],
-      };
-    }
-    return result;
-  }, [extractions]);
-
-  const modelNames = useMemo(() => Object.keys(extractionsByModel), [extractionsByModel]);
-
   const computedIngress = useMemo(() => {
     if (validatedData) return validatedData.ingress as unknown as IngressRow[];
-    return mergeRowsFromAllModels('ingress', INGRESS_KEY_FIELD, modelNames, extractionsByModel) as IngressRow[];
-  }, [validatedData, modelNames, extractionsByModel]);
+    if (extraction) return extraction.ingress as unknown as IngressRow[];
+    return [];
+  }, [extraction, validatedData]);
 
   const computedEgress = useMemo(() => {
     if (validatedData) return validatedData.egress as unknown as EgressRow[];
-    return mergeRowsFromAllModels('egress', EGRESS_KEY_FIELD, modelNames, extractionsByModel) as EgressRow[];
-  }, [validatedData, modelNames, extractionsByModel]);
+    if (extraction) return extraction.egress as unknown as EgressRow[];
+    return [];
+  }, [extraction, validatedData]);
 
   const currentIngress = editedIngress ?? computedIngress;
   const currentEgress = editedEgress ?? computedEgress;
-
-  const ingressDiffs = useMemo(() => {
-    if (modelNames.length < 2) return new Map<string, Set<string>>();
-    const model1 = extractionsByModel[modelNames[0]!];
-    const model2 = extractionsByModel[modelNames[1]!];
-    if (!model1 || !model2) return new Map<string, Set<string>>();
-    return computeDiffs(model1.ingress, model2.ingress, INGRESS_KEY_FIELD);
-  }, [modelNames, extractionsByModel]);
-
-  const egressDiffs = useMemo(() => {
-    if (modelNames.length < 2) return new Map<string, Set<string>>();
-    const model1 = extractionsByModel[modelNames[0]!];
-    const model2 = extractionsByModel[modelNames[1]!];
-    if (!model1 || !model2) return new Map<string, Set<string>>();
-    return computeDiffs(model1.egress, model2.egress, EGRESS_KEY_FIELD);
-  }, [modelNames, extractionsByModel]);
 
   const handleCellEdit = useCallback(
     (type: RowType, rowIndex: number, field: string, value: string | number | null) => {
@@ -239,7 +200,7 @@ export function useDocumentValidationData(documentId: string): DocumentValidatio
   const handleRerunExtraction = useCallback(async () => {
     if (
       !confirm(
-        '¿Estás seguro de que quieres volver a ejecutar la extracción? Esto eliminará las extracciones anteriores.',
+        '¿Estás seguro de que quieres volver a ejecutar la extracción (Gemini 3)? Esto guardará una nueva extracción.',
       )
     ) {
       return;
@@ -271,22 +232,6 @@ export function useDocumentValidationData(documentId: string): DocumentValidatio
     });
   }, [currentPage, documentId, getCurrentRotation, setPageRotation]);
 
-  const pagesWithDiffs = useMemo(() => {
-    const pageSet = new Set<number>();
-
-    for (const row of currentIngress) {
-      const stableKey = row.__stableRowKey;
-      if (stableKey && ingressDiffs.has(stableKey)) pageSet.add(row.pageNumber);
-    }
-
-    for (const row of currentEgress) {
-      const stableKey = row.__stableRowKey;
-      if (stableKey && egressDiffs.has(stableKey)) pageSet.add(row.pageNumber);
-    }
-
-    return Array.from(pageSet).sort((a, b) => a - b);
-  }, [ingressDiffs, egressDiffs, currentIngress, currentEgress]);
-
   const pagesWithUnreadables = useMemo(() => {
     const pageSet = new Set<number>();
 
@@ -314,21 +259,9 @@ export function useDocumentValidationData(documentId: string): DocumentValidatio
 
   const hasEdits = editedIngress !== null || editedEgress !== null;
 
-  const getIngressModelsForRow = useCallback(
-    (stableRowKey: string) =>
-      getModelsForStableRowKey('ingress', INGRESS_KEY_FIELD, stableRowKey, modelNames, extractionsByModel),
-    [modelNames, extractionsByModel],
-  );
-
-  const getEgressModelsForRow = useCallback(
-    (stableRowKey: string) =>
-      getModelsForStableRowKey('egress', EGRESS_KEY_FIELD, stableRowKey, modelNames, extractionsByModel),
-    [modelNames, extractionsByModel],
-  );
-
   return {
     document,
-    extractions,
+    extraction,
     validatedData,
     isSaving,
     hasEdits,
@@ -337,16 +270,9 @@ export function useDocumentValidationData(documentId: string): DocumentValidatio
     currentPageEgressRows,
     currentIngress,
     currentEgress,
-    ingressDiffs,
-    egressDiffs,
-    pagesWithDiffs,
     pagesWithUnreadables,
     hasIngressOnPage,
     hasEgressOnPage,
-    modelNames,
-    extractionsByModel,
-    getIngressModelsForRow,
-    getEgressModelsForRow,
     handleCellEdit,
     handleAddRow,
     handleDeleteRow,
