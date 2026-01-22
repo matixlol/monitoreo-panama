@@ -8,13 +8,13 @@ import {
 import { authMutation, authQuery } from './lib/withAuth';
 
 /**
- * Get all extractions for a document
+ * Get the latest Gemini 3 extraction for a document
  */
-export const getExtractions = authQuery({
+export const getGemini3Extraction = authQuery({
   args: {
     documentId: v.id('documents'),
   },
-  returns: v.array(
+  returns: v.union(
     v.object({
       _id: v.id('extractions'),
       _creationTime: v.number(),
@@ -24,12 +24,19 @@ export const getExtractions = authQuery({
       egress: v.array(extractionEgressRowValidator),
       completedAt: v.number(),
     }),
+    v.null(),
   ),
   handler: async (ctx, args) => {
-    return await ctx.db
+    const extractions = await ctx.db
       .query('extractions')
       .withIndex('by_document', (q) => q.eq('documentId', args.documentId))
       .collect();
+
+    const gemini3 = extractions
+      .filter((e) => e.model.startsWith('gemini-3'))
+      .sort((a, b) => b.completedAt - a.completedAt)[0];
+
+    return gemini3 ?? null;
   },
 });
 

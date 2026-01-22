@@ -1,25 +1,18 @@
 import { Button } from '@/components/ui/button';
 import { EgressTable } from './EgressTable';
 import { IngressTable } from './IngressTable';
-import type { EgressRow, IngressRow, ModelExtractions } from './types';
+import type { EgressRow, IngressRow } from './types';
 
 type Props = {
   currentPage: number;
   hasIngressOnPage: boolean;
   hasEgressOnPage: boolean;
-  pagesWithDiffs: number[];
   pagesWithUnreadables: number[];
   goToPage: (pageNumber: number) => void;
   ingressRows: IngressRow[];
   egressRows: EgressRow[];
   allIngressRows: IngressRow[];
   allEgressRows: EgressRow[];
-  ingressDiffs: Map<string, Set<string>>;
-  egressDiffs: Map<string, Set<string>>;
-  modelData: ModelExtractions;
-  modelNames: string[];
-  getIngressModelsForRow: (rowKey: string) => string[];
-  getEgressModelsForRow: (rowKey: string) => string[];
   onEditIngress: (rowIndex: number, field: string, value: string | number | null) => void;
   onEditEgress: (rowIndex: number, field: string, value: string | number | null) => void;
   onDeleteIngress: (rowIndex: number) => void;
@@ -34,19 +27,12 @@ export function DataPanel({
   currentPage,
   hasIngressOnPage,
   hasEgressOnPage,
-  pagesWithDiffs,
   pagesWithUnreadables,
   goToPage,
   ingressRows,
   egressRows,
   allIngressRows,
   allEgressRows,
-  ingressDiffs,
-  egressDiffs,
-  modelData,
-  modelNames,
-  getIngressModelsForRow,
-  getEgressModelsForRow,
   onEditIngress,
   onEditEgress,
   onDeleteIngress,
@@ -68,30 +54,6 @@ export function DataPanel({
           {!hasIngressOnPage && hasEgressOnPage && <span className="ml-2 text-xs text-slate-500">— Gastos</span>}
         </h2>
       </div>
-
-      {pagesWithDiffs.length > 0 && (
-        <div className="px-2 py-1 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 flex items-center gap-1 overflow-x-auto">
-          <span className="text-xs text-amber-700 dark:text-amber-400 whitespace-nowrap">Ir a diferencia:</span>
-          {pagesWithDiffs.slice(0, 15).map((pageNum) => (
-            <Button
-              key={pageNum}
-              onClick={() => goToPage(pageNum)}
-              variant={pageNum === currentPage ? 'default' : 'outline'}
-              size="sm"
-              className={`text-xs h-6 px-2 ${
-                pageNum === currentPage
-                  ? 'bg-amber-400 dark:bg-amber-600 text-amber-900 dark:text-amber-100 hover:bg-amber-500'
-                  : 'bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200 hover:bg-amber-300'
-              }`}
-            >
-              {pageNum}
-            </Button>
-          ))}
-          {pagesWithDiffs.length > 15 && (
-            <span className="text-xs text-amber-600">+{pagesWithDiffs.length - 15} más</span>
-          )}
-        </div>
-      )}
 
       {pagesWithUnreadables.length > 0 && (
         <div className="px-2 py-1 bg-orange-50 dark:bg-orange-900/20 border-b border-orange-200 dark:border-orange-800 flex items-center gap-1 overflow-x-auto">
@@ -134,10 +96,6 @@ export function DataPanel({
                 <IngressTable
                   rows={ingressRows}
                   allRows={allIngressRows}
-                  diffs={ingressDiffs}
-                  modelData={modelData}
-                  modelNames={modelNames}
-                  getModelsForRow={getIngressModelsForRow}
                   onEdit={onEditIngress}
                   onDelete={onDeleteIngress}
                   onToggleUnreadable={onToggleUnreadableIngress}
@@ -155,10 +113,6 @@ export function DataPanel({
                 <EgressTable
                   rows={egressRows}
                   allRows={allEgressRows}
-                  diffs={egressDiffs}
-                  modelData={modelData}
-                  modelNames={modelNames}
-                  getModelsForRow={getEgressModelsForRow}
                   onEdit={onEditEgress}
                   onDelete={onDeleteEgress}
                   onToggleUnreadable={onToggleUnreadableEgress}

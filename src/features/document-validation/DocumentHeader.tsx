@@ -5,7 +5,6 @@ type Props = {
   documentName: string;
   documentStatus: string;
   isValidated: boolean;
-  pagesWithDiffs: number[];
   pagesWithUnreadables: number[];
   isSaving: boolean;
   hasEdits: boolean;
@@ -17,7 +16,6 @@ export function DocumentHeader({
   documentName,
   documentStatus,
   isValidated,
-  pagesWithDiffs,
   pagesWithUnreadables,
   isSaving,
   hasEdits,
@@ -52,11 +50,6 @@ export function DocumentHeader({
           {documentStatus === 'failed' && (
             <span className="px-2 py-1 bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 rounded-full text-xs">
               Error
-            </span>
-          )}
-          {pagesWithDiffs.length > 0 && (
-            <span className="text-sm text-amber-600 dark:text-amber-400">
-              ⚠ {pagesWithDiffs.length} páginas con diferencias
             </span>
           )}
           {pagesWithUnreadables.length > 0 && (

@@ -21,16 +21,9 @@ function DocumentValidationPage() {
     currentPageEgressRows,
     currentIngress,
     currentEgress,
-    ingressDiffs,
-    egressDiffs,
-    pagesWithDiffs,
     pagesWithUnreadables,
     hasIngressOnPage,
     hasEgressOnPage,
-    modelNames,
-    extractionsByModel,
-    getIngressModelsForRow,
-    getEgressModelsForRow,
     handleCellEdit,
     handleAddRow,
     handleDeleteRow,
@@ -57,7 +50,6 @@ function DocumentValidationPage() {
         documentName={document.name}
         documentStatus={document.status}
         isValidated={Boolean(validatedData)}
-        pagesWithDiffs={pagesWithDiffs}
         pagesWithUnreadables={pagesWithUnreadables}
         isSaving={isSaving}
         hasEdits={hasEdits}
@@ -85,19 +77,12 @@ function DocumentValidationPage() {
             currentPage={currentPage}
             hasIngressOnPage={hasIngressOnPage}
             hasEgressOnPage={hasEgressOnPage}
-            pagesWithDiffs={pagesWithDiffs}
             pagesWithUnreadables={pagesWithUnreadables}
             goToPage={goToPage}
             ingressRows={currentPageIngressRows}
             egressRows={currentPageEgressRows}
             allIngressRows={currentIngress}
             allEgressRows={currentEgress}
-            ingressDiffs={ingressDiffs}
-            egressDiffs={egressDiffs}
-            modelData={extractionsByModel}
-            modelNames={modelNames}
-            getIngressModelsForRow={getIngressModelsForRow}
-            getEgressModelsForRow={getEgressModelsForRow}
             onEditIngress={(rowIndex, field, value) => handleCellEdit('ingress', rowIndex, field, value)}
             onEditEgress={(rowIndex, field, value) => handleCellEdit('egress', rowIndex, field, value)}
             onDeleteIngress={(rowIndex) => handleDeleteRow('ingress', rowIndex)}

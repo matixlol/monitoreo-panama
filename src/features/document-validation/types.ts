@@ -55,8 +55,6 @@ export type EgressRow = {
   __sourceModel?: string;
 };
 
-export type ModelExtractions = Record<string, { ingress: IngressRow[]; egress: EgressRow[] }>;
-
 export const INGRESS_KEY_FIELD = 'reciboNumero' as const;
 export const EGRESS_KEY_FIELD = 'numeroFacturaRecibo' as const;
 
