@@ -249,55 +249,87 @@ export const reExtractPage = internalAction({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    // Get document info
-    const doc = await ctx.runQuery(internal.extractionHelpers.getDocumentInternal, {
-      documentId: args.documentId,
-    });
+    try {
+      // Get document info
+      const doc = await ctx.runQuery(internal.extractionHelpers.getDocumentInternal, {
+        documentId: args.documentId,
+      });
 
-    if (!doc) {
-      throw new Error('Document not found');
+      if (!doc) {
+        throw new Error('Document not found');
+      }
+
+      // Fetch PDF from storage
+      const pdfUrl = await ctx.storage.getUrl(doc.fileId);
+      if (!pdfUrl) {
+        throw new Error('Could not get PDF URL');
+      }
+
+      const pdfResponse = await fetch(pdfUrl);
+      if (!pdfResponse.ok) {
+        throw new Error('Failed to fetch PDF');
+      }
+
+      const pdfBytes = await pdfResponse.arrayBuffer();
+
+      // Extract just the single page
+      const pdfDoc = await PDFDocument.load(pdfBytes);
+      const singlePageDoc = await PDFDocument.create();
+      const [copiedPage] = await singlePageDoc.copyPages(pdfDoc, [args.pageNumber - 1]); // 0-indexed
+      singlePageDoc.addPage(copiedPage);
+      const pageBytes = await singlePageDoc.save();
+      const pdfBase64 = Buffer.from(pageBytes).toString('base64');
+
+      // Set status to processing
+      await ctx.runMutation(internal.extractionHelpers.setPageReExtractionStatus, {
+        documentId: args.documentId,
+        pageNumber: args.pageNumber,
+        status: 'processing',
+      });
+
+      console.log(`[${MODEL.id}] Re-extracting page ${args.pageNumber}...`);
+
+      const result = await callOpenRouter(pdfBase64, MODEL.openrouterId);
+
+      console.log(
+        `[${MODEL.id}] Page ${args.pageNumber} re-extracted: ${result.ingress.length} ingress, ${result.egress.length} egress`,
+      );
+
+      // Add page numbers to rows
+      const ingressWithPage = result.ingress.map((row) => ({ ...row, pageNumber: args.pageNumber }));
+      const egressWithPage = result.egress.map((row) => ({ ...row, pageNumber: args.pageNumber }));
+
+      // Update extraction data for this page
+      await ctx.runMutation(internal.extractionHelpers.updateExtractionForPage, {
+        documentId: args.documentId,
+        pageNumber: args.pageNumber,
+        ingress: ingressWithPage,
+        egress: egressWithPage,
+      });
+
+      // Also update validated data if it exists (so UI shows new rows immediately)
+      await ctx.runMutation(internal.extractionHelpers.updateValidatedDataForPage, {
+        documentId: args.documentId,
+        pageNumber: args.pageNumber,
+        ingress: ingressWithPage,
+        egress: egressWithPage,
+      });
+
+      // Clear the re-extraction status
+      await ctx.runMutation(internal.extractionHelpers.clearPageReExtractionStatus, {
+        documentId: args.documentId,
+        pageNumber: args.pageNumber,
+      });
+    } catch (error) {
+      console.error(`[${MODEL.id}] Re-extraction failed for page ${args.pageNumber}:`, error);
+
+      // Set status to failed
+      await ctx.runMutation(internal.extractionHelpers.setPageReExtractionStatus, {
+        documentId: args.documentId,
+        pageNumber: args.pageNumber,
+        status: 'failed',
+      });
     }
-
-    // Fetch PDF from storage
-    const pdfUrl = await ctx.storage.getUrl(doc.fileId);
-    if (!pdfUrl) {
-      throw new Error('Could not get PDF URL');
-    }
-
-    const pdfResponse = await fetch(pdfUrl);
-    if (!pdfResponse.ok) {
-      throw new Error('Failed to fetch PDF');
-    }
-
-    const pdfBytes = await pdfResponse.arrayBuffer();
-
-    // Extract just the single page
-    const pdfDoc = await PDFDocument.load(pdfBytes);
-    const singlePageDoc = await PDFDocument.create();
-    const [copiedPage] = await singlePageDoc.copyPages(pdfDoc, [args.pageNumber - 1]); // 0-indexed
-    singlePageDoc.addPage(copiedPage);
-    const pageBytes = await singlePageDoc.save();
-    const pdfBase64 = Buffer.from(pageBytes).toString('base64');
-
-    console.log(`[${MODEL.id}] Re-extracting page ${args.pageNumber}...`);
-
-    const result = await callOpenRouter(pdfBase64, MODEL.openrouterId);
-
-    console.log(
-      `[${MODEL.id}] Page ${args.pageNumber} re-extracted: ${result.ingress.length} ingress, ${result.egress.length} egress`,
-    );
-
-    // Add page numbers to rows
-    const ingressWithPage = result.ingress.map((row) => ({ ...row, pageNumber: args.pageNumber }));
-    const egressWithPage = result.egress.map((row) => ({ ...row, pageNumber: args.pageNumber }));
-
-    // Update extraction data for this page
-    await ctx.runMutation(internal.extractionHelpers.updateExtractionForPage, {
-      documentId: args.documentId,
-      pageNumber: args.pageNumber,
-      ingress: ingressWithPage,
-      egress: egressWithPage,
-    });
 
     return null;
   },

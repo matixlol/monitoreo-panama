@@ -25,6 +25,8 @@ type DocumentValidationState = {
   pagesWithUnreadables: number[];
   hasIngressOnPage: boolean;
   hasEgressOnPage: boolean;
+  isCurrentPageReExtracting: boolean;
+  currentPageReExtractionFailed: boolean;
   handleCellEdit: (type: RowType, rowIndex: number, field: string, value: string | number | null) => void;
   handleAddRow: (type: RowType) => void;
   handleDeleteRow: (type: RowType, rowIndex: number) => void;
@@ -77,6 +79,7 @@ export function useDocumentValidationData(documentId: string): DocumentValidatio
 
   const storageKey = `document-page-${documentId}`;
   const [currentPage, setCurrentPage] = useState(() => {
+    if (typeof window === 'undefined') return 1;
     const saved = localStorage.getItem(storageKey);
     return saved ? parseInt(saved, 10) : 1;
   });
@@ -278,6 +281,16 @@ export function useDocumentValidationData(documentId: string): DocumentValidatio
   const hasIngressOnPage = currentPageIngressRows.length > 0;
   const hasEgressOnPage = currentPageEgressRows.length > 0;
 
+  const isCurrentPageReExtracting = useMemo(() => {
+    const status = document?.pageReExtractionStatus?.[String(currentPage)];
+    return status === 'pending' || status === 'processing';
+  }, [document?.pageReExtractionStatus, currentPage]);
+
+  const currentPageReExtractionFailed = useMemo(() => {
+    const status = document?.pageReExtractionStatus?.[String(currentPage)];
+    return status === 'failed';
+  }, [document?.pageReExtractionStatus, currentPage]);
+
   const hasEdits = editedIngress !== null || editedEgress !== null;
 
   return {
@@ -294,6 +307,8 @@ export function useDocumentValidationData(documentId: string): DocumentValidatio
     pagesWithUnreadables,
     hasIngressOnPage,
     hasEgressOnPage,
+    isCurrentPageReExtracting,
+    currentPageReExtractionFailed,
     handleCellEdit,
     handleAddRow,
     handleDeleteRow,
