@@ -30,6 +30,7 @@ For each row, if any fields are illegible, unreadable, or unclear in the source 
 
 // Zod schemas for validation
 const IngresoRowSchema = z.object({
+  failedToRead: z.boolean().nullish(),
   fecha: z.string().nullish(),
   reciboNumero: z.string().nullish(),
   contribuyenteNombre: z.string().nullish(),
@@ -52,6 +53,7 @@ const IngresoRowSchema = z.object({
 });
 
 const EgresoRowSchema = z.object({
+  failedToRead: z.boolean().nullish(),
   fecha: z.string().nullish(),
   numeroFacturaRecibo: z.string().nullish(),
   cedulaRuc: z
@@ -95,8 +97,9 @@ const RESPONSE_JSON_SCHEMA = {
       items: {
         type: 'object',
         properties: {
+          failedToRead: { type: ['boolean', 'null'] },
           fecha: { type: ['string', 'null'] },
-          reciboNumero: { type: 'string' },
+          reciboNumero: { type: ['string', 'null'] },
           contribuyenteNombre: { type: ['string', 'null'] },
           representanteLegal: { type: ['string', 'null'] },
           cedulaRuc: { type: ['string', 'null'] },
@@ -119,8 +122,9 @@ const RESPONSE_JSON_SCHEMA = {
       items: {
         type: 'object',
         properties: {
+          failedToRead: { type: ['boolean', 'null'] },
           fecha: { type: ['string', 'null'] },
-          numeroFacturaRecibo: { type: 'string' },
+          numeroFacturaRecibo: { type: ['string', 'null'] },
           cedulaRuc: { type: ['string', 'null'] },
           proveedorNombre: { type: ['string', 'null'] },
           detalleGasto: { type: ['string', 'null'] },
@@ -153,7 +157,7 @@ const RESPONSE_JSON_SCHEMA = {
 async function callOpenRouter(
   pdfBase64: string,
   modelId: string,
-): Promise<{ ingress: IngressRow[]; egress: EgressRow[] }> {
+): Promise<{ ingress: z.infer<typeof IngresoRowSchema>[]; egress: z.infer<typeof EgresoRowSchema>[] }> {
   const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -201,6 +205,8 @@ async function callOpenRouter(
     choices?: { message?: { content?: string } }[];
   };
 
+  console.debug('OpenRouter response:', result);
+
   const content = result.choices?.[0]?.message?.content;
   if (!content) {
     throw new Error('No content in OpenRouter response');
@@ -210,8 +216,8 @@ async function callOpenRouter(
   const validated = ResponseSchema.parse(parsed);
 
   return {
-    ingress: validated.ingress as IngressRow[],
-    egress: validated.egress as EgressRow[],
+    ingress: validated.ingress,
+    egress: validated.egress,
   };
 }
 
