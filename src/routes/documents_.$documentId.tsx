@@ -25,6 +25,7 @@ function DocumentValidationPage() {
     hasIngressOnPage,
     hasEgressOnPage,
     isCurrentPageReExtracting,
+    currentPageReExtractionFailed,
     handleCellEdit,
     handleAddRow,
     handleDeleteRow,
@@ -71,6 +72,7 @@ function DocumentValidationPage() {
             onRotate={handleRotate}
             onReExtractPage={handleReExtractPage}
             isReExtracting={isCurrentPageReExtracting}
+            reExtractionFailed={currentPageReExtractionFailed}
           />
         </ResizablePanel>
 
