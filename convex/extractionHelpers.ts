@@ -1,7 +1,6 @@
 import { v } from 'convex/values';
 import { internalMutation, internalQuery } from './_generated/server';
 
-
 /**
  * Update document status
  */
@@ -136,9 +135,7 @@ export const updateExtractionForPage = internalMutation({
     ];
 
     const updatedEgress = [
-      ...(latestExtraction.egress as Array<{ pageNumber: number }>).filter(
-        (row) => row.pageNumber !== args.pageNumber,
-      ),
+      ...(latestExtraction.egress as Array<{ pageNumber: number }>).filter((row) => row.pageNumber !== args.pageNumber),
       ...args.egress,
     ];
 
@@ -220,16 +217,12 @@ export const updateValidatedDataForPage = internalMutation({
 
     // Filter out old page data and add new page data
     const updatedIngress = [
-      ...(validatedData.ingress as Array<{ pageNumber: number }>).filter(
-        (row) => row.pageNumber !== args.pageNumber,
-      ),
+      ...(validatedData.ingress as Array<{ pageNumber: number }>).filter((row) => row.pageNumber !== args.pageNumber),
       ...stripExtractionFields(args.ingress),
     ];
 
     const updatedEgress = [
-      ...(validatedData.egress as Array<{ pageNumber: number }>).filter(
-        (row) => row.pageNumber !== args.pageNumber,
-      ),
+      ...(validatedData.egress as Array<{ pageNumber: number }>).filter((row) => row.pageNumber !== args.pageNumber),
       ...stripExtractionFields(args.egress),
     ];
 
@@ -317,5 +310,3 @@ export const getDocumentInternal = internalQuery({
     };
   },
 });
-
-
