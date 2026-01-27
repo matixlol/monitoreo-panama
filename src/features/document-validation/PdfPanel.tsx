@@ -35,9 +35,10 @@ type Props = {
   onPrev: () => void;
   onNext: () => void;
   onRotate: () => void;
+  onReExtractPage: () => void;
 };
 
-export function PdfPanel({ fileUrl, currentPage, pageCount, rotation, onPrev, onNext, onRotate }: Props) {
+export function PdfPanel({ fileUrl, currentPage, pageCount, rotation, onPrev, onNext, onRotate, onReExtractPage }: Props) {
   return (
     <div className="h-full border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 flex flex-col overflow-hidden">
       <div className="p-3 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-center gap-4">
@@ -67,6 +68,23 @@ export function PdfPanel({ fileUrl, currentPage, pageCount, rotation, onPrev, on
             />
           </svg>
           Rotar
+        </Button>
+        <Button onClick={onReExtractPage} variant="outline" size="sm" title="Re-extraer esta página">
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+            />
+          </svg>
+          Re-extraer
         </Button>
       </div>
 

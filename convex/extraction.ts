@@ -240,6 +240,70 @@ async function splitPdfIntoPages(pdfBytes: ArrayBuffer): Promise<{ pageBytes: Ui
 }
 
 /**
+ * Re-extract a single page from a document
+ */
+export const reExtractPage = internalAction({
+  args: {
+    documentId: v.id('documents'),
+    pageNumber: v.number(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    // Get document info
+    const doc = await ctx.runQuery(internal.extractionHelpers.getDocumentInternal, {
+      documentId: args.documentId,
+    });
+
+    if (!doc) {
+      throw new Error('Document not found');
+    }
+
+    // Fetch PDF from storage
+    const pdfUrl = await ctx.storage.getUrl(doc.fileId);
+    if (!pdfUrl) {
+      throw new Error('Could not get PDF URL');
+    }
+
+    const pdfResponse = await fetch(pdfUrl);
+    if (!pdfResponse.ok) {
+      throw new Error('Failed to fetch PDF');
+    }
+
+    const pdfBytes = await pdfResponse.arrayBuffer();
+
+    // Extract just the single page
+    const pdfDoc = await PDFDocument.load(pdfBytes);
+    const singlePageDoc = await PDFDocument.create();
+    const [copiedPage] = await singlePageDoc.copyPages(pdfDoc, [args.pageNumber - 1]); // 0-indexed
+    singlePageDoc.addPage(copiedPage);
+    const pageBytes = await singlePageDoc.save();
+    const pdfBase64 = Buffer.from(pageBytes).toString('base64');
+
+    console.log(`[${MODEL.id}] Re-extracting page ${args.pageNumber}...`);
+
+    const result = await callOpenRouter(pdfBase64, MODEL.openrouterId);
+
+    console.log(
+      `[${MODEL.id}] Page ${args.pageNumber} re-extracted: ${result.ingress.length} ingress, ${result.egress.length} egress`,
+    );
+
+    // Add page numbers to rows
+    const ingressWithPage = result.ingress.map((row) => ({ ...row, pageNumber: args.pageNumber }));
+    const egressWithPage = result.egress.map((row) => ({ ...row, pageNumber: args.pageNumber }));
+
+    // Update extraction data for this page
+    await ctx.runMutation(internal.extractionHelpers.updateExtractionForPage, {
+      documentId: args.documentId,
+      pageNumber: args.pageNumber,
+      ingress: ingressWithPage,
+      egress: egressWithPage,
+    });
+
+    return null;
+  },
+});
+
+/**
  * Main extraction workflow
  */
 export const startExtraction = internalAction({

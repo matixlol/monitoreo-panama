@@ -120,6 +120,42 @@ export const retryExtraction = authMutation({
 });
 
 /**
+ * Re-extract a single page from a document
+ * This deletes validated data for that page and triggers re-extraction
+ */
+export const reExtractPage = authMutation({
+  args: {
+    documentId: v.id('documents'),
+    pageNumber: v.number(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const doc = await ctx.db.get(args.documentId);
+    if (!doc) {
+      throw new Error('Document not found');
+    }
+
+    if (args.pageNumber < 1 || args.pageNumber > doc.pageCount) {
+      throw new Error('Invalid page number');
+    }
+
+    // Delete validated data for this page
+    await ctx.scheduler.runAfter(0, internal.extractionHelpers.deleteValidatedDataForPage, {
+      documentId: args.documentId,
+      pageNumber: args.pageNumber,
+    });
+
+    // Trigger the page re-extraction
+    await ctx.scheduler.runAfter(0, internal.extraction.reExtractPage, {
+      documentId: args.documentId,
+      pageNumber: args.pageNumber,
+    });
+
+    return null;
+  },
+});
+
+/**
  * List all documents
  */
 export const listDocuments = authQuery({

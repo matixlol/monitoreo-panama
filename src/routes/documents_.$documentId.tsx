@@ -30,6 +30,7 @@ function DocumentValidationPage() {
     handleToggleUnreadable,
     handleSave,
     handleRerunExtraction,
+    handleReExtractPage,
     goToPage,
     handleRotate,
     getCurrentRotation,
@@ -67,6 +68,7 @@ function DocumentValidationPage() {
             onPrev={() => setCurrentPage(Math.max(1, currentPage - 1))}
             onNext={() => setCurrentPage(Math.min(document.pageCount, currentPage + 1))}
             onRotate={handleRotate}
+            onReExtractPage={handleReExtractPage}
           />
         </ResizablePanel>
 
