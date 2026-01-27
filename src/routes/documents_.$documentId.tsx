@@ -24,6 +24,7 @@ function DocumentValidationPage() {
     pagesWithUnreadables,
     hasIngressOnPage,
     hasEgressOnPage,
+    isCurrentPageReExtracting,
     handleCellEdit,
     handleAddRow,
     handleDeleteRow,
@@ -69,6 +70,7 @@ function DocumentValidationPage() {
             onNext={() => setCurrentPage(Math.min(document.pageCount, currentPage + 1))}
             onRotate={handleRotate}
             onReExtractPage={handleReExtractPage}
+            isReExtracting={isCurrentPageReExtracting}
           />
         </ResizablePanel>
 
@@ -93,6 +95,7 @@ function DocumentValidationPage() {
             onToggleUnreadableEgress={(rowIndex, field) => handleToggleUnreadable('egress', rowIndex, field)}
             onAddIngress={() => handleAddRow('ingress')}
             onAddEgress={() => handleAddRow('egress')}
+            isReExtracting={isCurrentPageReExtracting}
           />
         </ResizablePanel>
       </ResizablePanelGroup>

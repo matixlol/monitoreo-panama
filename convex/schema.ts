@@ -123,6 +123,8 @@ export default defineSchema({
     // Summary extraction status
     summaryStatus: v.optional(v.union(v.literal('pending'), v.literal('processing'), v.literal('completed'), v.literal('failed'))),
     summaryErrorMessage: v.optional(v.string()),
+    // Page re-extraction status: tracks which pages are currently being re-extracted
+    pageReExtractionStatus: v.optional(v.record(v.string(), v.union(v.literal('pending'), v.literal('processing')))),
   }).index('by_status', ['status']),
 
   // Raw extraction results from each model (with AI-detected unreadableFields)

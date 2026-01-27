@@ -193,6 +193,100 @@ export const deleteValidatedDataForPage = internalMutation({
 });
 
 /**
+ * Update validated data with re-extracted page data
+ * This merges new extraction results into existing validated data
+ */
+export const updateValidatedDataForPage = internalMutation({
+  args: {
+    documentId: v.id('documents'),
+    pageNumber: v.number(),
+    ingress: v.array(v.any()),
+    egress: v.array(v.any()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const validatedData = await ctx.db
+      .query('validatedData')
+      .withIndex('by_document', (q) => q.eq('documentId', args.documentId))
+      .unique();
+
+    if (!validatedData) {
+      return null; // No validated data to update
+    }
+
+    // Strip unreadableFields from extraction rows (validatedData uses humanUnreadableFields instead)
+    const stripExtractionFields = <T extends Record<string, unknown>>(rows: T[]): T[] =>
+      rows.map(({ unreadableFields, ...rest }) => rest as T);
+
+    // Filter out old page data and add new page data
+    const updatedIngress = [
+      ...(validatedData.ingress as Array<{ pageNumber: number }>).filter(
+        (row) => row.pageNumber !== args.pageNumber,
+      ),
+      ...stripExtractionFields(args.ingress),
+    ];
+
+    const updatedEgress = [
+      ...(validatedData.egress as Array<{ pageNumber: number }>).filter(
+        (row) => row.pageNumber !== args.pageNumber,
+      ),
+      ...stripExtractionFields(args.egress),
+    ];
+
+    await ctx.db.patch(validatedData._id, {
+      ingress: updatedIngress,
+      egress: updatedEgress,
+      validatedAt: Date.now(),
+    });
+
+    return null;
+  },
+});
+
+/**
+ * Set page re-extraction status (pending/processing)
+ */
+export const setPageReExtractionStatus = internalMutation({
+  args: {
+    documentId: v.id('documents'),
+    pageNumber: v.number(),
+    status: v.union(v.literal('pending'), v.literal('processing'), v.literal('failed')),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const doc = await ctx.db.get(args.documentId);
+    if (!doc) return null;
+
+    const pageReExtractionStatus = { ...(doc.pageReExtractionStatus ?? {}) };
+    pageReExtractionStatus[String(args.pageNumber)] = args.status;
+
+    await ctx.db.patch(args.documentId, { pageReExtractionStatus });
+    return null;
+  },
+});
+
+/**
+ * Clear page re-extraction status (when complete)
+ */
+export const clearPageReExtractionStatus = internalMutation({
+  args: {
+    documentId: v.id('documents'),
+    pageNumber: v.number(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const doc = await ctx.db.get(args.documentId);
+    if (!doc) return null;
+
+    const pageReExtractionStatus = { ...(doc.pageReExtractionStatus ?? {}) };
+    delete pageReExtractionStatus[String(args.pageNumber)];
+
+    await ctx.db.patch(args.documentId, { pageReExtractionStatus });
+    return null;
+  },
+});
+
+/**
  * Internal query to get document (for use in actions)
  */
 export const getDocumentInternal = internalQuery({

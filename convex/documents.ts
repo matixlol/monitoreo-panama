@@ -139,13 +139,12 @@ export const reExtractPage = authMutation({
       throw new Error('Invalid page number');
     }
 
-    // Delete validated data for this page
-    await ctx.scheduler.runAfter(0, internal.extractionHelpers.deleteValidatedDataForPage, {
-      documentId: args.documentId,
-      pageNumber: args.pageNumber,
-    });
+    // Set page re-extraction status to pending
+    const pageReExtractionStatus = { ...(doc.pageReExtractionStatus ?? {}) };
+    pageReExtractionStatus[String(args.pageNumber)] = 'pending' as const;
+    await ctx.db.patch(args.documentId, { pageReExtractionStatus });
 
-    // Trigger the page re-extraction
+    // Trigger the page re-extraction (it will update both extraction and validatedData)
     await ctx.scheduler.runAfter(0, internal.extraction.reExtractPage, {
       documentId: args.documentId,
       pageNumber: args.pageNumber,

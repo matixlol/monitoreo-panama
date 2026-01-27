@@ -4,6 +4,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { EgressTable } from './EgressTable';
 import { IngressTable } from './IngressTable';
 import { AmountByPageChart } from './AmountByPageChart';
+import { RowCountByPageChart } from './RowCountByPageChart';
 import type { EgressRow, IngressRow } from './types';
 
 type Props = {
@@ -24,6 +25,7 @@ type Props = {
   onToggleUnreadableEgress: (rowIndex: number, field: string) => void;
   onAddIngress: () => void;
   onAddEgress: () => void;
+  isReExtracting?: boolean;
 };
 
 export function DataPanel({
@@ -44,6 +46,7 @@ export function DataPanel({
   onToggleUnreadableEgress,
   onAddIngress,
   onAddEgress,
+  isReExtracting,
 }: Props) {
   const [activeTab, setActiveTab] = useState('data');
 
@@ -51,7 +54,7 @@ export function DataPanel({
     <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full bg-white dark:bg-slate-900">
       <TabsList>
         <TabsTrigger value="data">Datos</TabsTrigger>
-        <TabsTrigger value="chart">$ por Página</TabsTrigger>
+        <TabsTrigger value="chart">Gráficos</TabsTrigger>
       </TabsList>
 
       <TabsContent value="data" className="flex flex-col overflow-hidden">
@@ -91,7 +94,15 @@ export function DataPanel({
         )}
 
         <div className="flex-1 overflow-auto">
-          {ingressRows.length === 0 && egressRows.length === 0 ? (
+          {isReExtracting ? (
+            <div className="flex flex-col items-center justify-center h-full gap-3">
+              <svg className="w-8 h-8 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              <span className="text-sm text-slate-500">Re-extrayendo página...</span>
+            </div>
+          ) : ingressRows.length === 0 && egressRows.length === 0 ? (
             <div className="flex items-center justify-center h-full text-slate-400 text-sm">
               No hay datos extraídos en esta página
             </div>
@@ -148,13 +159,27 @@ export function DataPanel({
         </div>
       </TabsContent>
 
-      <TabsContent value="chart" className="overflow-hidden">
-        <AmountByPageChart
-          ingressRows={allIngressRows}
-          egressRows={allEgressRows}
-          onPageClick={goToPage}
-          currentPage={currentPage}
-        />
+      <TabsContent value="chart" className="overflow-auto">
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300 px-4 pt-2">$ por Página</h3>
+            <AmountByPageChart
+              ingressRows={allIngressRows}
+              egressRows={allEgressRows}
+              onPageClick={goToPage}
+              currentPage={currentPage}
+            />
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300 px-4"># Filas por Página</h3>
+            <RowCountByPageChart
+              ingressRows={allIngressRows}
+              egressRows={allEgressRows}
+              onPageClick={goToPage}
+              currentPage={currentPage}
+            />
+          </div>
+        </div>
       </TabsContent>
     </Tabs>
   );
