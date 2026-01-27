@@ -4,6 +4,7 @@ import { v } from 'convex/values';
 
 // Base ingress row fields (shared between extraction and validated data)
 const ingressRowBaseFields = {
+  failedToRead: v.optional(v.union(v.boolean(), v.null())),
   pageNumber: v.number(),
   fecha: v.optional(v.union(v.string(), v.null())),
   reciboNumero: v.optional(v.union(v.string(), v.null())),
@@ -23,6 +24,7 @@ const ingressRowBaseFields = {
 
 // Base egress row fields (shared between extraction and validated data)
 const egressRowBaseFields = {
+  failedToRead: v.optional(v.union(v.boolean(), v.null())),
   pageNumber: v.number(),
   fecha: v.optional(v.union(v.string(), v.null())),
   numeroFacturaRecibo: v.optional(v.union(v.string(), v.null())),
