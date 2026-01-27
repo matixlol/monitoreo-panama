@@ -102,6 +102,97 @@ export const storeSummaryExtraction = internalMutation({
 });
 
 /**
+ * Update extraction data for a specific page (replaces old page data with new)
+ */
+export const updateExtractionForPage = internalMutation({
+  args: {
+    documentId: v.id('documents'),
+    pageNumber: v.number(),
+    ingress: v.array(v.any()),
+    egress: v.array(v.any()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    // Get the latest extraction for this document
+    const extractions = await ctx.db
+      .query('extractions')
+      .withIndex('by_document', (q) => q.eq('documentId', args.documentId))
+      .collect();
+
+    const latestExtraction = extractions
+      .filter((e) => e.model.startsWith('gemini-3'))
+      .sort((a, b) => b.completedAt - a.completedAt)[0];
+
+    if (!latestExtraction) {
+      throw new Error('No extraction found for document');
+    }
+
+    // Filter out old page data and add new page data
+    const updatedIngress = [
+      ...(latestExtraction.ingress as Array<{ pageNumber: number }>).filter(
+        (row) => row.pageNumber !== args.pageNumber,
+      ),
+      ...args.ingress,
+    ];
+
+    const updatedEgress = [
+      ...(latestExtraction.egress as Array<{ pageNumber: number }>).filter(
+        (row) => row.pageNumber !== args.pageNumber,
+      ),
+      ...args.egress,
+    ];
+
+    // Update the extraction
+    await ctx.db.patch(latestExtraction._id, {
+      ingress: updatedIngress,
+      egress: updatedEgress,
+      completedAt: Date.now(),
+    });
+
+    return null;
+  },
+});
+
+/**
+ * Delete validated data for a specific page
+ */
+export const deleteValidatedDataForPage = internalMutation({
+  args: {
+    documentId: v.id('documents'),
+    pageNumber: v.number(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const validatedData = await ctx.db
+      .query('validatedData')
+      .withIndex('by_document', (q) => q.eq('documentId', args.documentId))
+      .unique();
+
+    if (!validatedData) {
+      return null; // No validated data to delete
+    }
+
+    // Filter out rows for the specified page
+    const updatedIngress = (validatedData.ingress as Array<{ pageNumber: number }>).filter(
+      (row) => row.pageNumber !== args.pageNumber,
+    );
+
+    const updatedEgress = (validatedData.egress as Array<{ pageNumber: number }>).filter(
+      (row) => row.pageNumber !== args.pageNumber,
+    );
+
+    // Update the validated data
+    await ctx.db.patch(validatedData._id, {
+      ingress: updatedIngress,
+      egress: updatedEgress,
+      validatedAt: Date.now(),
+    });
+
+    return null;
+  },
+});
+
+/**
  * Internal query to get document (for use in actions)
  */
 export const getDocumentInternal = internalQuery({

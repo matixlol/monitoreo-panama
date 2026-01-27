@@ -31,6 +31,7 @@ type DocumentValidationState = {
   handleToggleUnreadable: (type: RowType, rowIndex: number, field: string) => void;
   handleSave: () => Promise<void>;
   handleRerunExtraction: () => Promise<void>;
+  handleReExtractPage: () => Promise<void>;
   goToPage: (pageNumber: number) => void;
   handleRotate: () => void;
   getCurrentRotation: () => number;
@@ -50,6 +51,7 @@ export function useDocumentValidationData(documentId: string): DocumentValidatio
 
   const saveValidatedData = useMutation(api.extractions.saveValidatedData);
   const retryExtraction = useMutation(api.documents.retryExtraction);
+  const reExtractPageMutation = useMutation(api.documents.reExtractPage);
 
   const setPageRotation = useMutation(api.documents.setPageRotation).withOptimisticUpdate((localStore, args) => {
     const currentDoc = localStore.getQuery(api.documents.getDocument, {
@@ -214,6 +216,25 @@ export function useDocumentValidationData(documentId: string): DocumentValidatio
     }
   }, [documentId, retryExtraction]);
 
+  const handleReExtractPage = useCallback(async () => {
+    if (
+      !confirm(
+        `¿Estás seguro de que quieres re-extraer la página ${currentPage}? Los datos validados de esta página serán eliminados.`,
+      )
+    ) {
+      return;
+    }
+    try {
+      await reExtractPageMutation({
+        documentId: documentId as Id<'documents'>,
+        pageNumber: currentPage,
+      });
+    } catch (error) {
+      console.error('Re-extract page failed:', error);
+      alert(`Error al re-extraer: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+    }
+  }, [currentPage, documentId, reExtractPageMutation]);
+
   const goToPage = useCallback((pageNumber: number) => {
     setCurrentPage(pageNumber);
   }, []);
@@ -279,6 +300,7 @@ export function useDocumentValidationData(documentId: string): DocumentValidatio
     handleToggleUnreadable,
     handleSave,
     handleRerunExtraction,
+    handleReExtractPage,
     goToPage,
     handleRotate,
     getCurrentRotation,
