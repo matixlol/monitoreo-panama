@@ -5,7 +5,7 @@ import { internalAction } from './_generated/server';
 import { internal } from './_generated/api';
 import { PDFDocument } from 'pdf-lib';
 import { z } from 'zod';
-import { MODEL, callGeminiDirect } from './lib/pdf-extraction';
+import { MODEL, callGeminiDirect } from '../pdf-extraction';
 
 const SUMMARY_EXTRACTION_PROMPT = `This PDF contains the first pages of a financial report from Panama's Electoral Tribunal. One of these pages should be a "Resumen de Ingresos y Gastos" (Income and Expense Summary).
 
