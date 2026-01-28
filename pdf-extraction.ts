@@ -19,6 +19,8 @@ Extract rows from "INFORME DE INGRESOS" and "INFORME DE GASTOS" tables. Don't ex
 
 Do not confuse Total de Gastos de Campaña (totalGastosCampania) with Total de Gastos de Propaganda y Campaña (totalDeGastosDePropagandaYCampania). Read each cell as-is, don't try to guess the value if it's not clear.
 
+If it's available, always include "totalDeGastosDePropagandaYCampania".
+
 For each row, if any fields are illegible, unreadable, or unclear in the source document (e.g., due to poor scan quality, handwriting that can't be deciphered, or obscured text), list the field names in the "unreadableFields" array. Only include fields that you genuinely cannot read - do not include fields that are simply empty.`;
 
 export const IngresoRowSchema = z.object({

@@ -30,6 +30,7 @@ function DocumentValidationPage() {
     handleAddRow,
     handleDeleteRow,
     handleToggleUnreadable,
+    handleAutoCalculateEgressTotals,
     handleSave,
     handleRerunExtraction,
     handleReExtractPage,
@@ -97,6 +98,7 @@ function DocumentValidationPage() {
             onToggleUnreadableEgress={(rowIndex, field) => handleToggleUnreadable('egress', rowIndex, field)}
             onAddIngress={() => handleAddRow('ingress')}
             onAddEgress={() => handleAddRow('egress')}
+            onAutoCalculateEgressTotals={handleAutoCalculateEgressTotals}
             isReExtracting={isCurrentPageReExtracting}
           />
         </ResizablePanel>
