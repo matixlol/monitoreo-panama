@@ -5,8 +5,7 @@ import { internalAction } from './_generated/server';
 import { internal } from './_generated/api';
 import { PDFDocument } from 'pdf-lib';
 import { z } from 'zod';
-
-const MODELS = [{ id: 'gemini-3-flash', openrouterId: 'google/gemini-3-flash-preview' }] as const;
+import { MODEL, callGeminiDirect } from './lib/pdf-extraction';
 
 const SUMMARY_EXTRACTION_PROMPT = `This PDF contains the first pages of a financial report from Panama's Electoral Tribunal. One of these pages should be a "Resumen de Ingresos y Gastos" (Income and Expense Summary).
 
@@ -102,64 +101,6 @@ const RESPONSE_JSON_SCHEMA = {
   required: [],
 };
 
-async function callOpenRouter(pdfBase64: string, modelId: string): Promise<SummaryData | null> {
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: modelId,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: SUMMARY_EXTRACTION_PROMPT },
-            {
-              type: 'image_url',
-              image_url: {
-                url: `data:application/pdf;base64,${pdfBase64}`,
-              },
-            },
-          ],
-        },
-      ],
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'summary_extraction_response',
-          strict: true,
-          schema: RESPONSE_JSON_SCHEMA,
-        },
-      },
-      provider: {
-        order: ['google-ai-studio'],
-        allow_fallbacks: true,
-      },
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`OpenRouter API error: ${response.status} - ${error}`);
-  }
-
-  const result = (await response.json()) as {
-    choices?: { message?: { content?: string } }[];
-  };
-
-  const content = result.choices?.[0]?.message?.content;
-  if (!content) {
-    throw new Error('No content in OpenRouter response');
-  }
-
-  const parsed = JSON.parse(content);
-  const validated = SummarySchema.parse(parsed);
-
-  return validated;
-}
-
 function isValidSummary(summary: SummaryData | null): summary is SummaryData {
   if (!summary) return false;
   return (
@@ -228,28 +169,31 @@ export const startSummaryExtraction = internalAction({
 
       const pdfBase64 = Buffer.from(firstPagesPdf).toString('base64');
 
-      for (const model of MODELS) {
-        console.log(`[Summary] Processing with ${model.id}...`);
+      console.log(`[Summary] Processing with ${MODEL.id}...`);
 
-        try {
-          const summary = await callOpenRouter(pdfBase64, model.openrouterId);
+      try {
+        const { parsed: summary } = await callGeminiDirect(pdfBase64, process.env.GEMINI_API_KEY!, {
+          prompt: SUMMARY_EXTRACTION_PROMPT,
+          schema: SummarySchema,
+          jsonSchema: RESPONSE_JSON_SCHEMA,
+          mediaResolution: 'MEDIA_RESOLUTION_HIGH',
+        });
 
-          if (isValidSummary(summary)) {
-            const pageNumber = summary.pageNumber ?? 1;
-            console.log(`[${model.id}] Found valid summary on page ${pageNumber}`);
+        if (isValidSummary(summary)) {
+          const pageNumber = summary.pageNumber ?? 1;
+          console.log(`[${MODEL.id}] Found valid summary on page ${pageNumber}`);
 
-            await ctx.runMutation(internal.extractionHelpers.storeSummaryExtraction, {
-              documentId: args.documentId,
-              model: model.id,
-              summary: summary as Record<string, unknown>,
-              pageNumber,
-            });
-          } else {
-            console.log(`[${model.id}] No valid summary found in first ${pageCount} pages`);
-          }
-        } catch (error) {
-          console.error(`[${model.id}] Error processing summary:`, error);
+          await ctx.runMutation(internal.extractionHelpers.storeSummaryExtraction, {
+            documentId: args.documentId,
+            model: MODEL.id,
+            summary: summary as Record<string, unknown>,
+            pageNumber,
+          });
+        } else {
+          console.log(`[${MODEL.id}] No valid summary found in first ${pageCount} pages`);
         }
+      } catch (error) {
+        console.error(`[${MODEL.id}] Error processing summary:`, error);
       }
 
       await ctx.runMutation(internal.extractionHelpers.updateSummaryStatus, {
