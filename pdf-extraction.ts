@@ -19,10 +19,9 @@ Extract rows from "INFORME DE INGRESOS" and "INFORME DE GASTOS" tables. Don't ex
 
 Do not confuse Total de Gastos de Campaña (totalGastosCampania) with Total de Gastos de Propaganda y Campaña (totalDeGastosDePropagandaYCampania). Read each cell as-is, don't try to guess the value if it's not clear.
 
-For each row, if any fields are illegible, unreadable, or unclear in the source document (e.g., due to poor scan quality, handwriting that can't be deciphered, or obscured text), list the field names in the "unreadableFields" array. Only include fields that you genuinely cannot read - do not include fields that are simply empty. If you can't read any fields, set the "failedToRead" field to true.`;
+For each row, if any fields are illegible, unreadable, or unclear in the source document (e.g., due to poor scan quality, handwriting that can't be deciphered, or obscured text), list the field names in the "unreadableFields" array. Only include fields that you genuinely cannot read - do not include fields that are simply empty.`;
 
 export const IngresoRowSchema = z.object({
-  failedToRead: z.boolean().nullish(),
   fecha: z.string().nullish(),
   reciboNumero: z.string().nullish(),
   contribuyenteNombre: z.string().nullish(),
@@ -44,7 +43,6 @@ export const IngresoRowSchema = z.object({
 });
 
 export const EgresoRowSchema = z.object({
-  failedToRead: z.boolean().nullish(),
   fecha: z.string().nullish(),
   numeroFacturaRecibo: z.string().nullish(),
   cedulaRuc: z
@@ -87,7 +85,6 @@ export const RESPONSE_JSON_SCHEMA = {
       items: {
         type: 'object',
         properties: {
-          failedToRead: { type: ['boolean', 'null'] },
           fecha: { type: ['string', 'null'] },
           reciboNumero: { type: ['string', 'null'] },
           contribuyenteNombre: { type: ['string', 'null'] },
@@ -112,7 +109,6 @@ export const RESPONSE_JSON_SCHEMA = {
       items: {
         type: 'object',
         properties: {
-          failedToRead: { type: ['boolean', 'null'] },
           fecha: { type: ['string', 'null'] },
           numeroFacturaRecibo: { type: ['string', 'null'] },
           cedulaRuc: { type: ['string', 'null'] },

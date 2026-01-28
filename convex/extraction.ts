@@ -14,7 +14,7 @@ import {
   RESPONSE_JSON_SCHEMA,
   type IngresoRow,
   type EgresoRow,
-} from './lib/pdf-extraction';
+} from '../pdf-extraction';
 
 const PAGE_CONCURRENCY = 50;
 
