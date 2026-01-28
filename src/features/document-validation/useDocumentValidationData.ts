@@ -31,6 +31,7 @@ type DocumentValidationState = {
   handleAddRow: (type: RowType) => void;
   handleDeleteRow: (type: RowType, rowIndex: number) => void;
   handleToggleUnreadable: (type: RowType, rowIndex: number, field: string) => void;
+  handleAutoCalculateEgressTotals: () => void;
   handleSave: () => Promise<void>;
   handleRerunExtraction: () => Promise<void>;
   handleReExtractPage: () => Promise<void>;
@@ -181,6 +182,27 @@ export function useDocumentValidationData(documentId: string): DocumentValidatio
     [computedEgress, computedIngress, editedEgress, editedIngress],
   );
 
+  const handleAutoCalculateEgressTotals = useCallback(() => {
+    const rows = [...(editedEgress || computedEgress)];
+    let updatedCount = 0;
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      if (row.totalDeGastosDePropagandaYCampania == null) {
+        const totalCampania = row.totalGastosCampania ?? 0;
+        const totalPropaganda = row.totalGastosPropaganda ?? 0;
+        if (totalCampania > 0 || totalPropaganda > 0) {
+          rows[i] = { ...row, totalDeGastosDePropagandaYCampania: totalCampania + totalPropaganda };
+          updatedCount++;
+        }
+      }
+    }
+
+    if (updatedCount > 0) {
+      setEditedEgress(rows);
+    }
+  }, [computedEgress, editedEgress]);
+
   const handleSave = useCallback(async () => {
     setIsSaving(true);
     try {
@@ -313,6 +335,7 @@ export function useDocumentValidationData(documentId: string): DocumentValidatio
     handleAddRow,
     handleDeleteRow,
     handleToggleUnreadable,
+    handleAutoCalculateEgressTotals,
     handleSave,
     handleRerunExtraction,
     handleReExtractPage,

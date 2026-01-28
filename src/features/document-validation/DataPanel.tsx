@@ -25,6 +25,7 @@ type Props = {
   onToggleUnreadableEgress: (rowIndex: number, field: string) => void;
   onAddIngress: () => void;
   onAddEgress: () => void;
+  onAutoCalculateEgressTotals: () => void;
   isReExtracting?: boolean;
 };
 
@@ -46,6 +47,7 @@ export function DataPanel({
   onToggleUnreadableEgress,
   onAddIngress,
   onAddEgress,
+  onAutoCalculateEgressTotals,
   isReExtracting,
 }: Props) {
   const [activeTab, setActiveTab] = useState('data');
@@ -66,6 +68,14 @@ export function DataPanel({
             )}
             {hasIngressOnPage && !hasEgressOnPage && <span className="ml-2 text-xs text-slate-500">— Ingresos</span>}
             {!hasIngressOnPage && hasEgressOnPage && <span className="ml-2 text-xs text-slate-500">— Gastos</span>}
+            <Button
+              onClick={onAutoCalculateEgressTotals}
+              size="sm"
+              className="h-5 text-[10px] ml-4"
+              title="Calcular Total General = Tot. Campaña + Tot. Propaganda para filas sin total"
+            >
+              Σ Totales
+            </Button>
           </h2>
         </div>
 
@@ -98,7 +108,11 @@ export function DataPanel({
             <div className="flex flex-col items-center justify-center h-full gap-3">
               <svg className="w-8 h-8 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
               </svg>
               <span className="text-sm text-slate-500">Re-extrayendo página...</span>
             </div>
@@ -128,7 +142,7 @@ export function DataPanel({
               {egressRows.length > 0 && (
                 <div>
                   {ingressRows.length > 0 && (
-                    <div className="px-2 py-1 bg-rose-50 dark:bg-rose-900/20 border-b border-rose-200 dark:border-rose-800">
+                    <div className="px-2 py-1 bg-rose-50 dark:bg-rose-900/20 border-b border-rose-200 dark:border-rose-800 flex items-center justify-between">
                       <span className="text-xs font-medium text-rose-700 dark:text-rose-400">Gastos</span>
                     </div>
                   )}
