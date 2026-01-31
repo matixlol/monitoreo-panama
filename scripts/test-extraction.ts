@@ -1,4 +1,4 @@
-import { readFile } from 'fs/promises';
+import { readFile, writeFile } from 'fs/promises';
 import {
   extractSinglePage,
   callGeminiDirect,
@@ -18,6 +18,7 @@ if (!pdfPath || !pageNumberStr) {
 const pageNumber = parseInt(pageNumberStr, 10);
 const pdfBytes = await readFile(pdfPath);
 const pageBytes = await extractSinglePage(pdfBytes.buffer, pageNumber);
+await writeFile('page.pdf', pageBytes);
 const pdfBase64 = Buffer.from(pageBytes).toString('base64');
 
 console.log(`[${MODEL.id}] Extracting page ${pageNumber} from ${pdfPath}...`);
