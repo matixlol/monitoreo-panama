@@ -9,7 +9,7 @@ export const MODEL = {
 
 export const EXTRACTION_PROMPT = `This PDF segment contains financial reports from Panama's Electoral Tribunal (Tribunal Electoral).
 
-Extract rows from "INFORME DE INGRESOS" and "INFORME DE GASTOS" tables. Don't extract the table if it doesn't look like the one described below. If a cell is empty, just return a literal \`null\`.
+Extract rows from "INFORME DE INGRESOS" and "INFORME DE GASTOS" tables. Don't extract the table if it doesn't look like the one described below. If a cell is empty, just return a literal \`null\`. If there's no column headers, interpret the rows in the order of the column list below.
 
 "INFORME DE INGRESOS" (Formulario Pre-17/Pre-7) columns:
 1. Fecha, 2. Recibo No., 3. Nombre del Contribuyente, 4. Representante Legal, 5. Cédula/RUC, 6. Dirección, 7. Teléfono, 8. Correo Electrónico, 9. Donaciones Privadas - Efectivo, 10. Donaciones Privadas - Cheque/ACH, 11. Donaciones Privadas - Especie, 12. Recursos Propios - Efectivo/Cheque, 13. Recursos Propios - Especie, 14. TOTAL
@@ -221,9 +221,45 @@ export interface GeminiRawResponse {
   usageMetadata?: {
     promptTokenCount?: number;
     candidatesTokenCount?: number;
+    thoughtsTokenCount?: number;
+    cachedContentTokenCount?: number;
     totalTokenCount?: number;
   };
   error?: { message?: string; code?: number };
+}
+
+const GEMINI_3_FLASH_PRICING = {
+  inputPerMillion: 0.5,
+  outputPerMillion: 3.0,
+  cachedInputPerMillion: 0.05,
+};
+
+export function logGeminiCost(usage: GeminiRawResponse['usageMetadata'], label?: string): void {
+  if (!usage) {
+    console.log('[Cost] No usage metadata available');
+    return;
+  }
+
+  const promptTokens = usage.promptTokenCount ?? 0;
+  const candidatesTokens = usage.candidatesTokenCount ?? 0;
+  const thoughtsTokens = usage.thoughtsTokenCount ?? 0;
+  const cachedTokens = usage.cachedContentTokenCount ?? 0;
+  const totalTokens = usage.totalTokenCount ?? 0;
+
+  const billableInputTokens = promptTokens - cachedTokens;
+  const inputCost = (billableInputTokens / 1_000_000) * GEMINI_3_FLASH_PRICING.inputPerMillion;
+  const cachedCost = (cachedTokens / 1_000_000) * GEMINI_3_FLASH_PRICING.cachedInputPerMillion;
+  const outputCost = (candidatesTokens / 1_000_000) * GEMINI_3_FLASH_PRICING.outputPerMillion;
+  const totalCost = inputCost + cachedCost + outputCost;
+
+  const prefix = label ? `[Cost: ${label}]` : '[Cost]';
+  console.log(`${prefix} Tokens: ${totalTokens.toLocaleString()} total`);
+  console.log(`  Input: ${promptTokens.toLocaleString()} (${cachedTokens.toLocaleString()} cached)`);
+  console.log(`  Output: ${candidatesTokens.toLocaleString()} (${thoughtsTokens.toLocaleString()} thinking)`);
+  console.log(`  Estimated cost: $${totalCost.toFixed(6)}`);
+  console.log(
+    `    Input: $${inputCost.toFixed(6)} | Cached: $${cachedCost.toFixed(6)} | Output: $${outputCost.toFixed(6)}`,
+  );
 }
 
 export type MediaResolution =
@@ -244,7 +280,7 @@ export async function callGeminiDirect<T>(
   },
 ): Promise<{ raw: GeminiRawResponse; parsed: T }> {
   const modelId = options.modelId ?? MODEL.geminiId;
-  const mediaResolution = options.mediaResolution ?? 'MEDIA_RESOLUTION_MEDIUM';
+  const mediaResolution = options.mediaResolution ?? 'MEDIA_RESOLUTION_HIGH';
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent`;
 
@@ -259,17 +295,21 @@ export async function callGeminiDirect<T>(
         {
           role: 'user',
           parts: [
-            { text: options.prompt },
             {
               inlineData: {
                 mimeType: 'application/pdf',
                 data: pdfBase64,
               },
             },
+            { text: options.prompt },
           ],
         },
       ],
       generationConfig: {
+        temperature: 1,
+        thinkingConfig: {
+          thinkingLevel: 'HIGH',
+        },
         mediaResolution,
         response_mime_type: 'application/json',
         response_json_schema: options.jsonSchema,
@@ -295,6 +335,8 @@ export async function callGeminiDirect<T>(
 
   const parsed = JSON.parse(content);
   const validated = options.schema.parse(parsed);
+
+  logGeminiCost(result.usageMetadata, modelId);
 
   return {
     raw: result,
