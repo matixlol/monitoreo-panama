@@ -84,6 +84,7 @@ function AdminPage() {
       <main className="p-8 flex flex-col gap-8">
         <Authenticated>
           <DocumentStats />
+          <DoclingOverrideToggle />
           <ReprocessStuckDocuments />
           <ProcessAllSummaries />
           <CreateUserForm />
@@ -304,6 +305,57 @@ function CreateUserForm() {
   );
 }
 
+function DoclingOverrideToggle() {
+  const enabled = useQuery(api.featureFlags.getDoclingOverride);
+  const setDoclingOverride = useMutation(api.featureFlags.setDoclingOverride);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleToggle = async () => {
+    if (enabled == null || isSaving) return;
+    setIsSaving(true);
+    setError(null);
+    try {
+      await setDoclingOverride({ enabled: !enabled });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update setting');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-4 w-full max-w-md mx-auto">
+      <div className="text-center">
+        <h2 className="text-xl font-bold mb-2">Docling Override</h2>
+        <p className="text-slate-600 dark:text-slate-400 text-sm">
+          Use Docling to fix donation column alignment after Gemini extraction
+        </p>
+      </div>
+
+      {error && (
+        <div className="text-red-500 text-sm bg-red-50 dark:bg-red-950 p-3 rounded-md">{error}</div>
+      )}
+
+      <button
+        onClick={handleToggle}
+        disabled={enabled == null || isSaving}
+        className={`px-4 py-2 rounded-md font-medium transition-colors disabled:opacity-50 ${
+          enabled ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-slate-200 hover:bg-slate-300'
+        }`}
+      >
+        {enabled == null
+          ? 'Loading...'
+          : isSaving
+            ? 'Saving...'
+            : enabled
+              ? 'Enabled (click to disable)'
+              : 'Disabled (click to enable)'}
+      </button>
+    </div>
+  );
+}
+
 function UserMenu() {
   const { signOut } = useAuthActions();
   const { isAuthenticated } = useConvexAuth();
@@ -321,4 +373,3 @@ function UserMenu() {
     </div>
   );
 }
-

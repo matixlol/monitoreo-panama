@@ -9,7 +9,21 @@ export const MODEL = {
 
 export const EXTRACTION_PROMPT = `This PDF segment contains financial reports from Panama's Electoral Tribunal (Tribunal Electoral).
 
-Extract rows from "INFORME DE INGRESOS" and "INFORME DE GASTOS" tables. Don't extract the table if it doesn't look like the one described below. If a cell is empty, just return a literal \`null\`. If there's no column headers, interpret the rows in the order of the column list below.
+<task>
+Extract rows from "INFORME DE INGRESOS" and "INFORME DE GASTOS" tables. Don't extract the table if it doesn't look like the one described below.
+</task>
+
+<critical_rules>
+1) If a cell is empty, return a literal \`null\`. Do not shift values into earlier columns when a column is empty.
+2) If column headers are missing (continued page), interpret rows strictly in the column order listed below using the visible column grid and spacing.
+3) Do not infer monetary columns from totals or from "first non-empty amount". Use the visual column alignment and gridlines.
+4) If a monetary value could fit multiple columns, leave all monetary columns \`null\` and add those field names to "unreadableFields".
+5) Read each cell as-is. If unclear, mark that field in "unreadableFields" instead of guessing.
+</critical_rules>
+
+"INFORME DE INGRESOS" example (headers missing but columns are fixed):
+If the row has one amount aligned under "Donaciones Privadas - Cheque/ACH" and "Donaciones Privadas - Efectivo" is empty, return:
+donacionesPrivadasEfectivo: null, donacionesPrivadasChequeAch: 400
 
 "INFORME DE INGRESOS" (Formulario Pre-17/Pre-7) columns:
 1. Fecha, 2. Recibo No., 3. Nombre del Contribuyente, 4. Representante Legal, 5. Cédula/RUC, 6. Dirección, 7. Teléfono, 8. Correo Electrónico, 9. Donaciones Privadas - Efectivo, 10. Donaciones Privadas - Cheque/ACH, 11. Donaciones Privadas - Especie, 12. Recursos Propios - Efectivo/Cheque, 13. Recursos Propios - Especie, 14. TOTAL
@@ -17,11 +31,11 @@ Extract rows from "INFORME DE INGRESOS" and "INFORME DE GASTOS" tables. Don't ex
 "INFORME DE GASTOS" (Formulario Pre-18/Pre-8) columns:
 1. Fecha, 2. No. de Factura/Recibo, 3. Cédula/RUC, 4. Nombre del Proveedor, 5. Detalle del Gasto, 6. Pago en Efectivo, Especie o Cheque, 7. Movilización, 8. Combustible, 9. Hospedaje, 10. Activistas, 11. Caravana y concentraciones, 12. Comida y Brindis, 13. Alquiler de Local / servicios básicos, 14. Cargos Bancarios, 15. Total de Gastos de Campaña (totalGastosCampania), 16. Personalización de artículos promocionales, 17. Propaganda Electoral, 18. Total de Gastos de Propaganda (totalGastosPropaganda), 19. Total de Gastos de Propaganda y Campaña (totalDeGastosDePropagandaYCampania)
 
-Do not confuse Total de Gastos de Campaña (totalGastosCampania) with Total de Gastos de Propaganda y Campaña (totalDeGastosDePropagandaYCampania). Read each cell as-is, don't try to guess the value if it's not clear.
-
-If it's available, always include "totalDeGastosDePropagandaYCampania".
+Do not confuse Total de Gastos de Campaña (totalGastosCampania) with Total de Gastos de Propaganda y Campaña (totalDeGastosDePropagandaYCampania). If it's available, always include "totalDeGastosDePropagandaYCampania".
 
 For each row, if any fields are illegible, unreadable, or unclear in the source document (e.g., due to poor scan quality, handwriting that can't be deciphered, or obscured text), list the field names in the "unreadableFields" array. Only include fields that you genuinely cannot read - do not include fields that are simply empty.`;
+
+const DOCLING_SERVE_URL = 'https://docling-serve-monitoreo-panama.fly.dev';
 
 export const IngresoRowSchema = z.object({
   fecha: z.string().nullish(),
@@ -78,6 +92,105 @@ export const ResponseSchema = z.object({
 export type IngresoRow = z.infer<typeof IngresoRowSchema>;
 export type EgresoRow = z.infer<typeof EgresoRowSchema>;
 export type ExtractionResponse = z.infer<typeof ResponseSchema>;
+
+function parseMoney(value: string | null | undefined): number | null {
+  if (!value) return null;
+  const cleaned = value.replace(/[^0-9.,-]/g, '').replace(/,/g, '');
+  if (!cleaned) return null;
+  const num = Number(cleaned);
+  return Number.isFinite(num) ? num : null;
+}
+
+export async function fetchDoclingJsonContent(
+  pdfBase64: string,
+  filename: string,
+): Promise<unknown | null> {
+  const response = await fetch(`${DOCLING_SERVE_URL}/v1/convert/source`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      sources: [
+        {
+          kind: 'file',
+          filename,
+          base64_string: pdfBase64,
+        },
+      ],
+      options: {
+        from_formats: ['pdf'],
+        to_formats: ['json'],
+        do_ocr: true,
+        do_table_structure: true,
+        table_mode: 'accurate',
+        document_timeout: 120,
+      },
+      target: { kind: 'inbody' },
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Docling API error: ${response.status} - ${error}`);
+  }
+
+  const result = (await response.json()) as { document?: { json_content?: unknown } };
+  if (!result.document || result.document.json_content == null) return null;
+
+  const jsonContent = result.document.json_content;
+  if (typeof jsonContent === 'string') {
+    try {
+      return JSON.parse(jsonContent);
+    } catch {
+      return null;
+    }
+  }
+
+  return jsonContent;
+}
+
+function buildDoclingMoneyMap(doclingJson: any): Map<string, { efectivo: number | null; cheque: number | null }> {
+  const grid = doclingJson?.tables?.[0]?.data?.grid || [];
+  const map = new Map<string, { efectivo: number | null; cheque: number | null }>();
+
+  for (const row of grid) {
+    if (!row?.length) continue;
+    const receipt = (row[1]?.text || '').trim();
+    if (!receipt) continue;
+    const efectivo = parseMoney(row[8]?.text);
+    const cheque = parseMoney(row[9]?.text);
+    if (efectivo == null && cheque == null) continue;
+    map.set(receipt, { efectivo, cheque });
+  }
+
+  return map;
+}
+
+export function applyDoclingMoneyOverride(
+  extraction: ExtractionResponse,
+  doclingJson: unknown | null,
+): ExtractionResponse {
+  if (!doclingJson) return extraction;
+  const moneyMap = buildDoclingMoneyMap(doclingJson);
+  if (moneyMap.size === 0) return extraction;
+
+  for (const row of extraction.ingress) {
+    const receipt = String(row.reciboNumero ?? '');
+    const hint = moneyMap.get(receipt);
+    if (!hint) continue;
+    if (hint.efectivo != null && hint.cheque == null) {
+      row.donacionesPrivadasEfectivo = hint.efectivo;
+      row.donacionesPrivadasChequeAch = null;
+    } else if (hint.cheque != null && hint.efectivo == null) {
+      row.donacionesPrivadasChequeAch = hint.cheque;
+      row.donacionesPrivadasEfectivo = null;
+    } else if (hint.cheque != null && hint.efectivo != null) {
+      row.donacionesPrivadasChequeAch = hint.cheque;
+      row.donacionesPrivadasEfectivo = hint.efectivo;
+    }
+  }
+
+  return extraction;
+}
 
 export const RESPONSE_JSON_SCHEMA = {
   type: 'object',

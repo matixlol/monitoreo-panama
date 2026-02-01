@@ -12,6 +12,8 @@ import {
   EXTRACTION_PROMPT,
   ResponseSchema,
   RESPONSE_JSON_SCHEMA,
+  fetchDoclingJsonContent,
+  applyDoclingMoneyOverride,
   type IngresoRow,
   type EgresoRow,
 } from '../pdf-extraction';
@@ -32,6 +34,8 @@ export const reExtractPage = internalAction({
   returns: v.null(),
   handler: async (ctx, args) => {
     try {
+      const doclingEnabled = await ctx.runQuery(internal.featureFlags.getDoclingOverrideInternal);
+
       // Get document info
       const doc = await ctx.runQuery(internal.extractionHelpers.getDocumentInternal, {
         documentId: args.documentId,
@@ -67,12 +71,24 @@ export const reExtractPage = internalAction({
 
       console.log(`[${MODEL.id}] Re-extracting page ${args.pageNumber}...`);
 
-      const { parsed: result } = await callGeminiDirect(pdfBase64, process.env.GEMINI_API_KEY!, {
+      let { parsed: result } = await callGeminiDirect(pdfBase64, process.env.GEMINI_API_KEY!, {
         prompt: EXTRACTION_PROMPT,
         schema: ResponseSchema,
         jsonSchema: RESPONSE_JSON_SCHEMA,
         mediaResolution: 'MEDIA_RESOLUTION_HIGH',
       });
+
+      if (doclingEnabled) {
+        try {
+          const doclingJson = await fetchDoclingJsonContent(
+            pdfBase64,
+            `document-${args.documentId}-page-${args.pageNumber}.pdf`,
+          );
+          result = applyDoclingMoneyOverride(result, doclingJson);
+        } catch (error) {
+          console.warn(`[${MODEL.id}] Docling override failed for page ${args.pageNumber}:`, error);
+        }
+      }
 
       console.log(
         `[${MODEL.id}] Page ${args.pageNumber} re-extracted: ${result.ingress.length} ingress, ${result.egress.length} egress`,
@@ -128,6 +144,8 @@ export const startExtraction = internalAction({
   returns: v.null(),
   handler: async (ctx, args) => {
     try {
+      const doclingEnabled = await ctx.runQuery(internal.featureFlags.getDoclingOverrideInternal);
+
       // Update status to processing
       await ctx.runMutation(internal.extractionHelpers.updateDocumentStatus, {
         documentId: args.documentId,
@@ -174,12 +192,24 @@ export const startExtraction = internalAction({
             const pdfBase64 = Buffer.from(page.pageBytes).toString('base64');
 
             try {
-              const { parsed: result } = await callGeminiDirect(pdfBase64, process.env.GEMINI_API_KEY!, {
+              let { parsed: result } = await callGeminiDirect(pdfBase64, process.env.GEMINI_API_KEY!, {
                 prompt: EXTRACTION_PROMPT,
                 schema: ResponseSchema,
                 jsonSchema: RESPONSE_JSON_SCHEMA,
                 mediaResolution: 'MEDIA_RESOLUTION_HIGH',
               });
+
+              if (doclingEnabled) {
+                try {
+                  const doclingJson = await fetchDoclingJsonContent(
+                    pdfBase64,
+                    `document-${args.documentId}-page-${page.pageNumber}.pdf`,
+                  );
+                  result = applyDoclingMoneyOverride(result, doclingJson);
+                } catch (error) {
+                  console.warn(`[${MODEL.id}] Docling override failed for page ${page.pageNumber}:`, error);
+                }
+              }
 
               console.log(
                 `[${MODEL.id}] Page ${page.pageNumber}: ${result.ingress.length} ingress, ${result.egress.length} egress`,

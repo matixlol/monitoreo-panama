@@ -151,6 +151,12 @@ export default defineSchema({
     completedAt: v.number(),
   }).index('by_document', ['documentId']),
 
+  featureFlags: defineTable({
+    key: v.string(),
+    enabled: v.boolean(),
+    updatedAt: v.number(),
+  }).index('by_key', ['key']),
+
   // User-validated final data (with human-marked humanUnreadableFields)
   validatedData: defineTable({
     documentId: v.id('documents'),
