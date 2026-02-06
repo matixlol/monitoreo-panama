@@ -1,0 +1,14 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# Railway's "Serverless" (formerly App Sleeping). This is what actually "scales to zero"
+# after inactivity and wakes on next inbound request.
+sleepApplication = true
+
+# Keep at least 1 replica configured so Railway can wake the service on demand.
+numReplicas = 1
+
+# Note: Config-as-code affects a deployment's settings; it does not permanently flip the
+# dashboard toggle. Keeping this in-repo ensures future deploys keep Serverless enabled.
