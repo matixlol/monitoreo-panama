@@ -5,15 +5,14 @@ import { internalAction } from './_generated/server';
 import { internal } from './_generated/api';
 import pLimit from 'p-limit';
 import {
-  MODEL,
+  getModel,
   callGeminiDirect,
   splitPdfIntoPages,
   extractSinglePage,
   EXTRACTION_PROMPT,
   ResponseSchema,
   RESPONSE_JSON_SCHEMA,
-  fetchDoclingJsonContent,
-  applyDoclingMoneyOverride,
+  type ModelKey,
   type IngresoRow,
   type EgresoRow,
 } from '../pdf-extraction';
@@ -33,9 +32,10 @@ export const reExtractPage = internalAction({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    try {
-      const doclingEnabled = await ctx.runQuery(internal.featureFlags.getDoclingOverrideInternal);
+    const modelKey = (await ctx.runQuery(internal.featureFlags.getExtractionModelInternal)) as ModelKey;
+    const model = getModel(modelKey);
 
+    try {
       // Get document info
       const doc = await ctx.runQuery(internal.extractionHelpers.getDocumentInternal, {
         documentId: args.documentId,
@@ -69,29 +69,18 @@ export const reExtractPage = internalAction({
         status: 'processing',
       });
 
-      console.log(`[${MODEL.id}] Re-extracting page ${args.pageNumber}...`);
+      console.log(`[${model.id}] Re-extracting page ${args.pageNumber}...`);
 
-      let { parsed: result } = await callGeminiDirect(pdfBase64, process.env.GEMINI_API_KEY!, {
+      const { parsed: result } = await callGeminiDirect(pdfBase64, process.env.GEMINI_API_KEY!, {
         prompt: EXTRACTION_PROMPT,
         schema: ResponseSchema,
         jsonSchema: RESPONSE_JSON_SCHEMA,
+        modelId: model.geminiId,
         mediaResolution: 'MEDIA_RESOLUTION_HIGH',
       });
 
-      if (doclingEnabled) {
-        try {
-          const doclingJson = await fetchDoclingJsonContent(
-            pdfBase64,
-            `document-${args.documentId}-page-${args.pageNumber}.pdf`,
-          );
-          result = applyDoclingMoneyOverride(result, doclingJson);
-        } catch (error) {
-          console.warn(`[${MODEL.id}] Docling override failed for page ${args.pageNumber}:`, error);
-        }
-      }
-
       console.log(
-        `[${MODEL.id}] Page ${args.pageNumber} re-extracted: ${result.ingress.length} ingress, ${result.egress.length} egress`,
+        `[${model.id}] Page ${args.pageNumber} re-extracted: ${result.ingress.length} ingress, ${result.egress.length} egress`,
       );
 
       // Add page numbers to rows
@@ -120,7 +109,7 @@ export const reExtractPage = internalAction({
         pageNumber: args.pageNumber,
       });
     } catch (error) {
-      console.error(`[${MODEL.id}] Re-extraction failed for page ${args.pageNumber}:`, error);
+      console.error(`[${model.id}] Re-extraction failed for page ${args.pageNumber}:`, error);
 
       // Set status to failed
       await ctx.runMutation(internal.extractionHelpers.setPageReExtractionStatus, {
@@ -143,9 +132,10 @@ export const startExtraction = internalAction({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    try {
-      const doclingEnabled = await ctx.runQuery(internal.featureFlags.getDoclingOverrideInternal);
+    const modelKey = (await ctx.runQuery(internal.featureFlags.getExtractionModelInternal)) as ModelKey;
+    const model = getModel(modelKey);
 
+    try {
       // Update status to processing
       await ctx.runMutation(internal.extractionHelpers.updateDocumentStatus, {
         documentId: args.documentId,
@@ -178,7 +168,7 @@ export const startExtraction = internalAction({
       const pages = await splitPdfIntoPages(pdfBytes);
       console.log(`Split PDF into ${pages.length} pages`);
 
-      console.log(`Processing with ${MODEL.id}...`);
+      console.log(`Processing with ${model.id}...`);
 
       const allIngress: IngressRow[] = [];
       const allEgress: EgressRow[] = [];
@@ -192,27 +182,16 @@ export const startExtraction = internalAction({
             const pdfBase64 = Buffer.from(page.pageBytes).toString('base64');
 
             try {
-              let { parsed: result } = await callGeminiDirect(pdfBase64, process.env.GEMINI_API_KEY!, {
+              const { parsed: result } = await callGeminiDirect(pdfBase64, process.env.GEMINI_API_KEY!, {
                 prompt: EXTRACTION_PROMPT,
                 schema: ResponseSchema,
                 jsonSchema: RESPONSE_JSON_SCHEMA,
+                modelId: model.geminiId,
                 mediaResolution: 'MEDIA_RESOLUTION_HIGH',
               });
 
-              if (doclingEnabled) {
-                try {
-                  const doclingJson = await fetchDoclingJsonContent(
-                    pdfBase64,
-                    `document-${args.documentId}-page-${page.pageNumber}.pdf`,
-                  );
-                  result = applyDoclingMoneyOverride(result, doclingJson);
-                } catch (error) {
-                  console.warn(`[${MODEL.id}] Docling override failed for page ${page.pageNumber}:`, error);
-                }
-              }
-
               console.log(
-                `[${MODEL.id}] Page ${page.pageNumber}: ${result.ingress.length} ingress, ${result.egress.length} egress`,
+                `[${model.id}] Page ${page.pageNumber}: ${result.ingress.length} ingress, ${result.egress.length} egress`,
               );
 
               return {
@@ -221,8 +200,7 @@ export const startExtraction = internalAction({
                 egress: result.egress,
               };
             } catch (error) {
-              console.error(`[${MODEL.id}] Error processing page ${page.pageNumber}:`, error);
-              // Return empty results for failed pages
+              console.error(`[${model.id}] Error processing page ${page.pageNumber}:`, error);
               return { pageNumber: page.pageNumber, ingress: [], egress: [] };
             }
           }),
@@ -242,12 +220,12 @@ export const startExtraction = internalAction({
       // Store extraction results
       await ctx.runMutation(internal.extractionHelpers.storeExtraction, {
         documentId: args.documentId,
-        model: MODEL.id,
+        model: model.id,
         ingress: allIngress,
         egress: allEgress,
       });
 
-      console.log(`[${MODEL.id}] Completed: ${allIngress.length} ingress, ${allEgress.length} egress total`);
+      console.log(`[${model.id}] Completed: ${allIngress.length} ingress, ${allEgress.length} egress total`);
 
       // Update status to completed
       await ctx.runMutation(internal.extractionHelpers.updateDocumentStatus, {

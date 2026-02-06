@@ -1,11 +1,26 @@
 import { PDFDocument } from 'pdf-lib';
 import { z } from 'zod';
 
-export const MODEL = {
-  id: 'gemini-3-flash',
-  openrouterId: 'google/gemini-3-flash-preview',
-  geminiId: 'gemini-3-flash-preview',
+export const MODELS = {
+  'gemini-3-flash': {
+    id: 'gemini-3-flash',
+    openrouterId: 'google/gemini-3-flash-preview',
+    geminiId: 'gemini-3-flash-preview',
+  },
+  'gemini-3-pro': {
+    id: 'gemini-3-pro',
+    openrouterId: 'google/gemini-3-pro-preview',
+    geminiId: 'gemini-3-pro-preview',
+  },
 } as const;
+
+export type ModelKey = keyof typeof MODELS;
+
+export const DEFAULT_MODEL: ModelKey = 'gemini-3-flash';
+
+export function getModel(key?: ModelKey): (typeof MODELS)[ModelKey] {
+  return MODELS[key ?? DEFAULT_MODEL];
+}
 
 export const EXTRACTION_PROMPT = `This PDF segment contains financial reports from Panama's Electoral Tribunal (Tribunal Electoral).
 
@@ -34,8 +49,6 @@ donacionesPrivadasEfectivo: null, donacionesPrivadasChequeAch: 400
 Do not confuse Total de Gastos de Campaña (totalGastosCampania) with Total de Gastos de Propaganda y Campaña (totalDeGastosDePropagandaYCampania). If it's available, always include "totalDeGastosDePropagandaYCampania".
 
 For each row, if any fields are illegible, unreadable, or unclear in the source document (e.g., due to poor scan quality, handwriting that can't be deciphered, or obscured text), list the field names in the "unreadableFields" array. Only include fields that you genuinely cannot read - do not include fields that are simply empty.`;
-
-const DOCLING_SERVE_URL = 'https://docling-serve-monitoreo-panama.fly.dev';
 
 export const IngresoRowSchema = z.object({
   fecha: z.string().nullish(),
@@ -92,105 +105,6 @@ export const ResponseSchema = z.object({
 export type IngresoRow = z.infer<typeof IngresoRowSchema>;
 export type EgresoRow = z.infer<typeof EgresoRowSchema>;
 export type ExtractionResponse = z.infer<typeof ResponseSchema>;
-
-function parseMoney(value: string | null | undefined): number | null {
-  if (!value) return null;
-  const cleaned = value.replace(/[^0-9.,-]/g, '').replace(/,/g, '');
-  if (!cleaned) return null;
-  const num = Number(cleaned);
-  return Number.isFinite(num) ? num : null;
-}
-
-export async function fetchDoclingJsonContent(
-  pdfBase64: string,
-  filename: string,
-): Promise<unknown | null> {
-  const response = await fetch(`${DOCLING_SERVE_URL}/v1/convert/source`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      sources: [
-        {
-          kind: 'file',
-          filename,
-          base64_string: pdfBase64,
-        },
-      ],
-      options: {
-        from_formats: ['pdf'],
-        to_formats: ['json'],
-        do_ocr: true,
-        do_table_structure: true,
-        table_mode: 'accurate',
-        document_timeout: 120,
-      },
-      target: { kind: 'inbody' },
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Docling API error: ${response.status} - ${error}`);
-  }
-
-  const result = (await response.json()) as { document?: { json_content?: unknown } };
-  if (!result.document || result.document.json_content == null) return null;
-
-  const jsonContent = result.document.json_content;
-  if (typeof jsonContent === 'string') {
-    try {
-      return JSON.parse(jsonContent);
-    } catch {
-      return null;
-    }
-  }
-
-  return jsonContent;
-}
-
-function buildDoclingMoneyMap(doclingJson: any): Map<string, { efectivo: number | null; cheque: number | null }> {
-  const grid = doclingJson?.tables?.[0]?.data?.grid || [];
-  const map = new Map<string, { efectivo: number | null; cheque: number | null }>();
-
-  for (const row of grid) {
-    if (!row?.length) continue;
-    const receipt = (row[1]?.text || '').trim();
-    if (!receipt) continue;
-    const efectivo = parseMoney(row[8]?.text);
-    const cheque = parseMoney(row[9]?.text);
-    if (efectivo == null && cheque == null) continue;
-    map.set(receipt, { efectivo, cheque });
-  }
-
-  return map;
-}
-
-export function applyDoclingMoneyOverride(
-  extraction: ExtractionResponse,
-  doclingJson: unknown | null,
-): ExtractionResponse {
-  if (!doclingJson) return extraction;
-  const moneyMap = buildDoclingMoneyMap(doclingJson);
-  if (moneyMap.size === 0) return extraction;
-
-  for (const row of extraction.ingress) {
-    const receipt = String(row.reciboNumero ?? '');
-    const hint = moneyMap.get(receipt);
-    if (!hint) continue;
-    if (hint.efectivo != null && hint.cheque == null) {
-      row.donacionesPrivadasEfectivo = hint.efectivo;
-      row.donacionesPrivadasChequeAch = null;
-    } else if (hint.cheque != null && hint.efectivo == null) {
-      row.donacionesPrivadasChequeAch = hint.cheque;
-      row.donacionesPrivadasEfectivo = null;
-    } else if (hint.cheque != null && hint.efectivo != null) {
-      row.donacionesPrivadasChequeAch = hint.cheque;
-      row.donacionesPrivadasEfectivo = hint.efectivo;
-    }
-  }
-
-  return extraction;
-}
 
 export const RESPONSE_JSON_SCHEMA = {
   type: 'object',
@@ -264,8 +178,11 @@ export interface OpenRouterRawResponse {
 export async function callOpenRouter(
   pdfBase64: string,
   apiKey: string,
-  modelId: string = MODEL.openrouterId,
+  modelId: string = getModel().openrouterId,
+  options?: { providerOrder?: string[]; mimeType?: string },
 ): Promise<{ raw: OpenRouterRawResponse; parsed: ExtractionResponse }> {
+  const providerOrder = options?.providerOrder ?? ['google-ai-studio'];
+  const mimeType = options?.mimeType ?? 'application/pdf';
   const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -282,7 +199,7 @@ export async function callOpenRouter(
             {
               type: 'image_url',
               image_url: {
-                url: `data:application/pdf;base64,${pdfBase64}`,
+                url: `data:${mimeType};base64,${pdfBase64}`,
               },
             },
           ],
@@ -297,7 +214,7 @@ export async function callOpenRouter(
         },
       },
       provider: {
-        order: ['google-ai-studio'],
+        order: providerOrder,
         allow_fallbacks: true,
       },
     }),
@@ -392,7 +309,7 @@ export async function callGeminiDirect<T>(
     mediaResolution?: MediaResolution;
   },
 ): Promise<{ raw: GeminiRawResponse; parsed: T }> {
-  const modelId = options.modelId ?? MODEL.geminiId;
+  const modelId = options.modelId ?? getModel().geminiId;
   const mediaResolution = options.mediaResolution ?? 'MEDIA_RESOLUTION_HIGH';
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent`;

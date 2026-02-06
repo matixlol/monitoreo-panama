@@ -5,7 +5,7 @@ import { internalAction } from './_generated/server';
 import { internal } from './_generated/api';
 import { PDFDocument } from 'pdf-lib';
 import { z } from 'zod';
-import { MODEL, callGeminiDirect } from '../pdf-extraction';
+import { getModel, callGeminiDirect, type ModelKey } from '../pdf-extraction';
 
 const SUMMARY_EXTRACTION_PROMPT = `This PDF contains the first pages of a financial report from Panama's Electoral Tribunal. One of these pages should be a "Resumen de Ingresos y Gastos" (Income and Expense Summary).
 
@@ -139,6 +139,9 @@ export const startSummaryExtraction = internalAction({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    const modelKey = (await ctx.runQuery(internal.featureFlags.getExtractionModelInternal)) as ModelKey;
+    const model = getModel(modelKey);
+
     try {
       await ctx.runMutation(internal.extractionHelpers.updateSummaryStatus, {
         documentId: args.documentId,
@@ -169,31 +172,32 @@ export const startSummaryExtraction = internalAction({
 
       const pdfBase64 = Buffer.from(firstPagesPdf).toString('base64');
 
-      console.log(`[Summary] Processing with ${MODEL.id}...`);
+      console.log(`[Summary] Processing with ${model.id}...`);
 
       try {
         const { parsed: summary } = await callGeminiDirect(pdfBase64, process.env.GEMINI_API_KEY!, {
           prompt: SUMMARY_EXTRACTION_PROMPT,
           schema: SummarySchema,
           jsonSchema: RESPONSE_JSON_SCHEMA,
+          modelId: model.geminiId,
           mediaResolution: 'MEDIA_RESOLUTION_HIGH',
         });
 
         if (isValidSummary(summary)) {
           const pageNumber = summary.pageNumber ?? 1;
-          console.log(`[${MODEL.id}] Found valid summary on page ${pageNumber}`);
+          console.log(`[${model.id}] Found valid summary on page ${pageNumber}`);
 
           await ctx.runMutation(internal.extractionHelpers.storeSummaryExtraction, {
             documentId: args.documentId,
-            model: MODEL.id,
+            model: model.id,
             summary: summary as Record<string, unknown>,
             pageNumber,
           });
         } else {
-          console.log(`[${MODEL.id}] No valid summary found in first ${pageCount} pages`);
+          console.log(`[${model.id}] No valid summary found in first ${pageCount} pages`);
         }
       } catch (error) {
-        console.error(`[${MODEL.id}] Error processing summary:`, error);
+        console.error(`[${model.id}] Error processing summary:`, error);
       }
 
       await ctx.runMutation(internal.extractionHelpers.updateSummaryStatus, {

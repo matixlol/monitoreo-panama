@@ -84,7 +84,7 @@ function AdminPage() {
       <main className="p-8 flex flex-col gap-8">
         <Authenticated>
           <DocumentStats />
-          <DoclingOverrideToggle />
+          <ExtractionModelSelector />
           <ReprocessStuckDocuments />
           <ProcessAllSummaries />
           <CreateUserForm />
@@ -305,20 +305,25 @@ function CreateUserForm() {
   );
 }
 
-function DoclingOverrideToggle() {
-  const enabled = useQuery(api.featureFlags.getDoclingOverride);
-  const setDoclingOverride = useMutation(api.featureFlags.setDoclingOverride);
+function ExtractionModelSelector() {
+  const currentModel = useQuery(api.featureFlags.getExtractionModel);
+  const setModel = useMutation(api.featureFlags.setExtractionModel);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleToggle = async () => {
-    if (enabled == null || isSaving) return;
+  const models = [
+    { key: 'gemini-3-flash', label: 'Gemini 3 Flash' },
+    { key: 'gemini-3-pro', label: 'Gemini 3 Pro' },
+  ];
+
+  const handleChange = async (model: string) => {
+    if (isSaving || model === currentModel) return;
     setIsSaving(true);
     setError(null);
     try {
-      await setDoclingOverride({ enabled: !enabled });
+      await setModel({ model });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update setting');
+      setError(err instanceof Error ? err.message : 'Failed to update model');
     } finally {
       setIsSaving(false);
     }
@@ -327,9 +332,9 @@ function DoclingOverrideToggle() {
   return (
     <div className="flex flex-col gap-4 w-full max-w-md mx-auto">
       <div className="text-center">
-        <h2 className="text-xl font-bold mb-2">Docling Override</h2>
+        <h2 className="text-xl font-bold mb-2">Extraction Model</h2>
         <p className="text-slate-600 dark:text-slate-400 text-sm">
-          Use Docling to fix donation column alignment after Gemini extraction
+          Select the Gemini model used for PDF extraction
         </p>
       </div>
 
@@ -337,21 +342,22 @@ function DoclingOverrideToggle() {
         <div className="text-red-500 text-sm bg-red-50 dark:bg-red-950 p-3 rounded-md">{error}</div>
       )}
 
-      <button
-        onClick={handleToggle}
-        disabled={enabled == null || isSaving}
-        className={`px-4 py-2 rounded-md font-medium transition-colors disabled:opacity-50 ${
-          enabled ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-slate-200 hover:bg-slate-300'
-        }`}
-      >
-        {enabled == null
-          ? 'Loading...'
-          : isSaving
-            ? 'Saving...'
-            : enabled
-              ? 'Enabled (click to disable)'
-              : 'Disabled (click to enable)'}
-      </button>
+      <div className="flex gap-2 justify-center">
+        {models.map((m) => (
+          <button
+            key={m.key}
+            onClick={() => handleChange(m.key)}
+            disabled={currentModel == null || isSaving}
+            className={`px-4 py-2 rounded-md font-medium transition-colors disabled:opacity-50 ${
+              currentModel === m.key
+                ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                : 'bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600'
+            }`}
+          >
+            {m.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

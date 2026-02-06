@@ -154,6 +154,7 @@ export default defineSchema({
   featureFlags: defineTable({
     key: v.string(),
     enabled: v.boolean(),
+    value: v.optional(v.string()),
     updatedAt: v.number(),
   }).index('by_key', ['key']),
 
