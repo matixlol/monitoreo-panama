@@ -12,6 +12,7 @@ type Props = {
   onStartEdit: () => void;
   onStopEdit: () => void;
   onEdit: (value: string | number | null) => void;
+  onNavigateVertical?: (direction: 'up' | 'down') => void;
   isHumanUnreadable: boolean;
   isAiUnreadable: boolean;
   onToggleUnreadable: () => void;
@@ -32,6 +33,7 @@ export function EditableCell({
   onStartEdit,
   onStopEdit,
   onEdit,
+  onNavigateVertical,
   isHumanUnreadable,
   isAiUnreadable,
   onToggleUnreadable,
@@ -116,6 +118,13 @@ export function EditableCell({
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
               e.currentTarget.blur();
+            } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+              if (!onNavigateVertical) return;
+              e.preventDefault();
+              const text = e.currentTarget.textContent || '';
+              const newValue = type === 'number' ? (text ? Number(text) : null) : text || null;
+              onEdit(newValue);
+              onNavigateVertical(e.key === 'ArrowUp' ? 'up' : 'down');
             } else if (e.key === 'Escape') {
               onStopEdit();
             }
