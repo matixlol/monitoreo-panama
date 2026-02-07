@@ -121,20 +121,28 @@ export function useDocumentValidationData(documentId: string): DocumentValidatio
   const handleCellEdit = useCallback(
     (type: RowType, rowIndex: number, field: string, value: string | number | null) => {
       if (type === 'ingress') {
-        const rows = [...(editedIngress || computedIngress)];
-        const row = { ...rows[rowIndex] } as IngressRow;
-        (row as Record<string, unknown>)[field] = value;
-        rows[rowIndex] = row;
-        setEditedIngress(rows);
+        // Functional update so multiple edits in a single tick compose (used by bulk actions).
+        setEditedIngress((prev) => {
+          const base = prev ?? computedIngress;
+          const rows = [...base];
+          const row = { ...rows[rowIndex] } as IngressRow;
+          (row as Record<string, unknown>)[field] = value;
+          rows[rowIndex] = row;
+          return rows;
+        });
       } else {
-        const rows = [...(editedEgress || computedEgress)];
-        const row = { ...rows[rowIndex] } as EgressRow;
-        (row as Record<string, unknown>)[field] = value;
-        rows[rowIndex] = row;
-        setEditedEgress(rows);
+        // Functional update so multiple edits in a single tick compose (used by bulk actions).
+        setEditedEgress((prev) => {
+          const base = prev ?? computedEgress;
+          const rows = [...base];
+          const row = { ...rows[rowIndex] } as EgressRow;
+          (row as Record<string, unknown>)[field] = value;
+          rows[rowIndex] = row;
+          return rows;
+        });
       }
     },
-    [computedEgress, computedIngress, editedEgress, editedIngress],
+    [computedEgress, computedIngress],
   );
 
   const handleAddRow = useCallback(

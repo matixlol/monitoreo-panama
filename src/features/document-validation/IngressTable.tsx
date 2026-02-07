@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { createColumnHelper, flexRender, getCoreRowModel, useReactTable, type ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { EditableCell } from './EditableCell';
-import { getCellRowIndex, isAdditiveMultiSelectEvent, makeCellId, type CellId } from './cellSelection';
+import { getCellRowIndex, isAdditiveMultiSelectEvent, makeCellId, parseCellId, type CellId } from './cellSelection';
 import { shiftSelectedCells } from './shiftSelectedCells';
 import {
   INGRESS_COLUMNS,
@@ -33,6 +33,11 @@ export function IngressTable({
   const [selectedCells, setSelectedCells] = useState<Set<CellId>>(() => new Set());
   const [selectionAnchor, setSelectionAnchor] = useState<CellId | null>(null);
   const [shiftNote, setShiftNote] = useState<string | null>(null);
+  const [dragSelect, setDragSelect] = useState<{
+    field: string;
+    startRowIndex: number;
+    base: Set<CellId>;
+  } | null>(null);
 
   const moneyFieldOrder = useMemo(
     () =>
@@ -57,13 +62,60 @@ export function IngressTable({
     setSelectionAnchor((prev) => (prev && visible.has(getCellRowIndex(prev)) ? prev : null));
   }, [visibleRowIndices]);
 
+  useEffect(() => {
+    if (!dragSelect) return;
+    const onMouseUp = () => setDragSelect(null);
+    window.addEventListener('mouseup', onMouseUp);
+    return () => window.removeEventListener('mouseup', onMouseUp);
+  }, [dragSelect]);
+
   const clearSelection = () => {
     setSelectedCells(new Set());
     setSelectionAnchor(null);
     setShiftNote(null);
   };
 
+  const makeRangeSelection = (field: string, startRowIndex: number, endRowIndex: number) => {
+    const startPos = visibleRowIndices.indexOf(startRowIndex);
+    const endPos = visibleRowIndices.indexOf(endRowIndex);
+    if (startPos === -1 || endPos === -1) return new Set<CellId>();
+    const lo = Math.min(startPos, endPos);
+    const hi = Math.max(startPos, endPos);
+    const next = new Set<CellId>();
+    for (let i = lo; i <= hi; i += 1) next.add(makeCellId(visibleRowIndices[i]!, field));
+    return next;
+  };
+
+  const beginDragSelect = (e: Pick<MouseEvent, 'metaKey' | 'ctrlKey'>, cellId: CellId) => {
+    if (readOnly) return;
+    const { rowIndex, field } = parseCellId(cellId);
+    const additive = isAdditiveMultiSelectEvent(e);
+
+    setSelectedCells((prev) => {
+      const base = additive ? new Set(prev) : new Set<CellId>();
+      base.add(makeCellId(rowIndex, field));
+      setDragSelect({ field, startRowIndex: rowIndex, base });
+      return base;
+    });
+
+    setSelectionAnchor(makeCellId(rowIndex, field));
+    setShiftNote(null);
+  };
+
+  const continueDragSelect = (cellId: CellId) => {
+    if (!dragSelect) return;
+    const { rowIndex, field } = parseCellId(cellId);
+    if (field !== dragSelect.field) return;
+    const range = makeRangeSelection(dragSelect.field, dragSelect.startRowIndex, rowIndex);
+    setSelectedCells(() => {
+      const next = new Set<CellId>(dragSelect.base);
+      for (const id of range) next.add(id);
+      return next;
+    });
+  };
+
   const selectCell = (e: Pick<MouseEvent, 'shiftKey' | 'metaKey' | 'ctrlKey'>, cellId: CellId) => {
+    if (readOnly) return;
     const additive = isAdditiveMultiSelectEvent(e);
     const isRange = e.shiftKey;
 
@@ -100,6 +152,7 @@ export function IngressTable({
   };
 
   const shiftSelection = (direction: 'left' | 'right') => {
+    if (readOnly) return;
     const result = shiftSelectedCells<IngressRow>({
       allRows,
       selectedCells,
@@ -142,6 +195,16 @@ export function IngressTable({
               onEdit={(value) => {
                 if (readOnly) return;
                 onEdit(actualIndex, col.key, value);
+              }}
+              onNavigateVertical={(direction) => {
+                if (readOnly) return;
+                const nextRowIndex = info.row.index + (direction === 'down' ? 1 : -1);
+                const rowCount = info.table.getRowModel().rows.length;
+                if (nextRowIndex < 0 || nextRowIndex >= rowCount) {
+                  setEditingCell(null);
+                  return;
+                }
+                setEditingCell({ row: nextRowIndex, col: col.key });
               }}
               isHumanUnreadable={isHumanUnreadable}
               isAiUnreadable={isAiUnreadable}
@@ -199,34 +262,40 @@ export function IngressTable({
             <div className="text-[11px] text-slate-600 dark:text-slate-400">
               {selectedCells.size} celdas seleccionadas
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => shiftSelection('left')}
-              disabled={editingCell != null}
-              title="Mover a la columna anterior"
-            >
-              ← Mover
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => shiftSelection('right')}
-              disabled={editingCell != null}
-              title="Mover a la siguiente columna"
-            >
-              Mover →
-            </Button>
+            {!readOnly && (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => shiftSelection('left')}
+                  disabled={editingCell != null}
+                  title="Mover a la columna anterior"
+                >
+                  ← Mover
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => shiftSelection('right')}
+                  disabled={editingCell != null}
+                  title="Mover a la siguiente columna"
+                >
+                  Mover →
+                </Button>
+              </>
+            )}
             <Button type="button" variant="ghost" size="sm" onClick={clearSelection}>
               Limpiar
             </Button>
-            {shiftNote && <div className="text-[11px] text-amber-600 dark:text-amber-400">{shiftNote}</div>}
+            {!readOnly && shiftNote && (
+              <div className="text-[11px] text-amber-600 dark:text-amber-400">{shiftNote}</div>
+            )}
           </>
         ) : (
           <div className="text-[11px] text-slate-500 dark:text-slate-500">
-            Selección: Cmd/Ctrl+Click para seleccionar, Shift+Click para rango (misma columna).
+            Selección: arrastra desde la barrita izquierda (en celdas de monto) para seleccionar un rango vertical. También funciona Cmd/Ctrl+Click y Shift+Click.
           </div>
         )}
       </div>
@@ -274,17 +343,43 @@ export function IngressTable({
                       } ${
                         isAiUnreadable && !isHumanUnreadable ? 'bg-orange-50 dark:bg-orange-900/20' : ''
                       } ${isSelected ? 'ring-2 ring-indigo-400 ring-inset' : ''}`}
+                      onMouseEnter={() => {
+                        if (readOnly) return;
+                        if (!cellId) return;
+                        continueDragSelect(cellId);
+                      }}
                       onMouseDownCapture={(e) => {
+                        if (readOnly) return;
                         if (!isMoney) return;
                         if (editingCell) return;
-                        if (!(e.shiftKey || e.metaKey || e.ctrlKey)) return;
                         const target = e.target as HTMLElement | null;
                         if (target?.closest('button')) return;
-                        e.preventDefault();
-                        e.stopPropagation();
-                        if (cellId) selectCell(e, cellId);
+                        // Handle allows drag selection without requiring modifiers.
+                        if (target?.closest('[data-select-handle]')) return;
+
+                        // Keep old modifier-based selection when clicking anywhere in the cell.
+                        if (e.shiftKey || e.metaKey || e.ctrlKey) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (cellId) selectCell(e, cellId);
+                        }
                       }}
                     >
+                      {isMoney && !readOnly && cellId && (
+                        <div
+                          data-select-handle
+                          className="absolute left-0 top-0 bottom-0 w-2 cursor-ns-resize select-none opacity-0 group-hover:opacity-100 transition-opacity"
+                          title="Arrastra para seleccionar en columna"
+                          onMouseDown={(e) => {
+                            if (editingCell) return;
+                            e.preventDefault();
+                            e.stopPropagation();
+                            beginDragSelect(e, cellId);
+                          }}
+                        >
+                          <div className="h-full w-px mx-auto bg-slate-300 dark:bg-slate-600" />
+                        </div>
+                      )}
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   );
