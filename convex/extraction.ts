@@ -29,6 +29,8 @@ export const reExtractPage = internalAction({
   args: {
     documentId: v.id('documents'),
     pageNumber: v.number(),
+    proRuns: v.optional(v.number()),
+    flashRuns: v.optional(v.number()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -72,12 +74,22 @@ export const reExtractPage = internalAction({
         pageNumber: args.pageNumber,
       });
 
-      const proposalRuns: { modelKey: ModelKey; run: 1 | 2 }[] = [
-        { modelKey: 'gemini-3-flash', run: 1 },
-        { modelKey: 'gemini-3-flash', run: 2 },
-        { modelKey: 'gemini-3-pro', run: 1 },
-        { modelKey: 'gemini-3-pro', run: 2 },
-      ];
+      const clampRuns = (n: number | undefined, fallback: number) => {
+        if (typeof n !== 'number' || !Number.isFinite(n)) return fallback;
+        return Math.max(0, Math.min(10, Math.trunc(n)));
+      };
+
+      // Defaults preserve the old behavior (Flash x2, Pro x2) unless the caller specifies otherwise.
+      const flashRuns = clampRuns(args.flashRuns, 2);
+      const proRuns = clampRuns(args.proRuns, 2);
+
+      if (flashRuns + proRuns <= 0) {
+        throw new Error('No model runs requested (flashRuns + proRuns must be > 0)');
+      }
+
+      const proposalRuns: { modelKey: ModelKey; run: number }[] = [];
+      for (let run = 1; run <= flashRuns; run++) proposalRuns.push({ modelKey: 'gemini-3-flash', run });
+      for (let run = 1; run <= proRuns; run++) proposalRuns.push({ modelKey: 'gemini-3-pro', run });
 
       console.log(`[reExtractPage] Generating proposals for page ${args.pageNumber}...`);
 

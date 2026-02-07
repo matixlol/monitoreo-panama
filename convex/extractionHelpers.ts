@@ -93,7 +93,7 @@ export const clearPageExtractionProposals = internalMutation({
 });
 
 /**
- * Upsert page-level extraction proposals (2x Flash + 2x Pro) for a document page
+ * Upsert page-level extraction proposals (multiple runs per model) for a document page
  */
 export const upsertPageExtractionProposals = internalMutation({
   args: {

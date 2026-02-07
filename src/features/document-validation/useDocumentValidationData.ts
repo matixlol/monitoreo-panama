@@ -36,7 +36,7 @@ type DocumentValidationState = {
   handleAutoCalculateEgressTotals: () => void;
   handleSave: () => Promise<void>;
   handleRerunExtraction: () => Promise<void>;
-  handleReExtractPage: () => Promise<void>;
+  handleReExtractPage: (args: { proRuns: number; flashRuns: number }) => Promise<void>;
   handleApplyPageProposal: (proposalKey: string) => Promise<void>;
   goToPage: (pageNumber: number) => void;
   handleRotate: () => void;
@@ -251,24 +251,35 @@ export function useDocumentValidationData(documentId: string): DocumentValidatio
     }
   }, [documentId, retryExtraction]);
 
-  const handleReExtractPage = useCallback(async () => {
-    if (
-      !confirm(
-        `¿Estás seguro de que quieres re-extraer la página ${currentPage}? Se generarán 4 propuestas (Flash x2, Pro x2) para que elijas cuál aplicar.`,
-      )
-    ) {
-      return;
-    }
+  const handleReExtractPage = useCallback(
+    async ({ proRuns, flashRuns }: { proRuns: number; flashRuns: number }) => {
+      const normalize = (n: number) => {
+        if (!Number.isFinite(n)) return 0;
+        return Math.max(0, Math.min(10, Math.trunc(n)));
+      };
+
+      const pro = normalize(proRuns);
+      const flash = normalize(flashRuns);
+
+      if (pro + flash <= 0) {
+        alert('Selecciona al menos 1 ejecución (Pro o Flash).');
+        return;
+      }
+
     try {
       await reExtractPageMutation({
         documentId: documentId as Id<'documents'>,
         pageNumber: currentPage,
+        proRuns: pro,
+        flashRuns: flash,
       });
     } catch (error) {
       console.error('Re-extract page failed:', error);
       alert(`Error al re-extraer: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     }
-  }, [currentPage, documentId, reExtractPageMutation]);
+    },
+    [currentPage, documentId, reExtractPageMutation],
+  );
 
   const handleApplyPageProposal = useCallback(
     async (proposalKey: string) => {
