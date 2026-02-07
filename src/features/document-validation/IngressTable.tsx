@@ -1,13 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createColumnHelper, flexRender, getCoreRowModel, useReactTable, type ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { EditableCell } from './EditableCell';
 import { getCellRowIndex, isAdditiveMultiSelectEvent, makeCellId, parseCellId, type CellId } from './cellSelection';
 import { shiftSelectedCells } from './shiftSelectedCells';
-import {
-  INGRESS_COLUMNS,
-  type IngressRow,
-} from './types';
+import { INGRESS_COLUMNS, type IngressRow } from './types';
 import { normalizeValueForDisplay } from './utils';
 
 type Props = {
@@ -21,18 +18,14 @@ type Props = {
 
 const columnHelper = createColumnHelper<IngressRow>();
 
-export function IngressTable({
-  rows,
-  allRows,
-  onEdit,
-  onDelete,
-  onToggleUnreadable,
-  readOnly = false,
-}: Props) {
+export function IngressTable({ rows, allRows, onEdit, onDelete, onToggleUnreadable, readOnly = false }: Props) {
   const [editingCell, setEditingCell] = useState<{ row: number; col: string } | null>(null);
   const [selectedCells, setSelectedCells] = useState<Set<CellId>>(() => new Set());
   const [selectionAnchor, setSelectionAnchor] = useState<CellId | null>(null);
   const [shiftNote, setShiftNote] = useState<string | null>(null);
+  const theadRef = useRef<HTMLTableSectionElement | null>(null);
+  // Reasonable default so the toolbar doesn't overlap the header before measurement runs.
+  const [theadHeight, setTheadHeight] = useState<number>(28);
   const [dragSelect, setDragSelect] = useState<{
     field: string;
     startRowIndex: number;
@@ -40,8 +33,7 @@ export function IngressTable({
   } | null>(null);
 
   const moneyFieldOrder = useMemo(
-    () =>
-      INGRESS_COLUMNS.filter((c) => c.key !== 'pageNumber' && c.type === 'number').map((c) => String(c.key)),
+    () => INGRESS_COLUMNS.filter((c) => c.key !== 'pageNumber' && c.type === 'number').map((c) => String(c.key)),
     [],
   );
   const moneyFieldSet = useMemo(() => new Set(moneyFieldOrder), [moneyFieldOrder]);
@@ -166,7 +158,9 @@ export function IngressTable({
 
     setSelectedCells(result.nextSelection);
     setSelectionAnchor(null);
-    setShiftNote(result.skippedMoves > 0 ? `Se omitieron ${result.skippedMoves} movimientos (destino no vacío).` : null);
+    setShiftNote(
+      result.skippedMoves > 0 ? `Se omitieron ${result.skippedMoves} movimientos (destino no vacío).` : null,
+    );
   };
 
   const columns = useMemo<ColumnDef<IngressRow, any>[]>(() => {
@@ -254,54 +248,36 @@ export function IngressTable({
     getCoreRowModel: getCoreRowModel(),
   });
 
+  useLayoutEffect(() => {
+    const el = theadRef.current;
+    if (!el) return;
+
+    const update = () => {
+      // Use a stable px height for sticky offset.
+      const next = el.getBoundingClientRect().height;
+      setTheadHeight((prev) => (Math.abs(prev - next) < 0.5 ? prev : next));
+    };
+
+    update();
+
+    // Keep the sticky offset correct when header wraps (responsive) or fonts load.
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => update()) : null;
+    ro?.observe(el);
+    window.addEventListener('resize', update);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', update);
+    };
+  }, []);
+
+  const stickyColSpan = useMemo(() => {
+    return table.getVisibleLeafColumns().filter((c) => c.id !== 'pageNumber').length;
+  }, [table]);
+
   return (
     <div className="w-full">
-      <div className="flex items-center gap-2 mb-2">
-        {selectedCells.size > 0 ? (
-          <>
-            <div className="text-[11px] text-slate-600 dark:text-slate-400">
-              {selectedCells.size} celdas seleccionadas
-            </div>
-            {!readOnly && (
-              <>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => shiftSelection('left')}
-                  disabled={editingCell != null}
-                  title="Mover a la columna anterior"
-                >
-                  ← Mover
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => shiftSelection('right')}
-                  disabled={editingCell != null}
-                  title="Mover a la siguiente columna"
-                >
-                  Mover →
-                </Button>
-              </>
-            )}
-            <Button type="button" variant="ghost" size="sm" onClick={clearSelection}>
-              Limpiar
-            </Button>
-            {!readOnly && shiftNote && (
-              <div className="text-[11px] text-amber-600 dark:text-amber-400">{shiftNote}</div>
-            )}
-          </>
-        ) : (
-          <div className="text-[11px] text-slate-500 dark:text-slate-500">
-            Selección: arrastra desde la barrita izquierda (en celdas de monto) para seleccionar un rango vertical. También funciona Cmd/Ctrl+Click y Shift+Click.
-          </div>
-        )}
-      </div>
-
       <table className="w-full text-xs border-collapse table-fixed">
-        <thead className="bg-slate-50 dark:bg-slate-800 sticky top-0">
+        <thead ref={theadRef} className="bg-slate-50 dark:bg-slate-800 sticky top-0 z-30">
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>
               {headerGroup.headers
@@ -318,6 +294,54 @@ export function IngressTable({
           ))}
         </thead>
         <tbody>
+          {!readOnly && (
+            <tr>
+              <td
+                colSpan={stickyColSpan}
+                className="sticky z-20 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                style={{ top: theadHeight }}
+              >
+                <div className="flex items-center gap-2 px-1 py-1">
+                  {selectedCells.size > 0 ? (
+                    <>
+                      <div className="text-[11px] text-slate-600 dark:text-slate-400">
+                        {selectedCells.size} celdas seleccionadas
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => shiftSelection('left')}
+                        disabled={editingCell != null}
+                        title="Mover a la columna anterior"
+                      >
+                        ← Mover
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => shiftSelection('right')}
+                        disabled={editingCell != null}
+                        title="Mover a la siguiente columna"
+                      >
+                        Mover →
+                      </Button>
+                      <Button type="button" variant="ghost" size="sm" onClick={clearSelection}>
+                        Deseleccionar
+                      </Button>
+                      {shiftNote && <div className="text-[11px] text-amber-600 dark:text-amber-400">{shiftNote}</div>}
+                    </>
+                  ) : (
+                    <div className="text-[11px] text-slate-500 dark:text-slate-500">
+                      Selección: arrastra desde la barrita izquierda (en celdas de monto) para seleccionar un rango
+                      vertical. También funciona Cmd/Ctrl+Click y Shift+Click.
+                    </div>
+                  )}
+                </div>
+              </td>
+            </tr>
+          )}
           {table.getRowModel().rows.map((row) => {
             const actualIndex = allRows.indexOf(row.original);
 
@@ -338,9 +362,7 @@ export function IngressTable({
                   return (
                     <td
                       key={cell.id}
-                      className={`px-1 py-0.5 relative ${
-                        isHumanUnreadable ? 'bg-red-50 dark:bg-red-900/20' : ''
-                      } ${
+                      className={`px-1 py-0.5 relative ${isHumanUnreadable ? 'bg-red-50 dark:bg-red-900/20' : ''} ${
                         isAiUnreadable && !isHumanUnreadable ? 'bg-orange-50 dark:bg-orange-900/20' : ''
                       } ${isSelected ? 'ring-2 ring-indigo-400 ring-inset' : ''}`}
                       onMouseEnter={() => {
