@@ -14,6 +14,7 @@ type Props = {
   onEdit: (rowIndex: number, field: string, value: string | number | null) => void;
   onDelete: (rowIndex: number) => void;
   onToggleUnreadable: (rowIndex: number, field: string) => void;
+  readOnly?: boolean;
 };
 
 const columnHelper = createColumnHelper<IngressRow>();
@@ -24,6 +25,7 @@ export function IngressTable({
   onEdit,
   onDelete,
   onToggleUnreadable,
+  readOnly = false,
 }: Props) {
   const [editingCell, setEditingCell] = useState<{ row: number; col: string } | null>(null);
 
@@ -35,7 +37,7 @@ export function IngressTable({
         cell: (info) => {
           const row = info.row.original;
           const actualIndex = allRows.indexOf(row);
-          const isEditing = editingCell?.row === info.row.index && editingCell?.col === col.key;
+          const isEditing = !readOnly && editingCell?.row === info.row.index && editingCell?.col === col.key;
           const isHumanUnreadable = row.humanUnreadableFields?.includes(col.key) ?? false;
           const isAiUnreadable = row.unreadableFields?.includes(col.key) ?? false;
 
@@ -45,19 +47,33 @@ export function IngressTable({
               value={info.getValue()}
               type={col.type}
               isEditing={isEditing}
-              onStartEdit={() => setEditingCell({ row: info.row.index, col: col.key })}
+              onStartEdit={() => {
+                if (readOnly) return;
+                setEditingCell({ row: info.row.index, col: col.key });
+              }}
               onStopEdit={() => setEditingCell(null)}
-              onEdit={(value) => onEdit(actualIndex, col.key, value)}
+              onEdit={(value) => {
+                if (readOnly) return;
+                onEdit(actualIndex, col.key, value);
+              }}
               isHumanUnreadable={isHumanUnreadable}
               isAiUnreadable={isAiUnreadable}
-              onToggleUnreadable={() => onToggleUnreadable(actualIndex, col.key)}
+              onToggleUnreadable={() => {
+                if (readOnly) return;
+                onToggleUnreadable(actualIndex, col.key);
+              }}
               formatValue={(field, value, _type) => normalizeValueForDisplay(field, value)}
               variant="table"
+              readOnly={readOnly}
             />
           );
         },
       }),
     );
+
+    if (readOnly) {
+      return dataColumns;
+    }
 
     return [
       ...dataColumns,
@@ -80,7 +96,7 @@ export function IngressTable({
         },
       }),
     ];
-  }, [allRows, editingCell, onDelete, onEdit, onToggleUnreadable]);
+  }, [allRows, editingCell, onDelete, onEdit, onToggleUnreadable, readOnly]);
 
   const table = useReactTable({
     data: rows,

@@ -142,6 +142,28 @@ export default defineSchema({
     completedAt: v.number(),
   }).index('by_document', ['documentId']),
 
+  // Page-level re-extraction proposals (2x Flash + 2x Pro) for a specific page.
+  // Stored separately so users can compare multiple model runs before applying one.
+  pageExtractionProposals: defineTable({
+    documentId: v.id('documents'),
+    pageNumber: v.number(),
+    proposals: v.array(
+      v.object({
+        key: v.string(), // e.g. "gemini-3-flash:1"
+        model: v.string(), // e.g. "gemini-3-flash" | "gemini-3-pro"
+        run: v.number(), // 1 or 2
+        ingress: v.array(extractionIngressRowValidator),
+        egress: v.array(extractionEgressRowValidator),
+        completedAt: v.number(),
+        errorMessage: v.optional(v.string()),
+      }),
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_document_page', ['documentId', 'pageNumber'])
+    .index('by_document', ['documentId']),
+
   // Summary extraction results (Resumen de Ingresos y Gastos)
   summaryExtractions: defineTable({
     documentId: v.id('documents'),

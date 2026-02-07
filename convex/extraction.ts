@@ -6,7 +6,6 @@ import { internal } from './_generated/api';
 import pLimit from 'p-limit';
 import {
   getModel,
-  callGeminiDirect,
   splitPdfIntoPages,
   extractSinglePage,
   EXTRACTION_PROMPT,
@@ -15,6 +14,7 @@ import {
   type ModelKey,
   type IngresoRow,
   type EgresoRow,
+  callGeminiDirect,
 } from '../pdf-extraction';
 
 const PAGE_CONCURRENCY = 50;
@@ -32,9 +32,6 @@ export const reExtractPage = internalAction({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const modelKey = (await ctx.runQuery(internal.featureFlags.getExtractionModelInternal)) as ModelKey;
-    const model = getModel(modelKey);
-
     try {
       // Get document info
       const doc = await ctx.runQuery(internal.extractionHelpers.getDocumentInternal, {
@@ -69,49 +66,107 @@ export const reExtractPage = internalAction({
         status: 'processing',
       });
 
-      console.log(`[${model.id}] Re-extracting page ${args.pageNumber}...`);
-
-      const { parsed: result } = await callGeminiDirect(pdfBase64, process.env.GEMINI_API_KEY!, {
-        prompt: EXTRACTION_PROMPT,
-        schema: ResponseSchema,
-        jsonSchema: RESPONSE_JSON_SCHEMA,
-        modelId: model.geminiId,
-        mediaResolution: 'MEDIA_RESOLUTION_HIGH',
+      // Clear any previous proposals for this page so the UI doesn't show stale results while generating new ones.
+      await ctx.runMutation(internal.extractionHelpers.clearPageExtractionProposals, {
+        documentId: args.documentId,
+        pageNumber: args.pageNumber,
       });
 
-      console.log(
-        `[${model.id}] Page ${args.pageNumber} re-extracted: ${result.ingress.length} ingress, ${result.egress.length} egress`,
+      const proposalRuns: { modelKey: ModelKey; run: 1 | 2 }[] = [
+        { modelKey: 'gemini-3-flash', run: 1 },
+        { modelKey: 'gemini-3-flash', run: 2 },
+        { modelKey: 'gemini-3-pro', run: 1 },
+        { modelKey: 'gemini-3-pro', run: 2 },
+      ];
+
+      console.log(`[reExtractPage] Generating proposals for page ${args.pageNumber}...`);
+
+      const proposals = await Promise.all(
+        proposalRuns.map(async ({ modelKey, run }) => {
+          const model = getModel(modelKey);
+          const key = `${model.id}:${run}`;
+
+          try {
+            console.log(`[${key}] Re-extracting page ${args.pageNumber}...`);
+
+            const { parsed: result } = await callGeminiDirect(pdfBase64, process.env.GEMINI_API_KEY!, {
+              prompt: EXTRACTION_PROMPT,
+              schema: ResponseSchema,
+              jsonSchema: RESPONSE_JSON_SCHEMA,
+              modelId: model.geminiId,
+              mediaResolution: 'MEDIA_RESOLUTION_HIGH',
+            });
+
+            console.log(
+              `[${key}] Page ${args.pageNumber}: ${result.ingress.length} ingress, ${result.egress.length} egress`,
+            );
+
+            return {
+              key,
+              model: model.id,
+              run,
+              ingress: result.ingress.map((row) => ({ ...row, pageNumber: args.pageNumber })),
+              egress: result.egress.map((row) => ({ ...row, pageNumber: args.pageNumber })),
+              completedAt: Date.now(),
+            };
+          } catch (error) {
+            console.error(`[${key}] Proposal generation failed for page ${args.pageNumber}:`, error);
+            return {
+              key,
+              model: model.id,
+              run,
+              ingress: [],
+              egress: [],
+              completedAt: Date.now(),
+              errorMessage: error instanceof Error ? error.message : 'Unknown error',
+            };
+          }
+        }),
       );
 
-      // Add page numbers to rows
-      const ingressWithPage = result.ingress.map((row) => ({ ...row, pageNumber: args.pageNumber }));
-      const egressWithPage = result.egress.map((row) => ({ ...row, pageNumber: args.pageNumber }));
-
-      // Update extraction data for this page
-      await ctx.runMutation(internal.extractionHelpers.updateExtractionForPage, {
+      // Store proposals for this page (even if some failed).
+      await ctx.runMutation(internal.extractionHelpers.upsertPageExtractionProposals, {
         documentId: args.documentId,
         pageNumber: args.pageNumber,
-        ingress: ingressWithPage,
-        egress: egressWithPage,
-      });
-
-      // Also update validated data if it exists (so UI shows new rows immediately)
-      await ctx.runMutation(internal.extractionHelpers.updateValidatedDataForPage, {
-        documentId: args.documentId,
-        pageNumber: args.pageNumber,
-        ingress: ingressWithPage,
-        egress: egressWithPage,
-      });
-
-      // Clear the re-extraction status
-      await ctx.runMutation(internal.extractionHelpers.clearPageReExtractionStatus, {
-        documentId: args.documentId,
-        pageNumber: args.pageNumber,
+        proposals,
       });
     } catch (error) {
-      console.error(`[${model.id}] Re-extraction failed for page ${args.pageNumber}:`, error);
+      console.error(`[reExtractPage] Re-extraction failed for page ${args.pageNumber}:`, error);
 
       // Set status to failed
+      await ctx.runMutation(internal.extractionHelpers.setPageReExtractionStatus, {
+        documentId: args.documentId,
+        pageNumber: args.pageNumber,
+        status: 'failed',
+      });
+    }
+
+    // Only keep a failure status if *all* proposal runs failed. Otherwise clear to indicate completion.
+    try {
+      const existing = await ctx.runQuery(internal.pageExtractionProposals.getForPageInternal, {
+        documentId: args.documentId,
+        pageNumber: args.pageNumber,
+      });
+
+      const proposals = (existing?.proposals ?? []) as any[];
+      const allFailed =
+        proposals.length === 0 ||
+        proposals.every((p) => typeof p?.errorMessage === 'string' && p.errorMessage.length > 0);
+
+      if (allFailed) {
+        await ctx.runMutation(internal.extractionHelpers.setPageReExtractionStatus, {
+          documentId: args.documentId,
+          pageNumber: args.pageNumber,
+          status: 'failed',
+        });
+      } else {
+        await ctx.runMutation(internal.extractionHelpers.clearPageReExtractionStatus, {
+          documentId: args.documentId,
+          pageNumber: args.pageNumber,
+        });
+      }
+    } catch (error) {
+      console.error(`[reExtractPage] Failed to finalize status for page ${args.pageNumber}:`, error);
       await ctx.runMutation(internal.extractionHelpers.setPageReExtractionStatus, {
         documentId: args.documentId,
         pageNumber: args.pageNumber,

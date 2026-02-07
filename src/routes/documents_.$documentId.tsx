@@ -14,6 +14,8 @@ function DocumentValidationPage() {
   const {
     document,
     validatedData,
+    pageExtractionProposals,
+    isApplyingProposal,
     isSaving,
     hasEdits,
     currentPage,
@@ -34,6 +36,7 @@ function DocumentValidationPage() {
     handleSave,
     handleRerunExtraction,
     handleReExtractPage,
+    handleApplyPageProposal,
     goToPage,
     handleRotate,
     getCurrentRotation,
@@ -90,6 +93,9 @@ function DocumentValidationPage() {
             egressRows={currentPageEgressRows}
             allIngressRows={currentIngress}
             allEgressRows={currentEgress}
+            pageExtractionProposals={pageExtractionProposals}
+            onApplyPageProposal={handleApplyPageProposal}
+            isApplyingProposal={isApplyingProposal}
             onEditIngress={(rowIndex, field, value) => handleCellEdit('ingress', rowIndex, field, value)}
             onEditEgress={(rowIndex, field, value) => handleCellEdit('egress', rowIndex, field, value)}
             onDeleteIngress={(rowIndex) => handleDeleteRow('ingress', rowIndex)}

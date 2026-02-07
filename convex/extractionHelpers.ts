@@ -54,6 +54,67 @@ export const storeExtraction = internalMutation({
 });
 
 /**
+ * Clear (delete) any existing page-level extraction proposals for a document page
+ */
+export const clearPageExtractionProposals = internalMutation({
+  args: {
+    documentId: v.id('documents'),
+    pageNumber: v.number(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query('pageExtractionProposals')
+      .withIndex('by_document_page', (q) => q.eq('documentId', args.documentId).eq('pageNumber', args.pageNumber))
+      .unique();
+
+    if (existing) {
+      await ctx.db.delete(existing._id);
+    }
+
+    return null;
+  },
+});
+
+/**
+ * Upsert page-level extraction proposals (2x Flash + 2x Pro) for a document page
+ */
+export const upsertPageExtractionProposals = internalMutation({
+  args: {
+    documentId: v.id('documents'),
+    pageNumber: v.number(),
+    proposals: v.array(v.any()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    const existing = await ctx.db
+      .query('pageExtractionProposals')
+      .withIndex('by_document_page', (q) => q.eq('documentId', args.documentId).eq('pageNumber', args.pageNumber))
+      .unique();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        proposals: args.proposals,
+        updatedAt: now,
+      });
+      return null;
+    }
+
+    await ctx.db.insert('pageExtractionProposals', {
+      documentId: args.documentId,
+      pageNumber: args.pageNumber,
+      proposals: args.proposals,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return null;
+  },
+});
+
+/**
  * Update summary extraction status
  */
 export const updateSummaryStatus = internalMutation({

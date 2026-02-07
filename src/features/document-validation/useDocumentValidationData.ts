@@ -15,6 +15,8 @@ type DocumentValidationState = {
   document: any;
   extraction: any;
   validatedData: any;
+  pageExtractionProposals: any;
+  isApplyingProposal: boolean;
   isSaving: boolean;
   hasEdits: boolean;
   currentPage: number;
@@ -35,6 +37,7 @@ type DocumentValidationState = {
   handleSave: () => Promise<void>;
   handleRerunExtraction: () => Promise<void>;
   handleReExtractPage: () => Promise<void>;
+  handleApplyPageProposal: (proposalKey: string) => Promise<void>;
   goToPage: (pageNumber: number) => void;
   handleRotate: () => void;
   getCurrentRotation: () => number;
@@ -42,6 +45,17 @@ type DocumentValidationState = {
 };
 
 export function useDocumentValidationData(documentId: string): DocumentValidationState {
+  const storageKey = `document-page-${documentId}`;
+  const [currentPage, setCurrentPage] = useState(() => {
+    if (typeof window === 'undefined') return 1;
+    const saved = localStorage.getItem(storageKey);
+    return saved ? parseInt(saved, 10) : 1;
+  });
+
+  useEffect(() => {
+    localStorage.setItem(storageKey, String(currentPage));
+  }, [storageKey, currentPage]);
+
   const document = useQuery(api.documents.getDocument, {
     documentId: documentId as Id<'documents'>,
   });
@@ -51,10 +65,15 @@ export function useDocumentValidationData(documentId: string): DocumentValidatio
   const validatedData = useQuery(api.extractions.getValidatedData, {
     documentId: documentId as Id<'documents'>,
   });
+  const pageExtractionProposals = useQuery(api.pageExtractionProposals.getForPage, {
+    documentId: documentId as Id<'documents'>,
+    pageNumber: currentPage,
+  });
 
   const saveValidatedData = useMutation(api.extractions.saveValidatedData);
   const retryExtraction = useMutation(api.documents.retryExtraction);
   const reExtractPageMutation = useMutation(api.documents.reExtractPage);
+  const applyProposalMutation = useMutation(api.pageExtractionProposals.applyProposalToPage);
 
   const setPageRotation = useMutation(api.documents.setPageRotation).withOptimisticUpdate((localStore, args) => {
     const currentDoc = localStore.getQuery(api.documents.getDocument, {
@@ -78,20 +97,11 @@ export function useDocumentValidationData(documentId: string): DocumentValidatio
     }
   });
 
-  const storageKey = `document-page-${documentId}`;
-  const [currentPage, setCurrentPage] = useState(() => {
-    if (typeof window === 'undefined') return 1;
-    const saved = localStorage.getItem(storageKey);
-    return saved ? parseInt(saved, 10) : 1;
-  });
-
-  useEffect(() => {
-    localStorage.setItem(storageKey, String(currentPage));
-  }, [storageKey, currentPage]);
-
   const [editedIngress, setEditedIngress] = useState<IngressRow[] | null>(null);
   const [editedEgress, setEditedEgress] = useState<EgressRow[] | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isApplyingProposal, setIsApplyingProposal] = useState(false);
+  const hasEdits = editedIngress !== null || editedEgress !== null;
 
   const computedIngress = useMemo(() => {
     if (validatedData) return validatedData.ingress as unknown as IngressRow[];
@@ -244,7 +254,7 @@ export function useDocumentValidationData(documentId: string): DocumentValidatio
   const handleReExtractPage = useCallback(async () => {
     if (
       !confirm(
-        `¿Estás seguro de que quieres re-extraer la página ${currentPage}? Los datos validados de esta página serán eliminados.`,
+        `¿Estás seguro de que quieres re-extraer la página ${currentPage}? Se generarán 4 propuestas (Flash x2, Pro x2) para que elijas cuál aplicar.`,
       )
     ) {
       return;
@@ -259,6 +269,37 @@ export function useDocumentValidationData(documentId: string): DocumentValidatio
       alert(`Error al re-extraer: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     }
   }, [currentPage, documentId, reExtractPageMutation]);
+
+  const handleApplyPageProposal = useCallback(
+    async (proposalKey: string) => {
+      const confirmMessage = hasEdits
+        ? 'Tienes cambios sin guardar. Aplicar una propuesta descartará esos cambios y reemplazará los datos de esta página. ¿Continuar?'
+        : `¿Aplicar esta propuesta a la página ${currentPage}? Esto reemplazará los datos actuales de esta página.`;
+
+      if (!confirm(confirmMessage)) {
+        return;
+      }
+
+      setIsApplyingProposal(true);
+      try {
+        await applyProposalMutation({
+          documentId: documentId as Id<'documents'>,
+          pageNumber: currentPage,
+          proposalKey,
+        });
+
+        // Ensure the UI uses the server-updated rows (discard local edits).
+        setEditedIngress(null);
+        setEditedEgress(null);
+      } catch (error) {
+        console.error('Apply proposal failed:', error);
+        alert(`Error al aplicar propuesta: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+      } finally {
+        setIsApplyingProposal(false);
+      }
+    },
+    [applyProposalMutation, currentPage, documentId, hasEdits],
+  );
 
   const goToPage = useCallback((pageNumber: number) => {
     setCurrentPage(pageNumber);
@@ -313,12 +354,12 @@ export function useDocumentValidationData(documentId: string): DocumentValidatio
     return status === 'failed';
   }, [document?.pageReExtractionStatus, currentPage]);
 
-  const hasEdits = editedIngress !== null || editedEgress !== null;
-
   return {
     document,
     extraction,
     validatedData,
+    pageExtractionProposals,
+    isApplyingProposal,
     isSaving,
     hasEdits,
     currentPage,
@@ -339,6 +380,7 @@ export function useDocumentValidationData(documentId: string): DocumentValidatio
     handleSave,
     handleRerunExtraction,
     handleReExtractPage,
+    handleApplyPageProposal,
     goToPage,
     handleRotate,
     getCurrentRotation,

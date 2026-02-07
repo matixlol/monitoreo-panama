@@ -22,6 +22,7 @@ type Props = {
   onEdit: (rowIndex: number, field: string, value: string | number | null) => void;
   onDelete: (rowIndex: number) => void;
   onToggleUnreadable: (rowIndex: number, field: string) => void;
+  readOnly?: boolean;
 };
 
 const columnHelper = createColumnHelper<EgressRow>();
@@ -39,6 +40,7 @@ export function EgressTable({
   onEdit,
   onDelete,
   onToggleUnreadable,
+  readOnly = false,
 }: Props) {
   const [editingCell, setEditingCell] = useState<{ row: number; col: string } | null>(null);
 
@@ -105,7 +107,7 @@ export function EgressTable({
               {infoColumns.map((col) => {
                 const field = col.id;
                 const value = row.getValue(field);
-                const isEditing = editingCell?.row === row.index && editingCell?.col === field;
+                const isEditing = !readOnly && editingCell?.row === row.index && editingCell?.col === field;
                 const isHumanUnreadable = row.original.humanUnreadableFields?.includes(field) ?? false;
                 const isAiUnreadable = row.original.unreadableFields?.includes(field) ?? false;
                 const unreadableClassName = isHumanUnreadable
@@ -127,31 +129,43 @@ export function EgressTable({
                       value={value}
                       type={(col.columnDef.meta as EgressColumnMeta | undefined)?.type ?? 'string'}
                       isEditing={isEditing}
-                      onStartEdit={() => setEditingCell({ row: row.index, col: field })}
+                      onStartEdit={() => {
+                        if (readOnly) return;
+                        setEditingCell({ row: row.index, col: field });
+                      }}
                       onStopEdit={() => setEditingCell(null)}
-                      onEdit={(next) => onEdit(actualIndex, field, next)}
+                      onEdit={(next) => {
+                        if (readOnly) return;
+                        onEdit(actualIndex, field, next);
+                      }}
                       isHumanUnreadable={isHumanUnreadable}
                       isAiUnreadable={isAiUnreadable}
-                      onToggleUnreadable={() => onToggleUnreadable(actualIndex, field)}
+                      onToggleUnreadable={() => {
+                        if (readOnly) return;
+                        onToggleUnreadable(actualIndex, field);
+                      }}
                       formatValue={formatEgressValue}
                       compact={false}
                       variant="compact"
                       showToggleOnHover
+                      readOnly={readOnly}
                     />
                   </div>
                 );
               })}
 
               <div className="flex items-center">
-                <Button
-                  onClick={() => onDelete(actualIndex)}
-                  variant="ghost"
-                  size="icon-sm"
-                  className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity h-5 w-5"
-                  title="Eliminar fila"
-                >
-                  ×
-                </Button>
+                {!readOnly && (
+                  <Button
+                    onClick={() => onDelete(actualIndex)}
+                    variant="ghost"
+                    size="icon-sm"
+                    className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity h-5 w-5"
+                    title="Eliminar fila"
+                  >
+                    ×
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -161,7 +175,7 @@ export function EgressTable({
                   {spendRow1Columns.map((col) => {
                     const field = col.id;
                     const value = row.getValue(field);
-                    const isEditing = editingCell?.row === row.index && editingCell?.col === field;
+                    const isEditing = !readOnly && editingCell?.row === row.index && editingCell?.col === field;
                     const isHumanUnreadable = row.original.humanUnreadableFields?.includes(field) ?? false;
                     const isAiUnreadable = row.original.unreadableFields?.includes(field) ?? false;
                     const unreadableClassName = isHumanUnreadable
@@ -188,16 +202,26 @@ export function EgressTable({
                           value={value}
                           type="number"
                           isEditing={isEditing}
-                          onStartEdit={() => setEditingCell({ row: row.index, col: field })}
+                          onStartEdit={() => {
+                            if (readOnly) return;
+                            setEditingCell({ row: row.index, col: field });
+                          }}
                           onStopEdit={() => setEditingCell(null)}
-                          onEdit={(next) => onEdit(actualIndex, field, next)}
+                          onEdit={(next) => {
+                            if (readOnly) return;
+                            onEdit(actualIndex, field, next);
+                          }}
                           isHumanUnreadable={isHumanUnreadable}
                           isAiUnreadable={isAiUnreadable}
-                          onToggleUnreadable={() => onToggleUnreadable(actualIndex, field)}
+                          onToggleUnreadable={() => {
+                            if (readOnly) return;
+                            onToggleUnreadable(actualIndex, field);
+                          }}
                           formatValue={formatEgressValue}
                           compact
                           variant="compact"
                           showToggleOnHover
+                          readOnly={readOnly}
                         />
                       </div>
                     );
@@ -208,7 +232,7 @@ export function EgressTable({
                   {spendRow2Columns.map((col) => {
                     const field = col.id;
                     const value = row.getValue(field);
-                    const isEditing = editingCell?.row === row.index && editingCell?.col === field;
+                    const isEditing = !readOnly && editingCell?.row === row.index && editingCell?.col === field;
                     const isHumanUnreadable = row.original.humanUnreadableFields?.includes(field) ?? false;
                     const isAiUnreadable = row.original.unreadableFields?.includes(field) ?? false;
                     const isTotal = field.startsWith('total');
@@ -242,16 +266,26 @@ export function EgressTable({
                           value={value}
                           type="number"
                           isEditing={isEditing}
-                          onStartEdit={() => setEditingCell({ row: row.index, col: field })}
+                          onStartEdit={() => {
+                            if (readOnly) return;
+                            setEditingCell({ row: row.index, col: field });
+                          }}
                           onStopEdit={() => setEditingCell(null)}
-                          onEdit={(next) => onEdit(actualIndex, field, next)}
+                          onEdit={(next) => {
+                            if (readOnly) return;
+                            onEdit(actualIndex, field, next);
+                          }}
                           isHumanUnreadable={isHumanUnreadable}
                           isAiUnreadable={isAiUnreadable}
-                          onToggleUnreadable={() => onToggleUnreadable(actualIndex, field)}
+                          onToggleUnreadable={() => {
+                            if (readOnly) return;
+                            onToggleUnreadable(actualIndex, field);
+                          }}
                           formatValue={formatEgressValue}
                           compact
                           variant="compact"
                           showToggleOnHover
+                          readOnly={readOnly}
                         />
                       </div>
                     );
@@ -274,16 +308,26 @@ export function EgressTable({
                             field={totalColumn.id}
                             value={row.getValue(totalColumn.id)}
                             type="number"
-                            isEditing={editingCell?.row === row.index && editingCell?.col === totalColumn.id}
-                            onStartEdit={() => setEditingCell({ row: row.index, col: totalColumn.id })}
+                            isEditing={!readOnly && editingCell?.row === row.index && editingCell?.col === totalColumn.id}
+                            onStartEdit={() => {
+                              if (readOnly) return;
+                              setEditingCell({ row: row.index, col: totalColumn.id });
+                            }}
                             onStopEdit={() => setEditingCell(null)}
-                            onEdit={(next) => onEdit(actualIndex, totalColumn.id, next)}
+                            onEdit={(next) => {
+                              if (readOnly) return;
+                              onEdit(actualIndex, totalColumn.id, next);
+                            }}
                             isHumanUnreadable={row.original.humanUnreadableFields?.includes(totalColumn.id) ?? false}
                             isAiUnreadable={row.original.unreadableFields?.includes(totalColumn.id) ?? false}
-                            onToggleUnreadable={() => onToggleUnreadable(actualIndex, totalColumn.id)}
+                            onToggleUnreadable={() => {
+                              if (readOnly) return;
+                              onToggleUnreadable(actualIndex, totalColumn.id);
+                            }}
                             formatValue={formatEgressValue}
                             variant="compact"
                             showToggleOnHover
+                            readOnly={readOnly}
                           />
                         </div>
                       </div>

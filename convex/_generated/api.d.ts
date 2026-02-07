@@ -17,6 +17,7 @@ import type * as extractions from "../extractions.js";
 import type * as featureFlags from "../featureFlags.js";
 import type * as http from "../http.js";
 import type * as lib_withAuth from "../lib/withAuth.js";
+import type * as pageExtractionProposals from "../pageExtractionProposals.js";
 import type * as summaryExtraction from "../summaryExtraction.js";
 
 import type {
@@ -35,6 +36,7 @@ declare const fullApi: ApiFromModules<{
   featureFlags: typeof featureFlags;
   http: typeof http;
   "lib/withAuth": typeof lib_withAuth;
+  pageExtractionProposals: typeof pageExtractionProposals;
   summaryExtraction: typeof summaryExtraction;
 }>;
 

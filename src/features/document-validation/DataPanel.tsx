@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { EgressTable } from './EgressTable';
@@ -17,6 +17,9 @@ type Props = {
   egressRows: EgressRow[];
   allIngressRows: IngressRow[];
   allEgressRows: EgressRow[];
+  pageExtractionProposals: any;
+  onApplyPageProposal: (proposalKey: string) => void;
+  isApplyingProposal?: boolean;
   onEditIngress: (rowIndex: number, field: string, value: string | number | null) => void;
   onEditEgress: (rowIndex: number, field: string, value: string | number | null) => void;
   onDeleteIngress: (rowIndex: number) => void;
@@ -39,6 +42,9 @@ export function DataPanel({
   egressRows,
   allIngressRows,
   allEgressRows,
+  pageExtractionProposals,
+  onApplyPageProposal,
+  isApplyingProposal,
   onEditIngress,
   onEditEgress,
   onDeleteIngress,
@@ -51,6 +57,44 @@ export function DataPanel({
   isReExtracting,
 }: Props) {
   const [activeTab, setActiveTab] = useState('data');
+  const [activeProposalTab, setActiveProposalTab] = useState<string>('');
+
+  const proposals = useMemo(
+    () =>
+      (pageExtractionProposals?.proposals ?? []) as Array<{
+        key: string;
+        model: string;
+        run: number;
+        ingress: IngressRow[];
+        egress: EgressRow[];
+        completedAt: number;
+        errorMessage?: string;
+      }>,
+    [pageExtractionProposals],
+  );
+
+  const sortedProposals = useMemo(() => {
+    const weight = (p: { model: string; run: number }) => {
+      const modelWeight = p.model.includes('flash') ? 0 : 1;
+      return modelWeight * 10 + p.run;
+    };
+    return [...proposals].sort((a, b) => weight(a) - weight(b));
+  }, [proposals]);
+
+  const hasProposals = sortedProposals.length > 0;
+
+  useEffect(() => {
+    if (!hasProposals) {
+      setActiveProposalTab('');
+      return;
+    }
+
+    setActiveProposalTab((prev) => {
+      if (!prev) return sortedProposals[0]!.key;
+      if (sortedProposals.some((p) => p.key === prev)) return prev;
+      return sortedProposals[0]!.key;
+    });
+  }, [hasProposals, sortedProposals]);
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full bg-white dark:bg-slate-900">
@@ -104,6 +148,123 @@ export function DataPanel({
         )}
 
         <div className="flex-1 overflow-auto">
+          {hasProposals && !isReExtracting && (
+            <div className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+              <div className="px-3 py-2 flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                    Propuestas de Re-extracción
+                  </div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400">Página {currentPage}</div>
+                </div>
+                <div className="text-xs text-slate-500 dark:text-slate-400">
+                  {sortedProposals.length} propuestas
+                </div>
+              </div>
+
+              <Tabs value={activeProposalTab} onValueChange={setActiveProposalTab} className="h-auto">
+                <TabsList className="px-2">
+                  {sortedProposals.map((p) => {
+                    const labelBase = p.model.includes('flash') ? 'Flash' : 'Pro';
+                    const hasError = Boolean(p.errorMessage);
+                    return (
+                      <TabsTrigger key={p.key} value={p.key} className="px-3 py-2 text-xs">
+                        {labelBase} {p.run}
+                        {hasError && (
+                          <span className="ml-2 text-[10px] text-red-600 dark:text-red-400">(Error)</span>
+                        )}
+                      </TabsTrigger>
+                    );
+                  })}
+                </TabsList>
+
+                {sortedProposals.map((p) => (
+                  <TabsContent key={p.key} value={p.key} className="flex-none px-3 pb-3">
+                    <div className="flex items-center justify-between py-2">
+                      <div className="text-xs text-slate-600 dark:text-slate-400">
+                        {p.errorMessage ? (
+                          <span className="text-red-600 dark:text-red-400">{p.errorMessage}</span>
+                        ) : (
+                          <>
+                            {p.ingress.length} ingresos, {p.egress.length} gastos
+                          </>
+                        )}
+                      </div>
+                      <Button
+                        onClick={() => onApplyPageProposal(p.key)}
+                        disabled={Boolean(p.errorMessage) || isApplyingProposal}
+                        size="sm"
+                        variant="outline"
+                        className="h-7"
+                        title="Aplicar esta propuesta a los datos del documento (solo esta página)"
+                      >
+                        {isApplyingProposal ? 'Aplicando...' : 'Aplicar'}
+                      </Button>
+                    </div>
+
+                    {!p.errorMessage && p.ingress.length === 0 && p.egress.length === 0 && (
+                      <div className="text-xs text-slate-500 dark:text-slate-400 py-2">
+                        Esta propuesta no contiene datos extraídos.
+                      </div>
+                    )}
+
+                    {!p.errorMessage && p.ingress.length > 0 && (
+                      <div className="mb-3">
+                        {p.egress.length > 0 && (
+                          <div className="px-2 py-1 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-t">
+                            <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">Ingresos</span>
+                          </div>
+                        )}
+                        <div
+                          className={
+                            p.egress.length > 0
+                              ? 'border border-t-0 border-slate-200 dark:border-slate-700 rounded-b overflow-hidden'
+                              : ''
+                          }
+                        >
+                          <IngressTable
+                            rows={p.ingress}
+                            allRows={p.ingress}
+                            onEdit={() => {}}
+                            onDelete={() => {}}
+                            onToggleUnreadable={() => {}}
+                            readOnly
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {!p.errorMessage && p.egress.length > 0 && (
+                      <div>
+                        {p.ingress.length > 0 && (
+                          <div className="px-2 py-1 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-t">
+                            <span className="text-xs font-medium text-rose-700 dark:text-rose-400">Gastos</span>
+                          </div>
+                        )}
+                        <div
+                          className={
+                            p.ingress.length > 0
+                              ? 'border border-t-0 border-slate-200 dark:border-slate-700 rounded-b overflow-hidden'
+                              : ''
+                          }
+                        >
+                          <EgressTable
+                            rows={p.egress}
+                            allRows={p.egress}
+                            onEdit={() => {}}
+                            onDelete={() => {}}
+                            onToggleUnreadable={() => {}}
+                            readOnly
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </TabsContent>
+                ))}
+              </Tabs>
+            </div>
+          )}
+
           {isReExtracting ? (
             <div className="flex flex-col items-center justify-center h-full gap-3">
               <svg className="w-8 h-8 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24">
