@@ -135,6 +135,9 @@ export const reExtractPage = authMutation({
   args: {
     documentId: v.id('documents'),
     pageNumber: v.number(),
+    // Optional to preserve existing callers; UI can specify counts.
+    proRuns: v.optional(v.number()),
+    flashRuns: v.optional(v.number()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -158,6 +161,8 @@ export const reExtractPage = authMutation({
     await ctx.scheduler.runAfter(0, internal.extraction.reExtractPage, {
       documentId: args.documentId,
       pageNumber: args.pageNumber,
+      proRuns: args.proRuns,
+      flashRuns: args.flashRuns,
     });
 
     return null;

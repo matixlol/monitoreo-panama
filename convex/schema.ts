@@ -142,7 +142,7 @@ export default defineSchema({
     completedAt: v.number(),
   }).index('by_document', ['documentId']),
 
-  // Page-level re-extraction proposals (2x Flash + 2x Pro) for a specific page.
+  // Page-level re-extraction proposals (multiple runs per model) for a specific page.
   // Stored separately so users can compare multiple model runs before applying one.
   pageExtractionProposals: defineTable({
     documentId: v.id('documents'),
@@ -151,7 +151,7 @@ export default defineSchema({
       v.object({
         key: v.string(), // e.g. "gemini-3-flash:1"
         model: v.string(), // e.g. "gemini-3-flash" | "gemini-3-pro"
-        run: v.number(), // 1 or 2
+        run: v.number(), // 1..N (run index per model)
         ingress: v.array(extractionIngressRowValidator),
         egress: v.array(extractionEgressRowValidator),
         completedAt: v.number(),
