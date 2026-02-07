@@ -15,6 +15,7 @@ type DocumentValidationState = {
   document: any;
   extraction: any;
   validatedData: any;
+  summaryExtraction: any;
   pageExtractionProposals: any;
   isApplyingProposal: boolean;
   isSaving: boolean;
@@ -63,6 +64,9 @@ export function useDocumentValidationData(documentId: string): DocumentValidatio
     documentId: documentId as Id<'documents'>,
   });
   const validatedData = useQuery(api.extractions.getValidatedData, {
+    documentId: documentId as Id<'documents'>,
+  });
+  const summaryExtraction = useQuery(api.summaryExtractions.getLatestForDocument, {
     documentId: documentId as Id<'documents'>,
   });
   const pageExtractionProposals = useQuery(api.pageExtractionProposals.getForPage, {
@@ -377,6 +381,7 @@ export function useDocumentValidationData(documentId: string): DocumentValidatio
     document,
     extraction,
     validatedData,
+    summaryExtraction,
     pageExtractionProposals,
     isApplyingProposal,
     isSaving,

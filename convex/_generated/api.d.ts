@@ -21,6 +21,7 @@ import type * as lib_tableHistory from "../lib/tableHistory.js";
 import type * as lib_withAuth from "../lib/withAuth.js";
 import type * as pageExtractionProposals from "../pageExtractionProposals.js";
 import type * as summaryExtraction from "../summaryExtraction.js";
+import type * as summaryExtractions from "../summaryExtractions.js";
 
 import type {
   ApiFromModules,
@@ -42,6 +43,7 @@ declare const fullApi: ApiFromModules<{
   "lib/withAuth": typeof lib_withAuth;
   pageExtractionProposals: typeof pageExtractionProposals;
   summaryExtraction: typeof summaryExtraction;
+  summaryExtractions: typeof summaryExtractions;
 }>;
 
 /**

@@ -13,7 +13,9 @@ function DocumentValidationPage() {
   const { documentId } = Route.useParams();
   const {
     document,
+    extraction,
     validatedData,
+    summaryExtraction,
     pageExtractionProposals,
     isApplyingProposal,
     isSaving,
@@ -93,6 +95,8 @@ function DocumentValidationPage() {
             egressRows={currentPageEgressRows}
             allIngressRows={currentIngress}
             allEgressRows={currentEgress}
+            summaryExtraction={summaryExtraction}
+            rowDataSource={validatedData ? 'validated' : extraction?.model ?? null}
             pageExtractionProposals={pageExtractionProposals}
             onApplyPageProposal={handleApplyPageProposal}
             isApplyingProposal={isApplyingProposal}

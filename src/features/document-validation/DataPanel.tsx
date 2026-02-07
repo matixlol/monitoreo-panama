@@ -5,6 +5,7 @@ import { EgressTable } from './EgressTable';
 import { IngressTable } from './IngressTable';
 import { AmountByPageChart } from './AmountByPageChart';
 import { RowCountByPageChart } from './RowCountByPageChart';
+import { DiscrepanciesSummaryTable } from './DiscrepanciesSummaryTable';
 import type { EgressRow, IngressRow } from './types';
 
 type Props = {
@@ -17,6 +18,8 @@ type Props = {
   egressRows: EgressRow[];
   allIngressRows: IngressRow[];
   allEgressRows: EgressRow[];
+  summaryExtraction: any;
+  rowDataSource: string | null;
   pageExtractionProposals: any;
   onApplyPageProposal: (proposalKey: string) => void;
   isApplyingProposal?: boolean;
@@ -42,6 +45,8 @@ export function DataPanel({
   egressRows,
   allIngressRows,
   allEgressRows,
+  summaryExtraction,
+  rowDataSource,
   pageExtractionProposals,
   onApplyPageProposal,
   isApplyingProposal,
@@ -382,7 +387,18 @@ export function DataPanel({
       </TabsContent>
 
       <TabsContent value="chart" className="overflow-auto">
-        <div className="space-y-4">
+        <div className="space-y-6">
+          <div className="px-4 pt-2">
+            <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300">Discrepancias (Resumen vs Filas)</h3>
+            <div className="mt-2">
+              <DiscrepanciesSummaryTable
+                summaryExtraction={summaryExtraction}
+                rowDataSource={rowDataSource}
+                ingressRows={allIngressRows}
+                egressRows={allEgressRows}
+              />
+            </div>
+          </div>
           <div>
             <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300 px-4 pt-2">$ por Página</h3>
             <AmountByPageChart
