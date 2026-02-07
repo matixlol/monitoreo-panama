@@ -28,6 +28,7 @@
     "clsx": "^2.1.1",
     "convex": "^1.31.2",
     "convex-helpers": "^0.1.111",
+    "convex-table-history": "0.1.2",
     "d3": "^7.9.0",
     "lucide-react": "^0.562.0",
     "mupdf": "^1.27.0",

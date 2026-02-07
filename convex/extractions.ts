@@ -6,6 +6,7 @@ import {
   validatedEgressRowValidator,
 } from './schema';
 import { authMutation, authQuery } from './lib/withAuth';
+import { historyAttribution, validatedDataHistory } from './lib/tableHistory';
 
 /**
  * Get the latest Gemini 3 extraction for a document
@@ -90,16 +91,31 @@ export const saveValidatedData = authMutation({
         egress: args.egress,
         validatedAt: Date.now(),
       });
+      const updated = await ctx.db.get(existing._id);
+      await validatedDataHistory.update(
+        ctx,
+        existing._id,
+        updated,
+        await historyAttribution(ctx, 'extractions.saveValidatedData', { operation: 'patch' }),
+      );
       return existing._id;
     }
 
     // Create new record
-    return await ctx.db.insert('validatedData', {
+    const validatedId = await ctx.db.insert('validatedData', {
       documentId: args.documentId,
       ingress: args.ingress,
       egress: args.egress,
       validatedAt: Date.now(),
     });
+    const inserted = await ctx.db.get(validatedId);
+    await validatedDataHistory.update(
+      ctx,
+      validatedId,
+      inserted,
+      await historyAttribution(ctx, 'extractions.saveValidatedData', { operation: 'insert' }),
+    );
+    return validatedId;
   },
 });
 

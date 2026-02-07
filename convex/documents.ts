@@ -2,6 +2,7 @@ import { v } from 'convex/values';
 import { internal } from './_generated/api';
 import { authMutation, authQuery } from './lib/withAuth';
 import { EgressRow, IngressRow } from './extractions';
+import { documentsHistory, historyAttribution } from './lib/tableHistory';
 
 export const getDocumentStats = authQuery({
   args: {},
@@ -59,6 +60,9 @@ export const createDocument = authMutation({
       status: 'pending',
     });
 
+    const doc = await ctx.db.get(documentId);
+    await documentsHistory.update(ctx, documentId, doc, await historyAttribution(ctx, 'documents.createDocument'));
+
     // Trigger the extraction workflow
     await ctx.scheduler.runAfter(0, internal.extraction.startExtraction, {
       documentId,
@@ -81,6 +85,8 @@ export const retryAllExtractions = authMutation({
         errorMessage: undefined,
         processingStartedAt: undefined,
       });
+      const updated = await ctx.db.get(document._id);
+      await documentsHistory.update(ctx, document._id, updated, await historyAttribution(ctx, 'documents.retryAllExtractions'));
       await ctx.scheduler.runAfter(0, internal.extraction.startExtraction, {
         documentId: document._id,
       });
@@ -109,6 +115,8 @@ export const retryExtraction = authMutation({
       errorMessage: undefined,
       processingStartedAt: undefined,
     });
+    const updated = await ctx.db.get(args.documentId);
+    await documentsHistory.update(ctx, args.documentId, updated, await historyAttribution(ctx, 'documents.retryExtraction'));
 
     // Trigger the extraction workflow
     await ctx.scheduler.runAfter(0, internal.extraction.startExtraction, {
@@ -143,6 +151,8 @@ export const reExtractPage = authMutation({
     const pageReExtractionStatus = { ...(doc.pageReExtractionStatus ?? {}) };
     pageReExtractionStatus[String(args.pageNumber)] = 'pending' as const;
     await ctx.db.patch(args.documentId, { pageReExtractionStatus });
+    const updated = await ctx.db.get(args.documentId);
+    await documentsHistory.update(ctx, args.documentId, updated, await historyAttribution(ctx, 'documents.reExtractPage'));
 
     // Trigger the page re-extraction (it will update both extraction and validatedData)
     await ctx.scheduler.runAfter(0, internal.extraction.reExtractPage, {
@@ -331,6 +341,8 @@ export const setPageRotation = authMutation({
     }
 
     await ctx.db.patch(args.documentId, { pageRotations });
+    const updated = await ctx.db.get(args.documentId);
+    await documentsHistory.update(ctx, args.documentId, updated, await historyAttribution(ctx, 'documents.setPageRotation'));
 
     return null;
   },
@@ -356,6 +368,8 @@ export const reprocessStuckDocuments = authMutation({
         errorMessage: undefined,
         processingStartedAt: undefined,
       });
+      const updated = await ctx.db.get(doc._id);
+      await documentsHistory.update(ctx, doc._id, updated, await historyAttribution(ctx, 'documents.reprocessStuckDocuments'));
 
       await ctx.scheduler.runAfter(0, internal.extraction.startExtraction, {
         documentId: doc._id,
@@ -392,6 +406,8 @@ export const processAllSummaries = authMutation({
       await ctx.db.patch(doc._id, {
         summaryStatus: 'pending',
       });
+      const updated = await ctx.db.get(doc._id);
+      await documentsHistory.update(ctx, doc._id, updated, await historyAttribution(ctx, 'documents.processAllSummaries'));
 
       await ctx.scheduler.runAfter(0, internal.summaryExtraction.startSummaryExtraction, {
         documentId: doc._id,
@@ -419,6 +435,8 @@ export const processSingleSummary = authMutation({
     await ctx.db.patch(args.documentId, {
       summaryStatus: 'pending',
     });
+    const updated = await ctx.db.get(args.documentId);
+    await documentsHistory.update(ctx, args.documentId, updated, await historyAttribution(ctx, 'documents.processSingleSummary'));
 
     await ctx.scheduler.runAfter(0, internal.summaryExtraction.startSummaryExtraction, {
       documentId: args.documentId,

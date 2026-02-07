@@ -1,5 +1,12 @@
 import { v } from 'convex/values';
 import { internalMutation, internalQuery } from './_generated/server';
+import {
+  documentsHistory,
+  extractionsHistory,
+  historyAttribution,
+  summaryExtractionsHistory,
+  validatedDataHistory,
+} from './lib/tableHistory';
 
 /**
  * Update document status
@@ -26,6 +33,8 @@ export const updateDocumentStatus = internalMutation({
     }
 
     await ctx.db.patch(args.documentId, patch);
+    const updated = await ctx.db.get(args.documentId);
+    await documentsHistory.update(ctx, args.documentId, updated, await historyAttribution(ctx, 'extractionHelpers.updateDocumentStatus'));
     return null;
   },
 });
@@ -42,13 +51,20 @@ export const storeExtraction = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await ctx.db.insert('extractions', {
+    const extractionId = await ctx.db.insert('extractions', {
       documentId: args.documentId,
       model: args.model,
       ingress: args.ingress,
       egress: args.egress,
       completedAt: Date.now(),
     });
+    const inserted = await ctx.db.get(extractionId);
+    await extractionsHistory.update(
+      ctx,
+      extractionId,
+      inserted,
+      await historyAttribution(ctx, 'extractionHelpers.storeExtraction', { documentId: args.documentId, model: args.model }),
+    );
     return null;
   },
 });
@@ -134,6 +150,8 @@ export const updateSummaryStatus = internalMutation({
     };
 
     await ctx.db.patch(args.documentId, patch);
+    const updated = await ctx.db.get(args.documentId);
+    await documentsHistory.update(ctx, args.documentId, updated, await historyAttribution(ctx, 'extractionHelpers.updateSummaryStatus'));
     return null;
   },
 });
@@ -150,13 +168,24 @@ export const storeSummaryExtraction = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await ctx.db.insert('summaryExtractions', {
+    const summaryExtractionId = await ctx.db.insert('summaryExtractions', {
       documentId: args.documentId,
       model: args.model,
       summary: args.summary,
       pageNumber: args.pageNumber,
       completedAt: Date.now(),
     });
+    const inserted = await ctx.db.get(summaryExtractionId);
+    await summaryExtractionsHistory.update(
+      ctx,
+      summaryExtractionId,
+      inserted,
+      await historyAttribution(ctx, 'extractionHelpers.storeSummaryExtraction', {
+        documentId: args.documentId,
+        model: args.model,
+        pageNumber: args.pageNumber,
+      }),
+    );
     return null;
   },
 });
@@ -206,6 +235,16 @@ export const updateExtractionForPage = internalMutation({
       egress: updatedEgress,
       completedAt: Date.now(),
     });
+    const updated = await ctx.db.get(latestExtraction._id);
+    await extractionsHistory.update(
+      ctx,
+      latestExtraction._id,
+      updated,
+      await historyAttribution(ctx, 'extractionHelpers.updateExtractionForPage', {
+        documentId: args.documentId,
+        pageNumber: args.pageNumber,
+      }),
+    );
 
     return null;
   },
@@ -245,6 +284,16 @@ export const deleteValidatedDataForPage = internalMutation({
       egress: updatedEgress,
       validatedAt: Date.now(),
     });
+    const updated = await ctx.db.get(validatedData._id);
+    await validatedDataHistory.update(
+      ctx,
+      validatedData._id,
+      updated,
+      await historyAttribution(ctx, 'extractionHelpers.deleteValidatedDataForPage', {
+        documentId: args.documentId,
+        pageNumber: args.pageNumber,
+      }),
+    );
 
     return null;
   },
@@ -292,6 +341,16 @@ export const updateValidatedDataForPage = internalMutation({
       egress: updatedEgress,
       validatedAt: Date.now(),
     });
+    const updated = await ctx.db.get(validatedData._id);
+    await validatedDataHistory.update(
+      ctx,
+      validatedData._id,
+      updated,
+      await historyAttribution(ctx, 'extractionHelpers.updateValidatedDataForPage', {
+        documentId: args.documentId,
+        pageNumber: args.pageNumber,
+      }),
+    );
 
     return null;
   },
@@ -315,6 +374,16 @@ export const setPageReExtractionStatus = internalMutation({
     pageReExtractionStatus[String(args.pageNumber)] = args.status;
 
     await ctx.db.patch(args.documentId, { pageReExtractionStatus });
+    const updated = await ctx.db.get(args.documentId);
+    await documentsHistory.update(
+      ctx,
+      args.documentId,
+      updated,
+      await historyAttribution(ctx, 'extractionHelpers.setPageReExtractionStatus', {
+        pageNumber: args.pageNumber,
+        status: args.status,
+      }),
+    );
     return null;
   },
 });
@@ -336,6 +405,15 @@ export const clearPageReExtractionStatus = internalMutation({
     delete pageReExtractionStatus[String(args.pageNumber)];
 
     await ctx.db.patch(args.documentId, { pageReExtractionStatus });
+    const updated = await ctx.db.get(args.documentId);
+    await documentsHistory.update(
+      ctx,
+      args.documentId,
+      updated,
+      await historyAttribution(ctx, 'extractionHelpers.clearPageReExtractionStatus', {
+        pageNumber: args.pageNumber,
+      }),
+    );
     return null;
   },
 });

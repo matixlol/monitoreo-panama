@@ -15,7 +15,9 @@ import type * as extraction from "../extraction.js";
 import type * as extractionHelpers from "../extractionHelpers.js";
 import type * as extractions from "../extractions.js";
 import type * as featureFlags from "../featureFlags.js";
+import type * as history from "../history.js";
 import type * as http from "../http.js";
+import type * as lib_tableHistory from "../lib/tableHistory.js";
 import type * as lib_withAuth from "../lib/withAuth.js";
 import type * as pageExtractionProposals from "../pageExtractionProposals.js";
 import type * as summaryExtraction from "../summaryExtraction.js";
@@ -34,7 +36,9 @@ declare const fullApi: ApiFromModules<{
   extractionHelpers: typeof extractionHelpers;
   extractions: typeof extractions;
   featureFlags: typeof featureFlags;
+  history: typeof history;
   http: typeof http;
+  "lib/tableHistory": typeof lib_tableHistory;
   "lib/withAuth": typeof lib_withAuth;
   pageExtractionProposals: typeof pageExtractionProposals;
   summaryExtraction: typeof summaryExtraction;
@@ -66,4 +70,417 @@ export declare const internal: FilterApi<
   FunctionReference<any, "internal">
 >;
 
-export declare const components: {};
+export declare const components: {
+  documentsHistory: {
+    lib: {
+      listDocumentHistory: FunctionReference<
+        "query",
+        "internal",
+        {
+          id: string;
+          maxTs: number;
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+        },
+        {
+          continueCursor: string;
+          isDone: boolean;
+          page: Array<{
+            attribution: any;
+            doc: any;
+            id: string;
+            isDeleted: boolean;
+            ts: number;
+          }>;
+        }
+      >;
+      listHistory: FunctionReference<
+        "query",
+        "internal",
+        {
+          maxTs: number;
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+        },
+        {
+          continueCursor: string;
+          isDone: boolean;
+          page: Array<{
+            attribution: any;
+            doc: any;
+            id: string;
+            isDeleted: boolean;
+            ts: number;
+          }>;
+        }
+      >;
+      listSnapshot: FunctionReference<
+        "query",
+        "internal",
+        {
+          currentTs: number;
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+          snapshotTs: number;
+        },
+        {
+          continueCursor: string;
+          isDone: boolean;
+          page: Array<{
+            attribution: any;
+            doc: any;
+            id: string;
+            isDeleted: boolean;
+            ts: number;
+          }>;
+          pageStatus?: "SplitRecommended";
+          splitCursor?: string;
+        }
+      >;
+      update: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          attribution: any;
+          doc: any | null;
+          id: string;
+          serializability: "table" | "document" | "wallclock";
+        },
+        number
+      >;
+      vacuumHistory: FunctionReference<
+        "mutation",
+        "internal",
+        { minTsToKeep: number },
+        any
+      >;
+    };
+  };
+  extractionsHistory: {
+    lib: {
+      listDocumentHistory: FunctionReference<
+        "query",
+        "internal",
+        {
+          id: string;
+          maxTs: number;
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+        },
+        {
+          continueCursor: string;
+          isDone: boolean;
+          page: Array<{
+            attribution: any;
+            doc: any;
+            id: string;
+            isDeleted: boolean;
+            ts: number;
+          }>;
+        }
+      >;
+      listHistory: FunctionReference<
+        "query",
+        "internal",
+        {
+          maxTs: number;
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+        },
+        {
+          continueCursor: string;
+          isDone: boolean;
+          page: Array<{
+            attribution: any;
+            doc: any;
+            id: string;
+            isDeleted: boolean;
+            ts: number;
+          }>;
+        }
+      >;
+      listSnapshot: FunctionReference<
+        "query",
+        "internal",
+        {
+          currentTs: number;
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+          snapshotTs: number;
+        },
+        {
+          continueCursor: string;
+          isDone: boolean;
+          page: Array<{
+            attribution: any;
+            doc: any;
+            id: string;
+            isDeleted: boolean;
+            ts: number;
+          }>;
+          pageStatus?: "SplitRecommended";
+          splitCursor?: string;
+        }
+      >;
+      update: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          attribution: any;
+          doc: any | null;
+          id: string;
+          serializability: "table" | "document" | "wallclock";
+        },
+        number
+      >;
+      vacuumHistory: FunctionReference<
+        "mutation",
+        "internal",
+        { minTsToKeep: number },
+        any
+      >;
+    };
+  };
+  summaryExtractionsHistory: {
+    lib: {
+      listDocumentHistory: FunctionReference<
+        "query",
+        "internal",
+        {
+          id: string;
+          maxTs: number;
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+        },
+        {
+          continueCursor: string;
+          isDone: boolean;
+          page: Array<{
+            attribution: any;
+            doc: any;
+            id: string;
+            isDeleted: boolean;
+            ts: number;
+          }>;
+        }
+      >;
+      listHistory: FunctionReference<
+        "query",
+        "internal",
+        {
+          maxTs: number;
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+        },
+        {
+          continueCursor: string;
+          isDone: boolean;
+          page: Array<{
+            attribution: any;
+            doc: any;
+            id: string;
+            isDeleted: boolean;
+            ts: number;
+          }>;
+        }
+      >;
+      listSnapshot: FunctionReference<
+        "query",
+        "internal",
+        {
+          currentTs: number;
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+          snapshotTs: number;
+        },
+        {
+          continueCursor: string;
+          isDone: boolean;
+          page: Array<{
+            attribution: any;
+            doc: any;
+            id: string;
+            isDeleted: boolean;
+            ts: number;
+          }>;
+          pageStatus?: "SplitRecommended";
+          splitCursor?: string;
+        }
+      >;
+      update: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          attribution: any;
+          doc: any | null;
+          id: string;
+          serializability: "table" | "document" | "wallclock";
+        },
+        number
+      >;
+      vacuumHistory: FunctionReference<
+        "mutation",
+        "internal",
+        { minTsToKeep: number },
+        any
+      >;
+    };
+  };
+  validatedDataHistory: {
+    lib: {
+      listDocumentHistory: FunctionReference<
+        "query",
+        "internal",
+        {
+          id: string;
+          maxTs: number;
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+        },
+        {
+          continueCursor: string;
+          isDone: boolean;
+          page: Array<{
+            attribution: any;
+            doc: any;
+            id: string;
+            isDeleted: boolean;
+            ts: number;
+          }>;
+        }
+      >;
+      listHistory: FunctionReference<
+        "query",
+        "internal",
+        {
+          maxTs: number;
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+        },
+        {
+          continueCursor: string;
+          isDone: boolean;
+          page: Array<{
+            attribution: any;
+            doc: any;
+            id: string;
+            isDeleted: boolean;
+            ts: number;
+          }>;
+        }
+      >;
+      listSnapshot: FunctionReference<
+        "query",
+        "internal",
+        {
+          currentTs: number;
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+          snapshotTs: number;
+        },
+        {
+          continueCursor: string;
+          isDone: boolean;
+          page: Array<{
+            attribution: any;
+            doc: any;
+            id: string;
+            isDeleted: boolean;
+            ts: number;
+          }>;
+          pageStatus?: "SplitRecommended";
+          splitCursor?: string;
+        }
+      >;
+      update: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          attribution: any;
+          doc: any | null;
+          id: string;
+          serializability: "table" | "document" | "wallclock";
+        },
+        number
+      >;
+      vacuumHistory: FunctionReference<
+        "mutation",
+        "internal",
+        { minTsToKeep: number },
+        any
+      >;
+    };
+  };
+};
