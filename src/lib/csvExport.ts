@@ -50,7 +50,8 @@ export type CsvExportDocument = {
   pageCount: number;
   status: string;
   errorMessage?: string;
-  source: 'validated' | 'gemini-3' | 'none';
+  // 'official-json' is used for locally-imported export augmentation data.
+  source: 'validated' | 'gemini-3' | 'none' | 'official-json';
   sourceModel: string | null;
   sourceCompletedAt: number | null;
   ingress: CsvIngressRow[];

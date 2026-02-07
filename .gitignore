@@ -46,3 +46,5 @@ next-env.d.ts
 /data
 all-pdfs
 
+# Generated locally for CSV export augmentation (not committed)
+/public/local-export-data.json
