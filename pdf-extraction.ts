@@ -1,4 +1,5 @@
 import { PDFDocument } from 'pdf-lib';
+import * as mupdf from 'mupdf';
 import { z } from 'zod';
 
 export const MODELS = {
@@ -306,6 +307,7 @@ export async function callGeminiDirect<T>(
     schema: z.ZodType<T>;
     jsonSchema: Record<string, unknown>;
     modelId?: string;
+    mimeType?: string;
     mediaResolution?: MediaResolution;
   },
 ): Promise<{ raw: GeminiRawResponse; parsed: T }> {
@@ -327,7 +329,7 @@ export async function callGeminiDirect<T>(
           parts: [
             {
               inlineData: {
-                mimeType: 'application/pdf',
+                mimeType: options.mimeType ?? 'application/pdf',
                 data: pdfBase64,
               },
             },
@@ -336,7 +338,7 @@ export async function callGeminiDirect<T>(
         },
       ],
       generationConfig: {
-        temperature: 1,
+        // temperature: 1,
         thinkingConfig: {
           thinkingLevel: 'HIGH',
         },
@@ -403,4 +405,49 @@ export async function extractSinglePage(pdfBytes: ArrayBuffer, pageNumber: numbe
   const [copiedPage] = await singlePageDoc.copyPages(pdfDoc, [pageNumber - 1]);
   singlePageDoc.addPage(copiedPage);
   return singlePageDoc.save();
+}
+
+export function renderPageAsPng(
+  pdfBytes: ArrayBuffer | Uint8Array,
+  pageNumber: number,
+  options?: { rotation?: number; scale?: number },
+): Uint8Array {
+  const rotation = options?.rotation ?? 0;
+  const scale = options?.scale ?? 4;
+
+  const doc = mupdf.Document.openDocument(
+    pdfBytes instanceof ArrayBuffer ? new Uint8Array(pdfBytes) : pdfBytes,
+    'application/pdf',
+  );
+  const page = doc.loadPage(pageNumber - 1);
+
+  let matrix = mupdf.Matrix.scale(scale, scale);
+  if (rotation !== 0) {
+    const bounds = page.getBounds();
+    const w = bounds[2] - bounds[0];
+    const h = bounds[3] - bounds[1];
+
+    const rotMatrix = mupdf.Matrix.rotate(rotation);
+
+    let tx = 0;
+    let ty = 0;
+    const r = ((rotation % 360) + 360) % 360;
+    if (r === 90) {
+      tx = h;
+      ty = 0;
+    } else if (r === 180) {
+      tx = w;
+      ty = h;
+    } else if (r === 270) {
+      tx = 0;
+      ty = w;
+    }
+
+    const translateMatrix = mupdf.Matrix.translate(tx, ty);
+    const rotateAndTranslate = mupdf.Matrix.concat(rotMatrix, translateMatrix);
+    matrix = mupdf.Matrix.concat(rotateAndTranslate, mupdf.Matrix.scale(scale, scale));
+  }
+
+  const pixmap = page.toPixmap(matrix, mupdf.ColorSpace.DeviceRGB, false, true);
+  return pixmap.asPNG();
 }

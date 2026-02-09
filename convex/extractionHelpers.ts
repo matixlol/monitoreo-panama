@@ -432,6 +432,7 @@ export const getDocumentInternal = internalQuery({
       name: v.string(),
       pageCount: v.number(),
       status: v.union(v.literal('pending'), v.literal('processing'), v.literal('completed'), v.literal('failed')),
+      pageRotations: v.optional(v.record(v.string(), v.number())),
     }),
     v.null(),
   ),
@@ -446,6 +447,7 @@ export const getDocumentInternal = internalQuery({
       name: doc.name,
       pageCount: doc.pageCount,
       status: doc.status,
+      pageRotations: doc.pageRotations,
     };
   },
 });

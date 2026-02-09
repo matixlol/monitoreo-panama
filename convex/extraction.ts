@@ -7,7 +7,7 @@ import pLimit from 'p-limit';
 import {
   getModel,
   splitPdfIntoPages,
-  extractSinglePage,
+  renderPageAsPng,
   EXTRACTION_PROMPT,
   ResponseSchema,
   RESPONSE_JSON_SCHEMA,
@@ -57,9 +57,10 @@ export const reExtractPage = internalAction({
 
       const pdfBytes = await pdfResponse.arrayBuffer();
 
-      // Extract just the single page
-      const pageBytes = await extractSinglePage(pdfBytes, args.pageNumber);
-      const pdfBase64 = Buffer.from(pageBytes).toString('base64');
+      // Render page as PNG with user-saved rotation applied
+      const rotation = doc.pageRotations?.[String(args.pageNumber)] ?? 0;
+      const pngBytes = renderPageAsPng(pdfBytes, args.pageNumber, { rotation });
+      const pngBase64 = Buffer.from(pngBytes).toString('base64');
 
       // Set status to processing
       await ctx.runMutation(internal.extractionHelpers.setPageReExtractionStatus, {
@@ -101,12 +102,12 @@ export const reExtractPage = internalAction({
           try {
             console.log(`[${key}] Re-extracting page ${args.pageNumber}...`);
 
-            const { parsed: result } = await callGeminiDirect(pdfBase64, process.env.GEMINI_API_KEY!, {
+            const { parsed: result } = await callGeminiDirect(pngBase64, process.env.GEMINI_API_KEY!, {
               prompt: EXTRACTION_PROMPT,
               schema: ResponseSchema,
               jsonSchema: RESPONSE_JSON_SCHEMA,
               modelId: model.geminiId,
-              mediaResolution: 'MEDIA_RESOLUTION_HIGH',
+              mimeType: 'image/png',
             });
 
             console.log(
@@ -231,9 +232,9 @@ export const startExtraction = internalAction({
 
       const pdfBytes = await pdfResponse.arrayBuffer();
 
-      // Split PDF into individual pages
+      // Get page count by splitting, then render each page as PNG
       const pages = await splitPdfIntoPages(pdfBytes);
-      console.log(`Split PDF into ${pages.length} pages`);
+      console.log(`PDF has ${pages.length} pages`);
 
       console.log(`Processing with ${model.id}...`);
 
@@ -246,15 +247,16 @@ export const startExtraction = internalAction({
       const pageResults = await Promise.all(
         pages.map((page) =>
           limit(async () => {
-            const pdfBase64 = Buffer.from(page.pageBytes).toString('base64');
+            const pngBytes = renderPageAsPng(pdfBytes, page.pageNumber);
+            const pngBase64 = Buffer.from(pngBytes).toString('base64');
 
             try {
-              const { parsed: result } = await callGeminiDirect(pdfBase64, process.env.GEMINI_API_KEY!, {
+              const { parsed: result } = await callGeminiDirect(pngBase64, process.env.GEMINI_API_KEY!, {
                 prompt: EXTRACTION_PROMPT,
                 schema: ResponseSchema,
                 jsonSchema: RESPONSE_JSON_SCHEMA,
                 modelId: model.geminiId,
-                mediaResolution: 'MEDIA_RESOLUTION_HIGH',
+                mimeType: 'image/png',
               });
 
               console.log(
