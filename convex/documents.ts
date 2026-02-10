@@ -644,6 +644,7 @@ export const getDocumentsWithDiscrepancies = authQuery({
           maxAbsDiscrepancy,
           ingressRowCount: ingress.length,
           egressRowCount: egress.length,
+          structuredNotes: doc.structuredNotes ?? null,
         };
       }),
     );
