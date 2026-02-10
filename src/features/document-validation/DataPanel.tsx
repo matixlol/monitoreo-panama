@@ -4,6 +4,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { EgressTable } from './EgressTable';
 import { IngressTable } from './IngressTable';
 import { AmountByPageChart } from './AmountByPageChart';
+import { CategorySumByPageChart } from './CategorySumByPageChart';
 import { RowCountByPageChart } from './RowCountByPageChart';
 import { DiscrepanciesSummaryTable } from './DiscrepanciesSummaryTable';
 import type { EgressRow, IngressRow } from './types';
@@ -62,6 +63,7 @@ export function DataPanel({
   isReExtracting,
 }: Props) {
   const [activeTab, setActiveTab] = useState('data');
+  const [showCategorySumChart, setShowCategorySumChart] = useState(false);
   const [activeProposalTab, setActiveProposalTab] = useState<string>('');
   const [isProposalPanelOpen, setIsProposalPanelOpen] = useState(false);
   const prevIsReExtractingRef = useRef(false);
@@ -407,6 +409,34 @@ export function DataPanel({
               onPageClick={goToPage}
               currentPage={currentPage}
             />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 px-4 pt-2">
+              <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300">$ por Página (Σ categorías)</h3>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={showCategorySumChart}
+                onClick={() => setShowCategorySumChart((v) => !v)}
+                className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${
+                  showCategorySumChart ? 'bg-blue-500' : 'bg-slate-300 dark:bg-slate-600'
+                }`}
+              >
+                <span
+                  className={`inline-block h-3 w-3 rounded-full bg-white transition-transform ${
+                    showCategorySumChart ? 'translate-x-3.5' : 'translate-x-0.5'
+                  }`}
+                />
+              </button>
+            </div>
+            {showCategorySumChart && (
+              <CategorySumByPageChart
+                ingressRows={allIngressRows}
+                egressRows={allEgressRows}
+                onPageClick={goToPage}
+                currentPage={currentPage}
+              />
+            )}
           </div>
           <div>
             <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300 px-4"># Filas por Página</h3>
