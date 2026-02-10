@@ -1,7 +1,7 @@
 import { v } from 'convex/values';
 import { internalQuery } from './_generated/server';
 import { authMutation, authQuery } from './lib/withAuth';
-import { DEFAULT_MODEL, type ModelKey, MODELS } from '../pdf-extraction';
+import { DEFAULT_MODEL, type ModelKey, MODELS } from '../models';
 
 const EXTRACTION_MODEL_KEY = 'extractionModel';
 
