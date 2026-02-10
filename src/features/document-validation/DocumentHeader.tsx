@@ -35,6 +35,7 @@ export function DocumentHeader({
   const [draftNote, setDraftNote] = useState(note ?? '');
   const [draftLargeTotalsDiscrepancy, setDraftLargeTotalsDiscrepancy] = useState(Boolean(largeTotalsDiscrepancy));
   const [lastLoadedKey, setLastLoadedKey] = useState<string>('');
+  const [isNotesOpen, setIsNotesOpen] = useState(false);
 
   // Keep local draft in sync when switching documents; avoid overwriting edits mid-typing.
   const loadKey = useMemo(
@@ -67,62 +68,69 @@ export function DocumentHeader({
         </div>
 
         <div className="flex items-center gap-4">
-          <details className="relative">
-            <summary className="list-none">
-              <Button type="button" variant="outline" className="gap-2">
-                <span className="inline-flex items-center gap-1">
-                  Notas
-                  {(note && note.trim().length > 0) || largeTotalsDiscrepancy ? (
-                    <span className="text-xs text-slate-500">(1)</span>
-                  ) : null}
-                </span>
-              </Button>
-            </summary>
+          <div className="relative">
+            <Button type="button" variant="outline" className="gap-2" onClick={() => setIsNotesOpen((v) => !v)}>
+              <span className="inline-flex items-center gap-1">
+                Notas
+                {(note && note.trim().length > 0) || largeTotalsDiscrepancy ? (
+                  <span className="text-xs text-slate-500">(1)</span>
+                ) : null}
+              </span>
+            </Button>
 
-            <div className="absolute right-0 mt-2 w-[420px] max-w-[calc(100vw-2rem)] rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-lg p-3 z-30">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1">
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">
-                    Nota del documento
-                  </label>
-                  <textarea
-                    value={draftNote}
-                    onChange={(e) => setDraftNote(e.target.value)}
-                    rows={4}
-                    className="w-full resize-none rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-2 py-1.5 text-sm text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-700"
-                    placeholder="Escribe una nota..."
-                  />
+            {isNotesOpen ? (
+              <>
+                <div className="fixed inset-0 z-20" onClick={() => setIsNotesOpen(false)} />
+                <div className="absolute right-0 mt-2 w-[420px] max-w-[calc(100vw-2rem)] rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-lg p-3 z-30">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">
+                        Nota del documento
+                      </label>
+                      <textarea
+                        value={draftNote}
+                        onChange={(e) => setDraftNote(e.target.value)}
+                        rows={4}
+                        className="w-full resize-none rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-2 py-1.5 text-sm text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-700"
+                        placeholder="Escribe una nota..."
+                      />
 
-                  <label className="mt-3 flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200 select-none">
-                    <input
-                      type="checkbox"
-                      checked={draftLargeTotalsDiscrepancy}
-                      onChange={(e) => setDraftLargeTotalsDiscrepancy(e.target.checked)}
-                      className="h-4 w-4"
-                    />
-                    Discrepancias grandes en totales
-                  </label>
+                      <label className="mt-3 flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200 select-none">
+                        <input
+                          type="checkbox"
+                          checked={draftLargeTotalsDiscrepancy}
+                          onChange={(e) => setDraftLargeTotalsDiscrepancy(e.target.checked)}
+                          className="h-4 w-4"
+                        />
+                        Discrepancias grandes en totales
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex items-center justify-end gap-2">
+                    <Button type="button" variant="outline" onClick={() => setIsNotesOpen(false)}>
+                      Cerrar
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={!hasNotesEdits || isSavingStructuredNotes}
+                      onClick={async () => {
+                        const trimmed = draftNote.trim();
+                        await onSaveStructuredNotes({
+                          note: trimmed.length === 0 ? null : trimmed,
+                          largeTotalsDiscrepancy: Boolean(draftLargeTotalsDiscrepancy),
+                        });
+                        setIsNotesOpen(false);
+                      }}
+                    >
+                      {isSavingStructuredNotes ? 'Guardando...' : 'Guardar Notas'}
+                    </Button>
+                  </div>
                 </div>
-              </div>
-
-              <div className="mt-3 flex items-center justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={!hasNotesEdits || isSavingStructuredNotes}
-                  onClick={async () => {
-                    const trimmed = draftNote.trim();
-                    await onSaveStructuredNotes({
-                      note: trimmed.length === 0 ? null : trimmed,
-                      largeTotalsDiscrepancy: Boolean(draftLargeTotalsDiscrepancy),
-                    });
-                  }}
-                >
-                  {isSavingStructuredNotes ? 'Guardando...' : 'Guardar Notas'}
-                </Button>
-              </div>
-            </div>
-          </details>
+              </>
+            ) : null}
+          </div>
 
           {isProcessing && (
             <span className="px-2 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 rounded-full text-xs animate-pulse">
