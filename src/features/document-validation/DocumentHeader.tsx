@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
+import { useEffect, useMemo, useState } from 'react';
 
 type Props = {
   documentName: string;
@@ -10,6 +11,10 @@ type Props = {
   hasEdits: boolean;
   onSave: () => void;
   onRerunExtraction: () => void;
+  note: string | null;
+  largeTotalsDiscrepancy: boolean;
+  isSavingStructuredNotes: boolean;
+  onSaveStructuredNotes: (args: { note: string | null; largeTotalsDiscrepancy: boolean }) => Promise<void>;
 };
 
 export function DocumentHeader({
@@ -21,8 +26,30 @@ export function DocumentHeader({
   hasEdits,
   onSave,
   onRerunExtraction,
+  note,
+  largeTotalsDiscrepancy,
+  isSavingStructuredNotes,
+  onSaveStructuredNotes,
 }: Props) {
   const isProcessing = documentStatus === 'processing' || documentStatus === 'pending';
+  const [draftNote, setDraftNote] = useState(note ?? '');
+  const [draftLargeTotalsDiscrepancy, setDraftLargeTotalsDiscrepancy] = useState(Boolean(largeTotalsDiscrepancy));
+  const [lastLoadedKey, setLastLoadedKey] = useState<string>('');
+
+  // Keep local draft in sync when switching documents; avoid overwriting edits mid-typing.
+  const loadKey = useMemo(
+    () => JSON.stringify({ documentName, note: note ?? null, largeTotalsDiscrepancy: Boolean(largeTotalsDiscrepancy) }),
+    [documentName, largeTotalsDiscrepancy, note],
+  );
+  useEffect(() => {
+    if (loadKey === lastLoadedKey) return;
+    setDraftNote(note ?? '');
+    setDraftLargeTotalsDiscrepancy(Boolean(largeTotalsDiscrepancy));
+    setLastLoadedKey(loadKey);
+  }, [largeTotalsDiscrepancy, lastLoadedKey, loadKey, note]);
+
+  const hasNotesEdits =
+    draftNote.trim() !== (note ?? '').trim() || draftLargeTotalsDiscrepancy !== Boolean(largeTotalsDiscrepancy);
 
   return (
     <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shrink-0 z-20">
@@ -31,9 +58,7 @@ export function DocumentHeader({
           <Link to="/documents" className="text-slate-500 hover:text-slate-700 dark:text-slate-400">
             ← Volver
           </Link>
-          <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100 truncate max-w-md">
-            {documentName}
-          </h1>
+          <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100 truncate max-w-md">{documentName}</h1>
           {isValidated && (
             <span className="px-2 py-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 rounded-full text-xs">
               Validado
@@ -42,6 +67,63 @@ export function DocumentHeader({
         </div>
 
         <div className="flex items-center gap-4">
+          <details className="relative">
+            <summary className="list-none">
+              <Button type="button" variant="outline" className="gap-2">
+                <span className="inline-flex items-center gap-1">
+                  Notas
+                  {(note && note.trim().length > 0) || largeTotalsDiscrepancy ? (
+                    <span className="text-xs text-slate-500">(1)</span>
+                  ) : null}
+                </span>
+              </Button>
+            </summary>
+
+            <div className="absolute right-0 mt-2 w-[420px] max-w-[calc(100vw-2rem)] rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-lg p-3 z-30">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1">
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">
+                    Nota del documento
+                  </label>
+                  <textarea
+                    value={draftNote}
+                    onChange={(e) => setDraftNote(e.target.value)}
+                    rows={4}
+                    className="w-full resize-none rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-2 py-1.5 text-sm text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-700"
+                    placeholder="Escribe una nota..."
+                  />
+
+                  <label className="mt-3 flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200 select-none">
+                    <input
+                      type="checkbox"
+                      checked={draftLargeTotalsDiscrepancy}
+                      onChange={(e) => setDraftLargeTotalsDiscrepancy(e.target.checked)}
+                      className="h-4 w-4"
+                    />
+                    Discrepancias grandes en totales
+                  </label>
+                </div>
+              </div>
+
+              <div className="mt-3 flex items-center justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!hasNotesEdits || isSavingStructuredNotes}
+                  onClick={async () => {
+                    const trimmed = draftNote.trim();
+                    await onSaveStructuredNotes({
+                      note: trimmed.length === 0 ? null : trimmed,
+                      largeTotalsDiscrepancy: Boolean(draftLargeTotalsDiscrepancy),
+                    });
+                  }}
+                >
+                  {isSavingStructuredNotes ? 'Guardando...' : 'Guardar Notas'}
+                </Button>
+              </div>
+            </div>
+          </details>
+
           {isProcessing && (
             <span className="px-2 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 rounded-full text-xs animate-pulse">
               {documentStatus === 'pending' ? 'Pendiente...' : 'Procesando...'}
@@ -72,14 +154,7 @@ export function DocumentHeader({
                   fill="none"
                   viewBox="0 0 24 24"
                 >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  ></circle>
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path
                     className="opacity-75"
                     fill="currentColor"
