@@ -128,7 +128,7 @@ function DiscrepanciasPage() {
   }
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm overflow-hidden">
+    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm">
       <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700">
         <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
           Discrepancias entre Resumen y Filas
