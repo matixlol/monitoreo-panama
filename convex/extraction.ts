@@ -9,6 +9,7 @@ import {
   splitPdfIntoPages,
   renderPageAsPng,
   EXTRACTION_PROMPT,
+  getExtractionPrompt,
   ResponseSchema,
   RESPONSE_JSON_SCHEMA,
   type ModelKey,
@@ -31,6 +32,7 @@ export const reExtractPage = internalAction({
     pageNumber: v.number(),
     proRuns: v.optional(v.number()),
     flashRuns: v.optional(v.number()),
+    pageTypeHint: v.optional(v.union(v.literal('ingress'), v.literal('egress'))),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -103,7 +105,7 @@ export const reExtractPage = internalAction({
             console.log(`[${key}] Re-extracting page ${args.pageNumber}...`);
 
             const { parsed: result } = await callGeminiDirect(pngBase64, process.env.GEMINI_API_KEY!, {
-              prompt: EXTRACTION_PROMPT,
+              prompt: getExtractionPrompt(args.pageTypeHint),
               schema: ResponseSchema,
               jsonSchema: RESPONSE_JSON_SCHEMA,
               modelId: model.geminiId,

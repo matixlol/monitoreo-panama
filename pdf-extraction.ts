@@ -33,6 +33,24 @@ Do not confuse Total de Gastos de Campaña (totalGastosCampania) with Total de G
 
 For each row, if any fields are illegible, unreadable, or unclear in the source document (e.g., due to poor scan quality, handwriting that can't be deciphered, or obscured text), list the field names in the "unreadableFields" array. Only include fields that you genuinely cannot read - do not include fields that are simply empty.`;
 
+export type PageTypeHint = 'ingress' | 'egress';
+
+export function getExtractionPrompt(pageTypeHint?: PageTypeHint | null): string {
+  if (pageTypeHint === 'ingress') {
+    return (
+      EXTRACTION_PROMPT +
+      '\n\nIMPORTANT: This page has been manually identified as an "INFORME DE INGRESOS" page. You MUST extract rows into the "ingress" array, even if the table headers are missing or the page looks ambiguous. Do NOT extract any egress rows — return an empty "egress" array.'
+    );
+  }
+  if (pageTypeHint === 'egress') {
+    return (
+      EXTRACTION_PROMPT +
+      '\n\nIMPORTANT: This page has been manually identified as an "INFORME DE GASTOS" page. You MUST extract rows into the "egress" array, even if the table headers are missing or the page looks ambiguous. Do NOT extract any ingress rows — return an empty "ingress" array.'
+    );
+  }
+  return EXTRACTION_PROMPT;
+}
+
 export const IngresoRowSchema = z.object({
   fecha: z.string().nullish(),
   reciboNumero: z.string().nullish(),

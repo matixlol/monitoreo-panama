@@ -35,7 +35,7 @@ type Props = {
   onPrev: () => void;
   onNext: () => void;
   onRotate: () => void;
-  onReExtractPage: (args: { proRuns: number; flashRuns: number }) => void | Promise<void>;
+  onReExtractPage: (args: { proRuns: number; flashRuns: number; pageTypeHint?: 'ingress' | 'egress' }) => void | Promise<void>;
   isReExtracting?: boolean;
   reExtractionFailed?: boolean;
 };
@@ -55,6 +55,7 @@ export function PdfPanel({
   const [isModelPickerOpen, setIsModelPickerOpen] = useState(false);
   const [proRuns, setProRuns] = useState(1);
   const [flashRuns, setFlashRuns] = useState(0);
+  const [pageTypeHint, setPageTypeHint] = useState<'ingress' | 'egress' | ''>('');
   const pickerRef = useRef<HTMLDivElement | null>(null);
 
   const totalRuns = useMemo(() => Math.max(0, proRuns) + Math.max(0, flashRuns), [flashRuns, proRuns]);
@@ -93,7 +94,11 @@ export function PdfPanel({
 
   const commitReExtract = () => {
     if (!canConfirm) return;
-    onReExtractPage({ proRuns: clampRuns(proRuns), flashRuns: clampRuns(flashRuns) });
+    onReExtractPage({
+      proRuns: clampRuns(proRuns),
+      flashRuns: clampRuns(flashRuns),
+      ...(pageTypeHint ? { pageTypeHint } : {}),
+    });
     setIsModelPickerOpen(false);
   };
 
@@ -233,6 +238,39 @@ export function PdfPanel({
                       +
                     </Button>
                   </div>
+                </div>
+              </div>
+
+              <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                <div className="text-xs font-medium text-slate-700 dark:text-slate-200">Forzar tipo de página</div>
+                <div className="mt-1 flex items-center gap-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={pageTypeHint === '' ? 'default' : 'outline'}
+                    className="h-7 text-xs flex-1"
+                    onClick={() => setPageTypeHint('')}
+                  >
+                    Auto
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={pageTypeHint === 'ingress' ? 'default' : 'outline'}
+                    className="h-7 text-xs flex-1"
+                    onClick={() => setPageTypeHint('ingress')}
+                  >
+                    Ingresos
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={pageTypeHint === 'egress' ? 'default' : 'outline'}
+                    className="h-7 text-xs flex-1"
+                    onClick={() => setPageTypeHint('egress')}
+                  >
+                    Gastos
+                  </Button>
                 </div>
               </div>
 

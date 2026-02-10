@@ -34,7 +34,7 @@ type DocumentValidationState = {
   handleAutoCalculateEgressTotals: () => void;
   handleSave: () => Promise<void>;
   handleRerunExtraction: () => Promise<void>;
-  handleReExtractPage: (args: { proRuns: number; flashRuns: number }) => Promise<void>;
+  handleReExtractPage: (args: { proRuns: number; flashRuns: number; pageTypeHint?: 'ingress' | 'egress' }) => Promise<void>;
   handleApplyPageProposal: (proposalKey: string) => Promise<void>;
   goToPage: (pageNumber: number) => void;
   handleRotate: () => void;
@@ -298,7 +298,7 @@ export function useDocumentValidationData(documentId: string): DocumentValidatio
   }, [documentId, retryExtraction]);
 
   const handleReExtractPage = useCallback(
-    async ({ proRuns, flashRuns }: { proRuns: number; flashRuns: number }) => {
+    async ({ proRuns, flashRuns, pageTypeHint }: { proRuns: number; flashRuns: number; pageTypeHint?: 'ingress' | 'egress' }) => {
       const normalize = (n: number) => {
         if (!Number.isFinite(n)) return 0;
         return Math.max(0, Math.min(10, Math.trunc(n)));
@@ -318,6 +318,7 @@ export function useDocumentValidationData(documentId: string): DocumentValidatio
           pageNumber: currentPage,
           proRuns: pro,
           flashRuns: flash,
+          ...(pageTypeHint ? { pageTypeHint } : {}),
         });
       } catch (error) {
         console.error('Re-extract page failed:', error);

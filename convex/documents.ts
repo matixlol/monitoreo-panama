@@ -148,6 +148,7 @@ export const reExtractPage = authMutation({
     // Optional to preserve existing callers; UI can specify counts.
     proRuns: v.optional(v.number()),
     flashRuns: v.optional(v.number()),
+    pageTypeHint: v.optional(v.union(v.literal('ingress'), v.literal('egress'))),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -178,6 +179,7 @@ export const reExtractPage = authMutation({
       pageNumber: args.pageNumber,
       proRuns: args.proRuns,
       flashRuns: args.flashRuns,
+      pageTypeHint: args.pageTypeHint,
     });
 
     return null;
