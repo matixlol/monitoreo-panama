@@ -19,6 +19,7 @@ function DocumentValidationPage() {
     pageExtractionProposals,
     isApplyingProposal,
     isSaving,
+    isSavingStructuredNotes,
     hasEdits,
     currentPage,
     currentPageIngressRows,
@@ -35,6 +36,7 @@ function DocumentValidationPage() {
     handleDeleteRow,
     handleToggleUnreadable,
     handleAutoCalculateEgressTotals,
+    handleUpdateStructuredNotes,
     handleSave,
     handleRerunExtraction,
     handleReExtractPage,
@@ -64,6 +66,10 @@ function DocumentValidationPage() {
         hasEdits={hasEdits}
         onSave={handleSave}
         onRerunExtraction={handleRerunExtraction}
+        note={document.structuredNotes?.note ?? null}
+        largeTotalsDiscrepancy={Boolean(document.structuredNotes?.flags?.largeTotalsDiscrepancy)}
+        isSavingStructuredNotes={isSavingStructuredNotes}
+        onSaveStructuredNotes={handleUpdateStructuredNotes}
       />
 
       <ResizablePanelGroup orientation="horizontal" className="flex-1 min-h-0">

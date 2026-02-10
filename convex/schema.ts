@@ -118,6 +118,14 @@ export default defineSchema({
     pageCount: v.number(),
     status: v.union(v.literal('pending'), v.literal('processing'), v.literal('completed'), v.literal('failed')),
     errorMessage: v.optional(v.string()),
+    // Human review metadata (extensible)
+    structuredNotes: v.optional(
+      v.object({
+        note: v.optional(v.union(v.string(), v.null())),
+        // Flags we can extend over time without adding new top-level columns.
+        flags: v.optional(v.record(v.string(), v.boolean())),
+      }),
+    ),
     // Page rotations stored as page number -> degrees (0, 90, 180, 270)
     pageRotations: v.optional(v.record(v.string(), v.number())),
     // Timestamp when processing started (for detecting stuck items)

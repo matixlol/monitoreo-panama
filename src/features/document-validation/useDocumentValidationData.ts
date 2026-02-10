@@ -2,12 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@convex/api';
 import type { Id } from '@convex/dataModel';
-import {
-  createEgressRow,
-  createIngressRow,
-  type EgressRow,
-  type IngressRow,
-} from './types';
+import { createEgressRow, createIngressRow, type EgressRow, type IngressRow } from './types';
 
 type RowType = 'ingress' | 'egress';
 
@@ -19,6 +14,7 @@ type DocumentValidationState = {
   pageExtractionProposals: any;
   isApplyingProposal: boolean;
   isSaving: boolean;
+  isSavingStructuredNotes: boolean;
   hasEdits: boolean;
   currentPage: number;
   currentPageIngressRows: IngressRow[];
@@ -30,6 +26,7 @@ type DocumentValidationState = {
   hasEgressOnPage: boolean;
   isCurrentPageReExtracting: boolean;
   currentPageReExtractionFailed: boolean;
+  handleUpdateStructuredNotes: (args: { note: string | null; largeTotalsDiscrepancy: boolean }) => Promise<void>;
   handleCellEdit: (type: RowType, rowIndex: number, field: string, value: string | number | null) => void;
   handleAddRow: (type: RowType) => void;
   handleDeleteRow: (type: RowType, rowIndex: number) => void;
@@ -78,6 +75,19 @@ export function useDocumentValidationData(documentId: string): DocumentValidatio
   const retryExtraction = useMutation(api.documents.retryExtraction);
   const reExtractPageMutation = useMutation(api.documents.reExtractPage);
   const applyProposalMutation = useMutation(api.pageExtractionProposals.applyProposalToPage);
+  const updateStructuredNotesMutation = useMutation(api.documents.updateStructuredNotes).withOptimisticUpdate(
+    (localStore, args) => {
+      const currentDoc = localStore.getQuery(api.documents.getDocument, {
+        documentId: documentId as Id<'documents'>,
+      });
+      if (!currentDoc) return;
+      localStore.setQuery(
+        api.documents.getDocument,
+        { documentId: documentId as Id<'documents'> },
+        { ...currentDoc, structuredNotes: args.structuredNotes },
+      );
+    },
+  );
 
   const setPageRotation = useMutation(api.documents.setPageRotation).withOptimisticUpdate((localStore, args) => {
     const currentDoc = localStore.getQuery(api.documents.getDocument, {
@@ -105,7 +115,31 @@ export function useDocumentValidationData(documentId: string): DocumentValidatio
   const [editedEgress, setEditedEgress] = useState<EgressRow[] | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isApplyingProposal, setIsApplyingProposal] = useState(false);
+  const [isSavingStructuredNotes, setIsSavingStructuredNotes] = useState(false);
   const hasEdits = editedIngress !== null || editedEgress !== null;
+
+  const handleUpdateStructuredNotes = useCallback(
+    async ({ note, largeTotalsDiscrepancy }: { note: string | null; largeTotalsDiscrepancy: boolean }) => {
+      setIsSavingStructuredNotes(true);
+      try {
+        await updateStructuredNotesMutation({
+          documentId: documentId as Id<'documents'>,
+          structuredNotes: {
+            note,
+            flags: {
+              largeTotalsDiscrepancy,
+            },
+          },
+        });
+      } catch (error) {
+        console.error('Update structured notes failed:', error);
+        alert(`Error al guardar notas: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+      } finally {
+        setIsSavingStructuredNotes(false);
+      }
+    },
+    [documentId, updateStructuredNotesMutation],
+  );
 
   const computedIngress = useMemo(() => {
     if (validatedData) return validatedData.ingress as unknown as IngressRow[];
@@ -278,17 +312,17 @@ export function useDocumentValidationData(documentId: string): DocumentValidatio
         return;
       }
 
-    try {
-      await reExtractPageMutation({
-        documentId: documentId as Id<'documents'>,
-        pageNumber: currentPage,
-        proRuns: pro,
-        flashRuns: flash,
-      });
-    } catch (error) {
-      console.error('Re-extract page failed:', error);
-      alert(`Error al re-extraer: ${error instanceof Error ? error.message : 'Error desconocido'}`);
-    }
+      try {
+        await reExtractPageMutation({
+          documentId: documentId as Id<'documents'>,
+          pageNumber: currentPage,
+          proRuns: pro,
+          flashRuns: flash,
+        });
+      } catch (error) {
+        console.error('Re-extract page failed:', error);
+        alert(`Error al re-extraer: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+      }
     },
     [currentPage, documentId, reExtractPageMutation],
   );
@@ -385,6 +419,7 @@ export function useDocumentValidationData(documentId: string): DocumentValidatio
     pageExtractionProposals,
     isApplyingProposal,
     isSaving,
+    isSavingStructuredNotes,
     hasEdits,
     currentPage,
     currentPageIngressRows,
@@ -396,6 +431,7 @@ export function useDocumentValidationData(documentId: string): DocumentValidatio
     hasEgressOnPage,
     isCurrentPageReExtracting,
     currentPageReExtractionFailed,
+    handleUpdateStructuredNotes,
     handleCellEdit,
     handleAddRow,
     handleDeleteRow,
