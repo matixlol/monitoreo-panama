@@ -3,6 +3,7 @@ import appCssUrl from '../app.css?url';
 import type { QueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import type { ConvexReactClient } from 'convex/react';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient;
@@ -45,7 +46,9 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
         <HeadContent />
       </head>
       <body>
-        {children}
+        <TooltipProvider>
+          {children}
+        </TooltipProvider>
         <Scripts />
       </body>
     </html>

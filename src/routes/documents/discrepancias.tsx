@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useQuery } from 'convex/react';
-import { useState } from 'react';
 import { api } from '../../../convex/_generated/api';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import documentsIndex from '../../data/documents-index.json';
 
 type CandidateMetadata = {
@@ -56,33 +56,29 @@ function findCandidateByFilename(filename: string): CandidateMetadata | null {
 }
 
 function DiscrepancyWarning({ note }: { note: string | null }) {
-  const [showTooltip, setShowTooltip] = useState(false);
-
   return (
-    <span
-      className="relative inline-flex shrink-0 cursor-help"
-      onMouseEnter={() => setShowTooltip(true)}
-      onMouseLeave={() => setShowTooltip(false)}
-    >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 20 20"
-        fill="currentColor"
-        className="h-5 w-5 text-amber-500"
-      >
-        <path
-          fillRule="evenodd"
-          d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 9a1 1 0 100-2 1 1 0 000 2z"
-          clipRule="evenodd"
-        />
-      </svg>
-      {showTooltip && (
-        <div className="absolute left-1/2 bottom-full mb-2 -translate-x-1/2 z-50 w-64 rounded-md bg-amber-50 dark:bg-amber-950 border border-amber-300 dark:border-amber-700 px-3 py-2 text-xs text-amber-900 dark:text-amber-100 shadow-lg pointer-events-none">
-          <div className="font-semibold mb-1">⚠ Discrepancia marcada manualmente</div>
-          {note ? <div className="whitespace-pre-wrap">{note}</div> : <div className="italic text-amber-600 dark:text-amber-400">Sin nota adicional</div>}
-        </div>
-      )}
-    </span>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="inline-flex shrink-0 cursor-help">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            className="h-5 w-5 text-amber-500"
+          >
+            <path
+              fillRule="evenodd"
+              d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 9a1 1 0 100-2 1 1 0 000 2z"
+              clipRule="evenodd"
+            />
+          </svg>
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="w-64 bg-amber-50 dark:bg-amber-950 border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-100">
+        <div className="font-semibold mb-1">⚠ Discrepancia marcada manualmente</div>
+        {note ? <div className="whitespace-pre-wrap">{note}</div> : <div className="italic text-amber-600 dark:text-amber-400">Sin nota adicional</div>}
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
