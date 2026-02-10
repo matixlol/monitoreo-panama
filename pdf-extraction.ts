@@ -312,7 +312,7 @@ export async function callGeminiDirect<T>(
   },
 ): Promise<{ raw: GeminiRawResponse; parsed: T }> {
   const modelId = options.modelId ?? getModel().geminiId;
-  const mediaResolution = options.mediaResolution ?? 'MEDIA_RESOLUTION_HIGH';
+  const mediaResolution = options.mediaResolution ?? 'MEDIA_RESOLUTION_ULTRA_HIGH';
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent`;
 

@@ -27,7 +27,7 @@ const { parsed } = await callGeminiDirect(pdfBase64, process.env.GEMINI_API_KEY!
   prompt: EXTRACTION_PROMPT,
   schema: ResponseSchema,
   jsonSchema: RESPONSE_JSON_SCHEMA,
-  mediaResolution: 'MEDIA_RESOLUTION_HIGH',
+  mediaResolution: 'MEDIA_RESOLUTION_ULTRA_HIGH',
 });
 
 console.log(`[${MODEL.id}] Result: ${parsed.ingress.length} ingress, ${parsed.egress.length} egress`);

@@ -180,7 +180,7 @@ export const startSummaryExtraction = internalAction({
           schema: SummarySchema,
           jsonSchema: RESPONSE_JSON_SCHEMA,
           modelId: model.geminiId,
-          mediaResolution: 'MEDIA_RESOLUTION_HIGH',
+          mediaResolution: 'MEDIA_RESOLUTION_ULTRA_HIGH',
         });
 
         if (isValidSummary(summary)) {
