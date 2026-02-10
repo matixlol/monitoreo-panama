@@ -111,6 +111,20 @@ function DiscrepanciasPage() {
     return 'text-slate-600 dark:text-slate-400';
   };
 
+  const total = discrepancies?.length ?? 0;
+  const withLargeDiscrepancy =
+    discrepancies?.filter(
+      (d) => Math.abs(d.ingressDiscrepancyByCategory ?? 0) > 1000 || Math.abs(d.egressDiscrepancyByCategory ?? 0) > 1000,
+    ).length ?? 0;
+  const flagged =
+    discrepancies?.filter(
+      (d) =>
+        d.structuredNotes?.flags?.largeTotalsDiscrepancy &&
+        (Math.abs(d.ingressDiscrepancyByCategory ?? 0) > 1000 ||
+          Math.abs(d.egressDiscrepancyByCategory ?? 0) > 1000),
+    ).length ?? 0;
+  const unflagged = withLargeDiscrepancy - flagged;
+
   if (discrepancies === undefined) {
     return <div className="p-8 text-center text-slate-500">Cargando discrepancias...</div>;
   }
@@ -132,6 +146,17 @@ function DiscrepanciasPage() {
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
           Comparación entre los totales del resumen y la suma de filas individuales. Ordenado por mayor discrepancia.
         </p>
+        <div className="mt-2 flex items-center gap-3 text-sm">
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-red-100 dark:bg-red-900/40 px-2.5 py-1 font-medium text-red-700 dark:text-red-300">
+            {withLargeDiscrepancy} con discrepancia {'>'}$1,000
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-100 dark:bg-amber-900/40 px-2.5 py-1 font-medium text-amber-700 dark:text-amber-300">
+            {unflagged} sin marcar
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-100 dark:bg-slate-700 px-2.5 py-1 font-medium text-slate-600 dark:text-slate-300">
+            {total} documentos total
+          </span>
+        </div>
       </div>
 
       <div className="overflow-auto max-h-[calc(100vh-12rem)]">
