@@ -33,6 +33,7 @@ type DocumentValidationState = {
   handleDeleteRow: (type: RowType, rowIndex: number) => void;
   handleToggleUnreadable: (type: RowType, rowIndex: number, field: string) => void;
   handleAutoCalculateEgressTotals: () => void;
+  handleAutoFillEgressCategoryTotalsFromSubcategories: () => void;
   handleSave: () => Promise<void>;
   handleRerunExtraction: () => Promise<void>;
   handleReExtractPage: (args: { proRuns: number; flashRuns: number; pageTypeHint?: 'ingress' | 'egress' }) => Promise<void>;
@@ -281,6 +282,51 @@ export function useDocumentValidationData(documentId: string): DocumentValidatio
     }
   }, [computedEgress, editedEgress]);
 
+  const handleAutoFillEgressCategoryTotalsFromSubcategories = useCallback(() => {
+    const rows = [...(editedEgress || computedEgress)];
+    let updatedCount = 0;
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      let nextRow = row;
+      let rowUpdated = false;
+
+      if (row.totalGastosCampania == null) {
+        const campaignSubcategoryTotal =
+          (row.movilizacion ?? 0) +
+          (row.combustible ?? 0) +
+          (row.hospedaje ?? 0) +
+          (row.activistas ?? 0) +
+          (row.caravanaConcentraciones ?? 0) +
+          (row.comidaBrindis ?? 0) +
+          (row.alquilerLocalServiciosBasicos ?? 0) +
+          (row.cargosBancarios ?? 0);
+        if (campaignSubcategoryTotal > 0) {
+          nextRow = { ...nextRow, totalGastosCampania: campaignSubcategoryTotal };
+          rowUpdated = true;
+        }
+      }
+
+      if (row.totalGastosPropaganda == null) {
+        const propagandaSubcategoryTotal =
+          (row.personalizacionArticulosPromocionales ?? 0) + (row.propagandaElectoral ?? 0);
+        if (propagandaSubcategoryTotal > 0) {
+          nextRow = { ...nextRow, totalGastosPropaganda: propagandaSubcategoryTotal };
+          rowUpdated = true;
+        }
+      }
+
+      if (rowUpdated) {
+        rows[i] = nextRow;
+        updatedCount++;
+      }
+    }
+
+    if (updatedCount > 0) {
+      setEditedEgress(rows);
+    }
+  }, [computedEgress, editedEgress]);
+
   const handleSave = useCallback(async () => {
     setIsSaving(true);
     try {
@@ -461,6 +507,7 @@ export function useDocumentValidationData(documentId: string): DocumentValidatio
     handleDeleteRow,
     handleToggleUnreadable,
     handleAutoCalculateEgressTotals,
+    handleAutoFillEgressCategoryTotalsFromSubcategories,
     handleSave,
     handleRerunExtraction,
     handleReExtractPage,

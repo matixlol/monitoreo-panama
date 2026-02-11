@@ -34,6 +34,7 @@ type Props = {
   onAddIngress: () => void;
   onAddEgress: () => void;
   onAutoCalculateEgressTotals: () => void;
+  onAutoFillEgressCategoryTotalsFromSubcategories: () => void;
   isReExtracting?: boolean;
 };
 
@@ -63,6 +64,7 @@ export function DataPanel({
   onAddIngress,
   onAddEgress,
   onAutoCalculateEgressTotals,
+  onAutoFillEgressCategoryTotalsFromSubcategories,
   isReExtracting,
 }: Props) {
   const [activeTab, setActiveTab] = useState('data');
@@ -151,6 +153,14 @@ export function DataPanel({
               title="Calcular Total General = Tot. Campaña + Tot. Propaganda para filas sin total"
             >
               Σ Totales
+            </Button>
+            <Button
+              onClick={onAutoFillEgressCategoryTotalsFromSubcategories}
+              size="sm"
+              className="h-5 text-[10px] ml-1"
+              title="Completar Tot. Campaña y Tot. Propaganda vacíos con la suma de sus subcategorías"
+            >
+              Σ subcategorías
             </Button>
           </h2>
         </div>

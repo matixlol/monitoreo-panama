@@ -37,6 +37,7 @@ function DocumentValidationPage() {
     handleDeleteRow,
     handleToggleUnreadable,
     handleAutoCalculateEgressTotals,
+    handleAutoFillEgressCategoryTotalsFromSubcategories,
     handleUpdateStructuredNotes,
     handleSave,
     handleRerunExtraction,
@@ -118,6 +119,7 @@ function DocumentValidationPage() {
             onAddIngress={() => handleAddRow('ingress')}
             onAddEgress={() => handleAddRow('egress')}
             onAutoCalculateEgressTotals={handleAutoCalculateEgressTotals}
+            onAutoFillEgressCategoryTotalsFromSubcategories={handleAutoFillEgressCategoryTotalsFromSubcategories}
             isReExtracting={isCurrentPageReExtracting}
           />
         </ResizablePanel>
