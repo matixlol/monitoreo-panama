@@ -1,11 +1,8 @@
 import { readFile, writeFile } from 'fs/promises';
 import {
-  extractSinglePage,
-  callGeminiDirect,
-  EXTRACTION_PROMPT,
-  ResponseSchema,
-  RESPONSE_JSON_SCHEMA,
-  MODEL,
+  callGeminiCsvExtraction,
+  getModel,
+  renderPageAsPng,
 } from '../pdf-extraction';
 
 const [pdfPath, pageNumberStr] = Bun.argv.slice(2);
@@ -15,20 +12,19 @@ if (!pdfPath || !pageNumberStr) {
   process.exit(1);
 }
 
+const model = getModel();
 const pageNumber = parseInt(pageNumberStr, 10);
 const pdfBytes = await readFile(pdfPath);
-const pageBytes = await extractSinglePage(pdfBytes.buffer, pageNumber);
-await writeFile('page.pdf', pageBytes);
-const pdfBase64 = Buffer.from(pageBytes).toString('base64');
+const pngBytes = renderPageAsPng(pdfBytes, pageNumber);
+await writeFile(`tmp/test-extraction-page-${pageNumber}-${process.pid}.png`, pngBytes);
+const pngBase64 = Buffer.from(pngBytes).toString('base64');
 
-console.log(`[${MODEL.id}] Extracting page ${pageNumber} from ${pdfPath}...`);
+console.log(`[${model.id}] Extracting page ${pageNumber} from ${pdfPath}...`);
 
-const { parsed } = await callGeminiDirect(pdfBase64, process.env.GEMINI_API_KEY!, {
-  prompt: EXTRACTION_PROMPT,
-  schema: ResponseSchema,
-  jsonSchema: RESPONSE_JSON_SCHEMA,
+const { parsed } = await callGeminiCsvExtraction(pngBase64, process.env.GEMINI_API_KEY!, {
+  mimeType: 'image/png',
   mediaResolution: 'MEDIA_RESOLUTION_ULTRA_HIGH',
 });
 
-console.log(`[${MODEL.id}] Result: ${parsed.ingress.length} ingress, ${parsed.egress.length} egress`);
+console.log(`[${model.id}] Result: ${parsed.ingress.length} ingress, ${parsed.egress.length} egress`);
 console.log(JSON.stringify(parsed, null, 2));

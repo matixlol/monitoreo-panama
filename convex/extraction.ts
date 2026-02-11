@@ -8,14 +8,10 @@ import {
   getModel,
   splitPdfIntoPages,
   renderPageAsPng,
-  EXTRACTION_PROMPT,
-  getExtractionPrompt,
-  ResponseSchema,
-  RESPONSE_JSON_SCHEMA,
   type ModelKey,
   type IngresoRow,
   type EgresoRow,
-  callGeminiDirect,
+  callGeminiCsvExtraction,
 } from '../pdf-extraction';
 
 const PAGE_CONCURRENCY = 50;
@@ -104,12 +100,10 @@ export const reExtractPage = internalAction({
           try {
             console.log(`[${key}] Re-extracting page ${args.pageNumber}...`);
 
-            const { parsed: result } = await callGeminiDirect(pngBase64, process.env.GEMINI_API_KEY!, {
-              prompt: getExtractionPrompt(args.pageTypeHint),
-              schema: ResponseSchema,
-              jsonSchema: RESPONSE_JSON_SCHEMA,
+            const { parsed: result } = await callGeminiCsvExtraction(pngBase64, process.env.GEMINI_API_KEY!, {
               modelId: model.geminiId,
               mimeType: 'image/png',
+              pageTypeHint: args.pageTypeHint,
             });
 
             console.log(
@@ -253,10 +247,7 @@ export const startExtraction = internalAction({
             const pngBase64 = Buffer.from(pngBytes).toString('base64');
 
             try {
-              const { parsed: result } = await callGeminiDirect(pngBase64, process.env.GEMINI_API_KEY!, {
-                prompt: EXTRACTION_PROMPT,
-                schema: ResponseSchema,
-                jsonSchema: RESPONSE_JSON_SCHEMA,
+              const { parsed: result } = await callGeminiCsvExtraction(pngBase64, process.env.GEMINI_API_KEY!, {
                 modelId: model.geminiId,
                 mimeType: 'image/png',
               });
