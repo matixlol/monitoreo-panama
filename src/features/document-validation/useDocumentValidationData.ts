@@ -29,6 +29,7 @@ type DocumentValidationState = {
   handleUpdateStructuredNotes: (args: { note: string | null; largeTotalsDiscrepancy: boolean }) => Promise<void>;
   handleCellEdit: (type: RowType, rowIndex: number, field: string, value: string | number | null) => void;
   handleAddRow: (type: RowType) => void;
+  handleMoveRow: (type: RowType, fromIndex: number, toIndex: number) => void;
   handleDeleteRow: (type: RowType, rowIndex: number) => void;
   handleToggleUnreadable: (type: RowType, rowIndex: number, field: string) => void;
   handleAutoCalculateEgressTotals: () => void;
@@ -205,6 +206,27 @@ export function useDocumentValidationData(documentId: string): DocumentValidatio
       } else {
         const rows = [...(editedEgress || computedEgress)];
         rows.splice(rowIndex, 1);
+        setEditedEgress(rows);
+      }
+    },
+    [computedEgress, computedIngress, editedEgress, editedIngress],
+  );
+
+  const handleMoveRow = useCallback(
+    (type: RowType, fromIndex: number, toIndex: number) => {
+      if (fromIndex === toIndex) return;
+
+      if (type === 'ingress') {
+        const rows = [...(editedIngress || computedIngress)];
+        if (fromIndex < 0 || fromIndex >= rows.length || toIndex < 0 || toIndex >= rows.length) return;
+        const [moved] = rows.splice(fromIndex, 1);
+        rows.splice(toIndex, 0, moved!);
+        setEditedIngress(rows);
+      } else {
+        const rows = [...(editedEgress || computedEgress)];
+        if (fromIndex < 0 || fromIndex >= rows.length || toIndex < 0 || toIndex >= rows.length) return;
+        const [moved] = rows.splice(fromIndex, 1);
+        rows.splice(toIndex, 0, moved!);
         setEditedEgress(rows);
       }
     },
@@ -435,6 +457,7 @@ export function useDocumentValidationData(documentId: string): DocumentValidatio
     handleUpdateStructuredNotes,
     handleCellEdit,
     handleAddRow,
+    handleMoveRow,
     handleDeleteRow,
     handleToggleUnreadable,
     handleAutoCalculateEgressTotals,

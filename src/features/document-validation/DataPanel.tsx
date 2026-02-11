@@ -25,6 +25,8 @@ type Props = {
   isApplyingProposal?: boolean;
   onEditIngress: (rowIndex: number, field: string, value: string | number | null) => void;
   onEditEgress: (rowIndex: number, field: string, value: string | number | null) => void;
+  onMoveIngress: (fromRowIndex: number, toRowIndex: number) => void;
+  onMoveEgress: (fromRowIndex: number, toRowIndex: number) => void;
   onDeleteIngress: (rowIndex: number) => void;
   onDeleteEgress: (rowIndex: number) => void;
   onToggleUnreadableIngress: (rowIndex: number, field: string) => void;
@@ -52,6 +54,8 @@ export function DataPanel({
   isApplyingProposal,
   onEditIngress,
   onEditEgress,
+  onMoveIngress,
+  onMoveEgress,
   onDeleteIngress,
   onDeleteEgress,
   onToggleUnreadableIngress,
@@ -282,6 +286,7 @@ export function DataPanel({
                                       rows={activeProposal.ingress}
                                       allRows={activeProposal.ingress}
                                       onEdit={() => {}}
+                                      onMove={() => {}}
                                       onDelete={() => {}}
                                       onToggleUnreadable={() => {}}
                                       readOnly
@@ -300,6 +305,7 @@ export function DataPanel({
                                       rows={activeProposal.egress}
                                       allRows={activeProposal.egress}
                                       onEdit={() => {}}
+                                      onMove={() => {}}
                                       onDelete={() => {}}
                                       onToggleUnreadable={() => {}}
                                       readOnly
@@ -347,6 +353,7 @@ export function DataPanel({
                     rows={ingressRows}
                     allRows={allIngressRows}
                     onEdit={onEditIngress}
+                    onMove={onMoveIngress}
                     onDelete={onDeleteIngress}
                     onToggleUnreadable={onToggleUnreadableIngress}
                   />
@@ -364,6 +371,7 @@ export function DataPanel({
                     rows={egressRows}
                     allRows={allEgressRows}
                     onEdit={onEditEgress}
+                    onMove={onMoveEgress}
                     onDelete={onDeleteEgress}
                     onToggleUnreadable={onToggleUnreadableEgress}
                   />

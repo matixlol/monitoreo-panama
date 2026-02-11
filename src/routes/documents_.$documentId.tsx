@@ -33,6 +33,7 @@ function DocumentValidationPage() {
     currentPageReExtractionFailed,
     handleCellEdit,
     handleAddRow,
+    handleMoveRow,
     handleDeleteRow,
     handleToggleUnreadable,
     handleAutoCalculateEgressTotals,
@@ -108,6 +109,8 @@ function DocumentValidationPage() {
             isApplyingProposal={isApplyingProposal}
             onEditIngress={(rowIndex, field, value) => handleCellEdit('ingress', rowIndex, field, value)}
             onEditEgress={(rowIndex, field, value) => handleCellEdit('egress', rowIndex, field, value)}
+            onMoveIngress={(fromRowIndex, toRowIndex) => handleMoveRow('ingress', fromRowIndex, toRowIndex)}
+            onMoveEgress={(fromRowIndex, toRowIndex) => handleMoveRow('egress', fromRowIndex, toRowIndex)}
             onDeleteIngress={(rowIndex) => handleDeleteRow('ingress', rowIndex)}
             onDeleteEgress={(rowIndex) => handleDeleteRow('egress', rowIndex)}
             onToggleUnreadableIngress={(rowIndex, field) => handleToggleUnreadable('ingress', rowIndex, field)}

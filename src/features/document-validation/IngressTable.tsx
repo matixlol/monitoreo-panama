@@ -11,6 +11,7 @@ type Props = {
   rows: IngressRow[];
   allRows: IngressRow[];
   onEdit: (rowIndex: number, field: string, value: string | number | null) => void;
+  onMove?: (fromRowIndex: number, toRowIndex: number) => void;
   onDelete: (rowIndex: number) => void;
   onToggleUnreadable: (rowIndex: number, field: string) => void;
   readOnly?: boolean;
@@ -18,7 +19,7 @@ type Props = {
 
 const columnHelper = createColumnHelper<IngressRow>();
 
-export function IngressTable({ rows, allRows, onEdit, onDelete, onToggleUnreadable, readOnly = false }: Props) {
+export function IngressTable({ rows, allRows, onEdit, onMove, onDelete, onToggleUnreadable, readOnly = false }: Props) {
   const [editingCell, setEditingCell] = useState<{ row: number; col: string } | null>(null);
   const [selectedCells, setSelectedCells] = useState<Set<CellId>>(() => new Set());
   const [selectionAnchor, setSelectionAnchor] = useState<CellId | null>(null);
@@ -226,21 +227,55 @@ export function IngressTable({ rows, allRows, onEdit, onDelete, onToggleUnreadab
         cell: (info) => {
           const row = info.row.original;
           const actualIndex = allRows.indexOf(row);
+          const visiblePos = info.row.index;
+          const isFirstVisible = info.row.index === 0;
+          const isLastVisible = info.row.index === rows.length - 1;
+          const moveUpIndex = visiblePos > 0 ? visibleRowIndices[visiblePos - 1] : null;
+          const moveDownIndex = visiblePos < visibleRowIndices.length - 1 ? visibleRowIndices[visiblePos + 1] : null;
           return (
-            <Button
-              onClick={() => onDelete(actualIndex)}
-              variant="ghost"
-              size="icon-sm"
-              className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity h-5 w-5"
-              title="Eliminar fila"
-            >
-              ×
-            </Button>
+            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Button
+                onClick={() => {
+                  if (moveUpIndex == null) return;
+                  onMove?.(actualIndex, moveUpIndex);
+                }}
+                disabled={actualIndex < 0 || isFirstVisible || moveUpIndex == null}
+                variant="ghost"
+                size="icon-sm"
+                className="h-5 w-5"
+                title="Subir fila"
+              >
+                ↑
+              </Button>
+              <Button
+                onClick={() => {
+                  if (moveDownIndex == null) return;
+                  onMove?.(actualIndex, moveDownIndex);
+                }}
+                disabled={actualIndex < 0 || isLastVisible || moveDownIndex == null}
+                variant="ghost"
+                size="icon-sm"
+                className="h-5 w-5"
+                title="Bajar fila"
+              >
+                ↓
+              </Button>
+              <Button
+                onClick={() => onDelete(actualIndex)}
+                disabled={actualIndex < 0}
+                variant="ghost"
+                size="icon-sm"
+                className="text-red-400 hover:text-red-600 h-5 w-5"
+                title="Eliminar fila"
+              >
+                ×
+              </Button>
+            </div>
           );
         },
       }),
     ];
-  }, [allRows, editingCell, onDelete, onEdit, onToggleUnreadable, readOnly]);
+  }, [allRows, editingCell, onDelete, onEdit, onMove, onToggleUnreadable, readOnly, rows.length, visibleRowIndices]);
 
   const table = useReactTable({
     data: rows,
