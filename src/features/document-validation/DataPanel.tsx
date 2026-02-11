@@ -4,7 +4,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { EgressTable } from './EgressTable';
 import { IngressTable } from './IngressTable';
 import { AmountByPageChart } from './AmountByPageChart';
-import { CategorySumByPageChart } from './CategorySumByPageChart';
 import { RowCountByPageChart } from './RowCountByPageChart';
 import { DiscrepanciesSummaryTable } from './DiscrepanciesSummaryTable';
 import type { EgressRow, IngressRow } from './types';
@@ -430,11 +429,12 @@ export function DataPanel({
               </button>
             </div>
             {showCategorySumChart && (
-              <CategorySumByPageChart
+              <AmountByPageChart
                 ingressRows={allIngressRows}
                 egressRows={allEgressRows}
                 onPageClick={goToPage}
                 currentPage={currentPage}
+                mode="categorySums"
               />
             )}
           </div>

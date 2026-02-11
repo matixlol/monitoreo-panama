@@ -7,6 +7,7 @@ type Props = {
   egressRows: EgressRow[];
   onPageClick: (pageNumber: number) => void;
   currentPage: number;
+  mode?: 'totals' | 'categorySums';
 };
 
 type PageData = {
@@ -14,6 +15,27 @@ type PageData = {
   amount: number;
   type: 'ingress' | 'egress' | 'mixed';
 };
+
+const EGRESS_CATEGORY_KEYS = [
+  'movilizacion',
+  'combustible',
+  'hospedaje',
+  'activistas',
+  'caravanaConcentraciones',
+  'comidaBrindis',
+  'alquilerLocalServiciosBasicos',
+  'cargosBancarios',
+  'personalizacionArticulosPromocionales',
+  'propagandaElectoral',
+] as const;
+
+const INGRESS_CATEGORY_KEYS = [
+  'donacionesPrivadasEfectivo',
+  'donacionesPrivadasChequeAch',
+  'donacionesPrivadasEspecie',
+  'recursosPropiosEfectivoCheque',
+  'recursosPropiosEspecie',
+] as const;
 
 const fullCurrencyFormatter = new Intl.NumberFormat('es-PA', {
   minimumFractionDigits: 0,
@@ -24,7 +46,7 @@ function formatCurrencyFull(value: number): string {
   return `$${fullCurrencyFormatter.format(value)}`;
 }
 
-export function AmountByPageChart({ ingressRows, egressRows, onPageClick, currentPage }: Props) {
+export function AmountByPageChart({ ingressRows, egressRows, onPageClick, currentPage, mode = 'totals' }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -34,14 +56,30 @@ export function AmountByPageChart({ ingressRows, egressRows, onPageClick, curren
     for (const row of ingressRows) {
       const page = row.pageNumber;
       const existing = pageAmounts.get(page) || { ingress: 0, egress: 0 };
-      existing.ingress += row.total ?? 0;
+      if (mode === 'categorySums') {
+        let ingressCategorySum = 0;
+        for (const key of INGRESS_CATEGORY_KEYS) {
+          ingressCategorySum += row[key] ?? 0;
+        }
+        existing.ingress += ingressCategorySum;
+      } else {
+        existing.ingress += row.total ?? 0;
+      }
       pageAmounts.set(page, existing);
     }
 
     for (const row of egressRows) {
       const page = row.pageNumber;
       const existing = pageAmounts.get(page) || { ingress: 0, egress: 0 };
-      existing.egress += row.totalDeGastosDePropagandaYCampania ?? 0;
+      if (mode === 'categorySums') {
+        let egressCategorySum = 0;
+        for (const key of EGRESS_CATEGORY_KEYS) {
+          egressCategorySum += row[key] ?? 0;
+        }
+        existing.egress += egressCategorySum;
+      } else {
+        existing.egress += row.totalDeGastosDePropagandaYCampania ?? 0;
+      }
       pageAmounts.set(page, existing);
     }
 
@@ -61,7 +99,7 @@ export function AmountByPageChart({ ingressRows, egressRows, onPageClick, curren
     }
 
     return data.sort((a, b) => a.page - b.page);
-  }, [ingressRows, egressRows]);
+  }, [egressRows, ingressRows, mode]);
 
   useEffect(() => {
     if (!svgRef.current || !containerRef.current || pageData.length === 0) return;
