@@ -15,6 +15,15 @@ type PageData = {
   type: 'ingress' | 'egress' | 'mixed';
 };
 
+const fullCurrencyFormatter = new Intl.NumberFormat('es-PA', {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
+
+function formatCurrencyFull(value: number): string {
+  return `$${fullCurrencyFormatter.format(value)}`;
+}
+
 export function AmountByPageChart({ ingressRows, egressRows, onPageClick, currentPage }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -99,7 +108,7 @@ export function AmountByPageChart({ ingressRows, egressRows, onPageClick, curren
         d3
           .axisLeft(y)
           .ticks(5)
-          .tickFormat((d) => `$${d3.format(',.0f')(d)}`)
+          .tickFormat((d) => formatCurrencyFull(Number(d)))
       )
       .selectAll('text')
       .attr('class', 'text-xs fill-slate-500 dark:fill-slate-400');
@@ -132,7 +141,7 @@ export function AmountByPageChart({ ingressRows, egressRows, onPageClick, curren
       .attr('x', (d) => (x(d.page) ?? 0) + x.bandwidth() / 2)
       .attr('y', (d) => y(d.amount) - 4)
       .attr('text-anchor', 'middle')
-      .text((d) => (d.amount >= 1000 ? `$${d3.format('.1s')(d.amount)}` : `$${d.amount}`));
+      .text((d) => formatCurrencyFull(d.amount));
   }, [pageData, currentPage, onPageClick]);
 
   if (pageData.length === 0) {
