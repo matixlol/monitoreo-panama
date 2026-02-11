@@ -6,14 +6,14 @@
  * 1) Ensure you have `data/entries/*` populated locally (gitignored).
  * 2) Run:
  *    bun run scripts/build-local-export-data.ts
- * 3) This writes `public/local-export-data.json` (gitignored).
+ * 3) This writes `src/data/local-export-data.json` (tracked; deployable to Vercel).
  * 4) The webapp will automatically merge it into the CSV export:
  *    - de-dupe by PDF filename (`name`)
  *    - if both exist, DB validated data wins
  *
  * Options:
  * - --entriesDir <path>  (default: data/entries)
- * - --out <path>         (default: public/local-export-data.json)
+ * - --out <path>         (default: src/data/local-export-data.json)
  * - --pretty             pretty-print JSON
  */
 
@@ -40,7 +40,7 @@ type LocalExportDocument = {
 function parseArgs(argv: string[]) {
   const out: { entriesDir: string; outPath: string; pretty: boolean } = {
     entriesDir: 'data/entries',
-    outPath: 'public/local-export-data.json',
+    outPath: 'src/data/local-export-data.json',
     pretty: false,
   };
   for (let i = 2; i < argv.length; i++) {
