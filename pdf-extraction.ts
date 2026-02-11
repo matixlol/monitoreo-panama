@@ -295,16 +295,16 @@ function parseNumberCell(value: string | null): number | null {
   return n;
 }
 
-function parseUnreadableFieldsCell(value: string | null): string[] | null {
+function parseUnreadableFieldsCell(value: string | null): string[] | undefined {
   const parsed = parseStringCell(value);
-  if (parsed == null) return null;
+  if (parsed == null) return undefined;
 
   const fields = parsed
     .split(';')
     .map((f) => f.trim())
     .filter(Boolean);
 
-  return fields.length ? fields : null;
+  return fields.length ? fields : undefined;
 }
 
 function parsePagoTipoCell(value: string | null): 'Efectivo' | 'Especie' | 'Cheque' | null {
