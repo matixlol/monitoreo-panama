@@ -299,11 +299,11 @@ function DocumentsPage() {
           const candidate = findCandidateByFilename(doc.name);
           return {
             ...doc,
-            candidateName: candidate?.candidateName ?? null,
-            candidatePosition: candidate?.position ?? null,
-            candidateParty: candidate?.party ?? null,
-            candidateProvince: candidate?.province ?? null,
-            candidateDistrict: candidate?.district ?? null,
+            candidateName: candidate?.candidateName ?? doc.candidateName ?? null,
+            candidatePosition: candidate?.position ?? doc.candidatePosition ?? null,
+            candidateParty: candidate?.party ?? doc.candidateParty ?? null,
+            candidateProvince: candidate?.province ?? doc.candidateProvince ?? null,
+            candidateDistrict: candidate?.district ?? doc.candidateDistrict ?? null,
           };
         });
         const dateStamp = new Date().toISOString().slice(0, 10);

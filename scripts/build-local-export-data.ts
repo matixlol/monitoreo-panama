@@ -35,7 +35,17 @@ type LocalExportDocument = {
   sourceCompletedAt: number | null;
   ingress: IngressRow[];
   egress: EgressRow[];
+  candidateName?: string | null;
+  candidatePosition?: string | null;
+  candidateParty?: string | null;
+  candidateProvince?: string | null;
+  candidateDistrict?: string | null;
 };
+
+type LocalCandidateMetadata = Pick<
+  LocalExportDocument,
+  'candidateName' | 'candidatePosition' | 'candidateParty' | 'candidateProvince' | 'candidateDistrict'
+>;
 
 function parseArgs(argv: string[]) {
   const out: { entriesDir: string; outPath: string; pretty: boolean } = {
@@ -111,6 +121,32 @@ function parseTimestampMs(value: unknown): number | null {
   if (typeof value !== 'string') return null;
   const ms = Date.parse(value);
   return Number.isFinite(ms) ? ms : null;
+}
+
+function extractCandidateMetadata(detail: unknown): LocalCandidateMetadata {
+  if (!detail || typeof detail !== 'object') {
+    return {
+      candidateName: null,
+      candidatePosition: null,
+      candidateParty: null,
+      candidateProvince: null,
+      candidateDistrict: null,
+    };
+  }
+
+  const candidate = (detail as any).Candidate;
+  const postulation = (detail as any).Postulation;
+  const nameParts = [candidate?.firstName, candidate?.middleName, candidate?.lastName, candidate?.secondLastName]
+    .map((part) => cleanText(part))
+    .filter((part): part is string => Boolean(part));
+
+  return {
+    candidateName: nameParts.length > 0 ? nameParts.join(' ') : null,
+    candidatePosition: cleanText(postulation?.Position?.name),
+    candidateParty: cleanText((detail as any).Party?.name) ?? cleanText(candidate?.Party?.name),
+    candidateProvince: cleanText(postulation?.Province?.name),
+    candidateDistrict: cleanText(postulation?.District?.name),
+  };
 }
 
 async function readJsonIfExists(filePath: string): Promise<unknown | null> {
@@ -244,6 +280,7 @@ async function main() {
     const entryDir = join(entriesDirAbs, entryId);
     const ingressPath = join(entryDir, 'ingress.json');
     const egressPath = join(entryDir, 'egress.json');
+    const detail = await readJsonIfExists(join(entryDir, 'detail.json'));
 
     const ingressRaw = await readJsonIfExists(ingressPath);
     const egressRaw = await readJsonIfExists(egressPath);
@@ -302,6 +339,7 @@ async function main() {
 
     // Try to determine PDF filename(s) for this entry.
     let pdfNames: string[] = [];
+    const candidateMetadata = extractCandidateMetadata(detail);
 
     try {
       const pdfDir = join(entryDir, 'pdfs');
@@ -314,7 +352,6 @@ async function main() {
     }
 
     if (pdfNames.length === 0) {
-      const detail = await readJsonIfExists(join(entryDir, 'detail.json'));
       const affidavitDocs =
         detail && typeof detail === 'object' && Array.isArray((detail as any).AffidavitDocument)
           ? ((detail as any).AffidavitDocument as unknown[])
@@ -366,6 +403,7 @@ async function main() {
         sourceCompletedAt: txCompletedAt || creationTime || null,
         ingress,
         egress,
+        ...candidateMetadata,
       });
     }
   }
