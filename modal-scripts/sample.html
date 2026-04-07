@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fichas · sample local</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          sans-serif;
+        background: #f3f4f6;
+        color: #101828;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: radial-gradient(circle at top, rgba(47, 128, 237, 0.12), transparent 34%), #f3f4f6;
+      }
+
+      .shell {
+        max-width: 1240px;
+        margin: 0 auto;
+        padding: 28px 24px 72px;
+      }
+
+      .topbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 18px;
+      }
+
+      .eyebrow {
+        margin: 0 0 6px;
+        color: #2f80ed;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(2rem, 4vw, 3rem);
+        line-height: 0.95;
+      }
+
+      .note,
+      .status,
+      .examples {
+        color: #475467;
+      }
+
+      .note {
+        max-width: 540px;
+        line-height: 1.55;
+      }
+
+      .panel {
+        padding: 16px 18px;
+        background: rgba(255, 255, 255, 0.84);
+        border: 1px solid rgba(16, 24, 40, 0.08);
+        border-radius: 18px;
+        box-shadow: 0 16px 40px rgba(15, 23, 42, 0.06);
+      }
+
+      code {
+        padding: 0.15rem 0.35rem;
+        border-radius: 0.45rem;
+        background: rgba(15, 23, 42, 0.05);
+        font-size: 0.92em;
+      }
+
+      .status {
+        margin: 14px 0 0;
+        font-size: 14px;
+      }
+
+      .examples {
+        margin-top: 10px;
+        font-size: 14px;
+        line-height: 1.6;
+      }
+
+      .examples a {
+        color: #2f80ed;
+        text-decoration: none;
+      }
+
+      .examples a:hover {
+        text-decoration: underline;
+      }
+
+      #demo-root {
+        min-height: 320px;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="panel">
+        <div class="topbar">
+          <div>
+            <p class="eyebrow">modal-scripts / demo</p>
+            <h1>Fichas con htm + preact</h1>
+          </div>
+          <div class="note">
+            Serví el repo con algo como <code>python3 -m http.server 4173</code> y abrí
+            <code>http://localhost:4173/modal-scripts/sample.html</code>. El demo carga copias locales de las últimas
+            versiones con fechas corregidas, las convierte a arrays de objetos y las asigna a
+            <code>window.documentosIngresos</code> y <code>window.documentosEgresos</code> antes de montar la UI.
+          </div>
+        </div>
+
+        <p class="status" data-status>Cargando datasets…</p>
+        <div class="examples" data-examples hidden></div>
+      </section>
+
+      <div id="demo-root"></div>
+    </main>
+
+    <script type="module">
+      import { buildHashRoute, loadCsvDatasets, mount } from './fichas-modales.js';
+
+      const statusNode = document.querySelector('[data-status]');
+      const examplesNode = document.querySelector('[data-examples]');
+
+      try {
+        const datasets = await loadCsvDatasets({
+          ingresosUrl: './data/documentos-ingresos.csv',
+          egresosUrl: './data/documentos-egresos.csv',
+        });
+
+        const app = mount({
+          target: '#demo-root',
+          datasets,
+          showLauncher: true,
+          emptyHash: '#/',
+        });
+
+        const firstCandidate = app.store.candidates[0];
+        const firstDonor = app.store.donors[0];
+        const firstProvider = app.store.providers[0];
+
+        statusNode.textContent = [
+          `${app.store.candidates.length} candidatos`,
+          `${app.store.donors.length} aportantes`,
+          `${app.store.providers.length} proveedores`,
+        ].join(' · ');
+
+        const examples = [
+          firstCandidate
+            ? `<a href="${buildHashRoute('candidato', firstCandidate.id)}">Abrir candidato: ${firstCandidate.name}</a>`
+            : '',
+          firstDonor
+            ? `<a href="${buildHashRoute('aportante', firstDonor.id)}">Abrir aportante: ${firstDonor.name}</a>`
+            : '',
+          firstProvider
+            ? `<a href="${buildHashRoute('proveedor', firstProvider.id)}">Abrir proveedor: ${firstProvider.name}</a>`
+            : '',
+        ].filter(Boolean);
+
+        if (examples.length) {
+          examplesNode.hidden = false;
+          examplesNode.innerHTML = examples.join('<br />');
+        }
+      } catch (error) {
+        console.error(error);
+        statusNode.textContent = `Error cargando el demo: ${error instanceof Error ? error.message : String(error)}`;
+      }
+    </script>
+  </body>
+</html>
