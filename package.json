@@ -8,6 +8,7 @@
     "dev": "npm-run-all --parallel dev:frontend dev:backend",
     "dev:frontend": "vite dev",
     "dev:backend": "convex dev",
+    "dev:embeds": "vite embeds --host 127.0.0.1 --port 4173",
     "predev": "convex dev --until-success && convex dashboard",
     "build": "vite build",
     "start": "vite start",

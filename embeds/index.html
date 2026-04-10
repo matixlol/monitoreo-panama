@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="es">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Monitoreo Panamá · demo</title>
+  <div id="app"></div>
+  <script type="module">
+    import { loadCsvDatasets, mountDemo } from './visualizaciones-panama.js';
+
+    try {
+      mountDemo({
+        target: '#app',
+        datasets: await loadCsvDatasets({
+          ingresosUrl: './data/documentos-ingresos.csv',
+          egresosUrl: './data/documentos-egresos.csv',
+        }),
+        emptyHash: '#/',
+      });
+    } catch (error) {
+      document.body.innerHTML = `<pre style="padding:24px;font:14px/1.5 ui-monospace,monospace">${String(error?.stack || error)}</pre>`;
+      throw error;
+    }
+  </script>
+</html>
