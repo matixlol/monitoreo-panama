@@ -4,6 +4,7 @@ import ingresosDatasetUrl from './data/documentos-ingresos.csv?url';
 import egresosDatasetUrl from './data/documentos-egresos.csv?url';
 import { bars } from './charts/bars.js';
 import { beeswarm } from './charts/beeswarm.js';
+import { contributorHistogram } from './charts/contributor-histogram.js';
 import { line } from './charts/line.js';
 import { mapChart } from './charts/map.js';
 import { treemap } from './charts/treemap.js';
@@ -17,6 +18,7 @@ import {
   POS,
   SHORT,
   TEXT,
+  chartOpts,
   buildHashRoute,
   byPos,
   expenseBreakdown,
@@ -343,6 +345,148 @@ function renderExpenseTreemapChart(store) {
   return treemap(expenseBreakdown(store.egresos), chartOpts);
 }
 
+const CONTRIBUTOR_HISTOGRAM_TABS = [
+  { value: 'count', label: 'Por cantidad' },
+  { value: 'sum', label: 'Por suma total' },
+  { value: 'date', label: 'Por fecha de aporte' },
+];
+
+const CONTRIBUTOR_HISTOGRAM_POSITIONS = [...POS].reverse();
+const CONTRIBUTOR_HISTOGRAM_BIN_STEP = 5000;
+
+function contributorHistogramMode(value) {
+  return CONTRIBUTOR_HISTOGRAM_TABS.some((tab) => tab.value === value) ? value : 'count';
+}
+
+function contributorTotalsByPosition(store) {
+  return d3
+    .rollups(
+      store.ingresos.filter(
+        (row) => TEXT(row.candidatePosition) && TEXT(row.contribuyenteNombre) && num(row.total) > 0,
+      ),
+      (values) => ({
+        position: TEXT(values[0].candidatePosition),
+        total: sum(values, (row) => num(row.total)),
+        entries: values.length,
+        firstDate: d3.min(values, (row) => parsePanamaDate(row.fecha)),
+        lastDate: d3.max(values, (row) => parsePanamaDate(row.fecha)),
+      }),
+      (row) => TEXT(row.candidatePosition),
+      (row) => NORM(row.contribuyenteNombre),
+    )
+    .flatMap(([position, donors]) =>
+      donors.map(([, donor]) => ({
+        ...donor,
+        position,
+      })),
+    );
+}
+
+function contributionDatesByPosition(store) {
+  return store.ingresos.flatMap((row) => {
+    const position = TEXT(row.candidatePosition);
+    const date = parsePanamaDate(row.fecha);
+    const total = num(row.total);
+    return position && date && total > 0 ? [{ position, date, total }] : [];
+  });
+}
+
+function contributorDateExtent(rows) {
+  const dates = rows.map((row) => +row.date).filter(Number.isFinite).sort(d3.ascending);
+  if (!dates.length) return null;
+  const min = dates.length > 200 ? d3.quantileSorted(dates, 0.01) : dates[0];
+  const max = dates.length > 200 ? d3.quantileSorted(dates, 0.99) : dates[dates.length - 1];
+  return [new Date(min), new Date(max)];
+}
+
+function roundedAmountDomainMax(maxValue) {
+  if (!Number.isFinite(maxValue) || maxValue <= 0) return 20000;
+  return Math.max(20000, Math.round(maxValue / 20000) * 20000 || 20000);
+}
+
+function contributorHistogramModel(store, mode = 'count') {
+  const currentMode = contributorHistogramMode(mode);
+
+  if (currentMode === 'date') {
+    const rows = contributionDatesByPosition(store);
+    const extent = contributorDateExtent(rows);
+    if (!rows.length || !extent) return null;
+
+    const [rawMin, rawMax] = extent;
+    const minDate = d3.timeWeek.floor(rawMin);
+    const maxDate = d3.timeWeek.offset(d3.timeWeek.ceil(rawMax), 1);
+    const thresholds = d3.timeWeek.range(minDate, maxDate).map((date) => +date);
+    const positions = CONTRIBUTOR_HISTOGRAM_POSITIONS.filter((position) => rows.some((row) => row.position === position));
+    const minTime = +minDate;
+    const maxTime = +maxDate;
+
+    const series = positions.map((position) => {
+      const values = rows.filter((row) => row.position === position);
+      const bins = d3
+        .bin()
+        .domain([minTime, maxTime])
+        .thresholds(thresholds)
+        .value((row) => Math.max(minTime, Math.min(maxTime, +row.date)))(values)
+        .map((bin) => ({
+          x0: new Date(bin.x0),
+          x1: new Date(bin.x1),
+          count: bin.length,
+          sum: sum(bin, (row) => row.total),
+          y: bin.length,
+        }));
+      return { key: position, label: position, bins };
+    });
+
+    return {
+      mode: currentMode,
+      xType: 'date',
+      xDomain: [minDate, maxDate],
+      yMax: d3.max(series, (row) => d3.max(row.bins, (bin) => bin.y)) || 0,
+      series,
+    };
+  }
+
+  const contributors = contributorTotalsByPosition(store);
+  if (!contributors.length) return null;
+
+  const positions = CONTRIBUTOR_HISTOGRAM_POSITIONS.filter((position) =>
+    contributors.some((row) => row.position === position),
+  );
+  const amountMax = roundedAmountDomainMax(d3.max(contributors, (row) => row.total) || 0);
+  const thresholds = d3.range(0, amountMax + CONTRIBUTOR_HISTOGRAM_BIN_STEP, CONTRIBUTOR_HISTOGRAM_BIN_STEP);
+
+  const series = positions.map((position) => {
+    const values = contributors.filter((row) => row.position === position);
+    const bins = d3
+      .bin()
+      .domain([0, amountMax])
+      .thresholds(thresholds)
+      .value((row) => Math.max(0, Math.min(amountMax, row.total)))(values)
+      .map((bin) => ({
+        x0: bin.x0,
+        x1: bin.x1,
+        count: bin.length,
+        sum: sum(bin, (row) => row.total),
+        y: currentMode === 'sum' ? sum(bin, (row) => row.total) : bin.length,
+      }));
+    return { key: position, label: position, bins };
+  });
+
+  return {
+    mode: currentMode,
+    xType: 'amount',
+    xDomain: [0, amountMax],
+    tickStep: 20000,
+    yMax: d3.max(series, (row) => d3.max(row.bins, (bin) => bin.y)) || 0,
+    series,
+  };
+}
+
+function renderContributorHistogramChart(store, mode = 'count') {
+  const model = contributorHistogramModel(store, mode);
+  return model ? contributorHistogram(model, chartOpts) : null;
+}
+
 function esc(value) {
   return String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 }
@@ -396,6 +540,7 @@ function summaryCardsMarkup(items) {
 
 const chartElementCss = `:host{display:block}.wc-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin:0 0 12px}.wc-field{display:grid;gap:4px;min-width:180px;color:#344054;font:12px/1.4 Inter,ui-sans-serif,system-ui,sans-serif}.wc-field select{padding:8px 12px;border:1px solid #e4e7ec;border-radius:999px;background:#fff;color:#344054;font:14px/1.4 Inter,ui-sans-serif,system-ui,sans-serif}.mf-map{overflow:auto}.mf-map svg{display:block;width:100%;height:auto;max-width:960px;margin:auto}.legend{display:flex;align-items:center;gap:10px;margin-top:10px;color:#667085;font:12px/1.4 Inter,ui-sans-serif,system-ui,sans-serif}.mf-grad{height:12px;flex:1;max-width:300px;border-radius:999px;background:linear-gradient(90deg,#eff6ff,#1d4ed8)}.empty,.error,.loading{padding:14px 0;color:#667085;font:14px/1.45 Inter,ui-sans-serif,system-ui,sans-serif}`;
 const summaryCardsElementCss = `:host{display:block;font:14px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#111827}${SUMMARY_CARDS_CSS}.loading,.error{padding:14px 0;color:#667085}`;
+const contributorHistogramElementCss = `:host{display:block;color:#111827;font:14px/1.45 ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.wh-root{display:grid;gap:18px}.wh-title{margin:0;font-size:clamp(1.95rem,4vw,2.5rem);font-weight:500;line-height:1.05;letter-spacing:-.04em}.wh-tabs{display:flex;gap:28px;overflow:auto;border-bottom:1px solid #d0d7de}.wh-tab{appearance:none;border:0;border-bottom:4px solid transparent;background:none;color:#4b5563;cursor:pointer;font-weight:600;font-size:16px;line-height:1.2;font-family:inherit;margin:0;padding:0 4px 14px;white-space:nowrap}.wh-tab[aria-selected='true']{color:#3b82f6;border-bottom-color:#3b82f6}.wh-chart{min-width:0}.loading,.error,.empty{padding:14px 0;color:#667085}@media (max-width:720px){.wh-root{gap:14px}.wh-title{font-size:clamp(1.5rem,8vw,2rem)}.wh-tabs{gap:18px}.wh-tab{font-size:15px;padding-bottom:12px}}`;
 
 function attr(el, name, fallback) {
   return el.getAttribute(name) || fallback;
@@ -515,6 +660,55 @@ function defineChartElement(name, observedAttributes, renderChart, getControls =
   }
 
   customElements.define(name, PanamaChartElement);
+}
+
+function defineContributorHistogramElement() {
+  if (typeof window === 'undefined' || customElements.get('panama-histograma-aportantes-chart')) return;
+
+  class PanamaContributorHistogramElement extends HTMLElement {
+    static get observedAttributes() {
+      return ['mode', 'ingresos-url', 'egresos-url'];
+    }
+
+    connectedCallback() {
+      this.render();
+    }
+
+    attributeChangedCallback() {
+      if (this.isConnected) this.render();
+    }
+
+    async render() {
+      const root = this.shadowRoot || this.attachShadow({ mode: 'open' });
+      const token = (this._token || 0) + 1;
+      this._token = token;
+      const mode = contributorHistogramMode(attr(this, 'mode', 'count'));
+      root.innerHTML = `<style>${contributorHistogramElementCss}</style><div class="loading">Cargando…</div>`;
+      try {
+        const store = await resolveStoreForElement(this);
+        if (token !== this._token) return;
+        const node = renderContributorHistogramChart(store, mode);
+        root.innerHTML = `<style>${contributorHistogramElementCss}</style><section class="wh-root"><h2 class="wh-title">Histograma de aportantes</h2><div class="wh-tabs" role="tablist">${CONTRIBUTOR_HISTOGRAM_TABS.map(
+          (tab) => `<button class="wh-tab" type="button" role="tab" data-mode="${tab.value}" aria-selected="${tab.value === mode}">${tab.label}</button>`,
+        ).join('')}</div><div class="wh-chart"></div></section>`;
+        const chart = root.querySelector('.wh-chart');
+        chart.append(
+          node || Object.assign(document.createElement('div'), { className: 'empty', textContent: 'Sin datos.' }),
+        );
+        root.querySelectorAll('.wh-tab').forEach((button) => {
+          button.addEventListener('click', () => {
+            const nextMode = button.getAttribute('data-mode');
+            if (nextMode && nextMode !== mode) this.setAttribute('mode', nextMode);
+          });
+        });
+      } catch (error) {
+        if (token !== this._token) return;
+        root.innerHTML = `<style>${contributorHistogramElementCss}</style><div class="error">${esc(String(error?.message || error))}</div>`;
+      }
+    }
+  }
+
+  customElements.define('panama-histograma-aportantes-chart', PanamaContributorHistogramElement);
 }
 
 function defineRouterElement() {
@@ -667,6 +861,7 @@ function defineChartElements() {
   defineChartElement('panama-aportantes-chart', ['ingresos-url', 'egresos-url'], (_, store) =>
     renderDonorsChart(store),
   );
+  defineContributorHistogramElement();
   defineChartElement('panama-gastos-treemap-chart', ['ingresos-url', 'egresos-url'], (_, store) =>
     renderExpenseTreemapChart(store),
   );
