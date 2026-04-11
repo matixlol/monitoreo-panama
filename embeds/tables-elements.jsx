@@ -152,8 +152,7 @@ const TABLES_CSS = `
     background:#ffffff;
   }
   .pt-virtual-cell{
-    display:flex;
-    align-items:flex-start;
+    display:block;
     min-width:0;
     background:#ffffff;
   }
