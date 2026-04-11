@@ -1,4 +1,3 @@
-import { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import * as d3 from 'd3';
 import ingresosDatasetUrl from './data/documentos-ingresos.csv?url';
@@ -8,56 +7,35 @@ import { beeswarm } from './charts/beeswarm.js';
 import { line } from './charts/line.js';
 import { mapChart } from './charts/map.js';
 import { treemap } from './charts/treemap.js';
+import { ModalRouter } from './modal-router.jsx';
+import {
+  ALL,
+  COLORS,
+  INT,
+  MONEY,
+  NORM,
+  POS,
+  SHORT,
+  TEXT,
+  buildHashRoute,
+  byPos,
+  expenseBreakdown,
+  expenseTimeline,
+  incomeBreakdown,
+  num,
+  parseCsvText,
+  parseHashRoute,
+  parsePanamaDate,
+  slugify,
+  sortPos,
+  sum,
+  uniq,
+} from './embed-shared.jsx';
 
-const COLORS = ['#2f80ed', '#7db3f3', '#9ac7ff', '#b9d5fa', '#dceafd', '#9bc493', '#c8b0a3', '#e29196'];
-const POS = ['Presidente', 'Diputado(a)', 'Alcalde'];
-const ALL = 'Todas';
-const MONEY = (v) =>
-  `B/.${new Intl.NumberFormat('de-DE', { maximumFractionDigits: Math.abs((+v || 0) % 1) > 0.001 ? 2 : 0, minimumFractionDigits: Math.abs((+v || 0) % 1) > 0.001 ? 2 : 0 }).format(+v || 0)}`;
-const INT = (v) => new Intl.NumberFormat('de-DE', { maximumFractionDigits: 0 }).format(+v || 0);
-const SHORT = (v) => {
-  const n = +v || 0;
-  return `B/.${Math.abs(n) >= 1e6 ? d3.format('.2s')(n) : d3.format(',.0f')(n)}`;
-};
-const TEXT = (v) => (typeof v === 'string' ? v.trim() : v == null ? '' : `${v}`.trim());
-const NORM = (v) =>
-  TEXT(v)
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[ÃÂ]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim();
-const slugify = (v) => NORM(v).replace(/ /g, '-').slice(0, 120);
-const num = (v) => {
-  const n = Number(TEXT(v).replace(/\s+/g, '').replace(/,/g, ''));
-  return Number.isFinite(n) ? n : 0;
-};
-const uniq = (xs) => [...new Map(xs.map((x) => [NORM(x), TEXT(x)]).filter(([k]) => k)).values()];
-const sortPos = (a, b) => (POS.indexOf(a) + 1 || 99) - (POS.indexOf(b) + 1 || 99) || d3.ascending(a, b);
-const byPos = (rows, pos) =>
-  pos === 'total' || pos === ALL ? rows : rows.filter((d) => TEXT(d.candidatePosition) === pos);
-const posOptions = (rows, first = 'total') => [first, ...uniq(rows.map((d) => d.candidatePosition)).sort(sortPos)];
-const sum = (rows, f) => d3.sum(rows, f);
-const plural = (n, one, many) => ((+n || 0) === 1 ? one : many);
-const monthNames = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-const shortDate = (d) => `${`${d.getDate()}`.padStart(2, '0')} ${monthNames[d.getMonth()]}`;
-const dateKey = (d) =>
-  `${d.getFullYear()}-${`${d.getMonth() + 1}`.padStart(2, '0')}-${`${d.getDate()}`.padStart(2, '0')}`;
-const parseCsvText = (text) => d3.csvParse(text);
-const chartOpts = { buildHashRoute, colors: COLORS, int: INT, money: MONEY, short: SHORT };
 const ROOTS = new WeakMap();
 const STORE_CACHE = new Map();
 const DEFAULT_INGRESOS_URL = ingresosDatasetUrl;
 const DEFAULT_EGRESOS_URL = egresosDatasetUrl;
-
-const INCOME_TYPES = [
-  ['donacionesPrivadasEfectivo', 'Donación privada · efectivo'],
-  ['donacionesPrivadasChequeAch', 'Donación privada · cheque / ACH'],
-  ['donacionesPrivadasEspecie', 'Donación privada · especie'],
-  ['recursosPropiosEfectivoCheque', 'Recurso propio · efectivo / cheque'],
-  ['recursosPropiosEspecie', 'Recurso propio · especie'],
-].map(([key, label], i) => ({ key, label, color: COLORS[i] }));
 
 const PROVINCE_ALIASES = new Map(
   Object.entries({
@@ -103,48 +81,8 @@ const SUMMARY_CARDS_CSS = `.mf-summary-grid{display:grid;gap:24px;grid-template-
 
 let cssDone = false;
 
-function buildHashRoute(kind, id) {
-  return `#/ficha/${kind}/${encodeURIComponent(id)}`;
-}
-
 function province(v) {
   return PROVINCE_ALIASES.get(NORM(v)) ?? TEXT(v);
-}
-
-function parsePanamaDate(v) {
-  const s = TEXT(v);
-  if (!s) return null;
-  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (iso) {
-    const d = new Date(+iso[1], +iso[2] - 1, +iso[3]);
-    return Number.isNaN(+d) ? null : d;
-  }
-  const m = s.match(/^(\d{1,2})\/(\d{1,2}|ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)\/(\d{4})$/i);
-  if (!m) return null;
-  const mm = { ene: 0, feb: 1, mar: 2, abr: 3, may: 4, jun: 5, jul: 6, ago: 7, sep: 8, oct: 9, nov: 10, dic: 11 };
-  const month = /^\d+$/.test(m[2]) ? +m[2] - 1 : mm[m[2].toLowerCase()];
-  const d = new Date(+m[3], month, +m[1]);
-  return Number.isNaN(+d) ? null : d;
-}
-
-function startOfWeek(d) {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
-  return x;
-}
-
-function bucketDate(d, grain) {
-  if (grain === 'día') return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  if (grain === 'semana') return startOfWeek(d);
-  return new Date(d.getFullYear(), d.getMonth(), 1);
-}
-
-function bucketLabel(d, grain) {
-  if (grain === 'día') return shortDate(d);
-  if (grain === 'semana')
-    return `${shortDate(d)} → ${shortDate(new Date(d.getFullYear(), d.getMonth(), d.getDate() + 6))}`;
-  return `${monthNames[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 function inject() {
@@ -155,9 +93,8 @@ function inject() {
   :root{--bg:#f3f5f7;--card:#fff;--ink:#111827;--muted:#667085;--line:#e4e7ec;--blue:#2f80ed}
   *{box-sizing:border-box} body{margin:0;background:radial-gradient(circle at top,rgba(47,128,237,.1),transparent 32%),var(--bg);color:var(--ink);font:14px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
   a{color:inherit}.mf-root{max-width:1200px;margin:0 auto;padding:24px}.mf-hero,.mf-card,.mf-modal-body,.mf-stat{background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:20px;box-shadow:0 12px 32px rgba(15,23,42,.05)}
-  .mf-hero{padding:20px 22px;display:grid;gap:10px}.mf-kicker{margin:0;color:var(--blue);font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.mf-title{margin:0;font-size:clamp(2rem,4vw,3rem);line-height:.95}.mf-sub{margin:0;color:var(--muted);max-width:72ch}.mf-links{display:flex;flex-wrap:wrap;gap:10px}.mf-pill,.mf-btn,.mf-select{border:1px solid var(--line);background:#fff;border-radius:999px}.mf-pill,.mf-btn{padding:8px 12px;text-decoration:none;cursor:pointer}.mf-grid{display:grid;gap:16px;margin-top:16px}.mf-card{padding:18px}.mf-head{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:end;margin-bottom:12px}.mf-card h2,.mf-modal-body h2{margin:0;font-size:1.25rem}.mf-note{margin:0;color:var(--muted)}.mf-controls{display:flex;flex-wrap:wrap;gap:8px}.mf-toggle{display:flex;flex-wrap:wrap;gap:6px}.mf-toggle button{padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:#fff;color:#344054;cursor:pointer}.mf-toggle button.on{background:var(--blue);border-color:var(--blue);color:#fff}.mf-select{padding:8px 12px;color:#344054}.mf-section-body{display:grid;gap:16px}.mf-section-body.has-code{grid-template-columns:minmax(0,1fr) minmax(280px,360px);align-items:start}.mf-section-main{min-width:0}.mf-code{padding:14px 16px;border:1px solid #1e293b;border-radius:16px;background:#0f172a;color:#e2e8f0;overflow:auto}.mf-code-label{margin:0 0 10px;color:#93c5fd;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.mf-code pre{margin:0;white-space:pre-wrap;word-break:break-word;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}.mf-figure,.mf-map{overflow:auto}.mf-empty{color:var(--muted);padding:14px 0}.mf-stats{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin:12px 0 16px}.mf-stat{padding:16px;text-align:center}.mf-stat b{display:block;font-size:1.6rem;line-height:1}.mf-meta{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));margin-bottom:16px}.mf-meta div{min-width:0}.mf-meta p{margin:.1rem 0 0;color:var(--muted)}.mf-table-wrap{overflow:auto;max-height:55vh;border:1px solid var(--line);border-radius:14px}.mf-table{width:100%;border-collapse:collapse;min-width:720px;background:#fff}.mf-table th,.mf-table td{padding:12px 14px;border-bottom:1px solid #eef1f4;text-align:left;vertical-align:top}.mf-table th{position:sticky;top:0;background:#fff;color:#667085;font-size:12px;text-transform:uppercase;letter-spacing:.04em}.mf-strong{font-weight:700}.mf-overlay{position:fixed;inset:0;padding:16px;background:rgba(15,23,42,.42);backdrop-filter:blur(6px);display:flex;justify-content:center;align-items:flex-start;z-index:9999}.mf-modal{width:min(1180px,100%);max-height:calc(100vh - 32px);overflow:auto}.mf-modal-body{padding:20px}.mf-close-row{display:flex;justify-content:flex-end;position:sticky;top:0;z-index:2}.mf-close{width:40px;height:40px;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.92);font-size:24px;cursor:pointer}.mf-map svg{display:block;width:100%;height:auto;max-width:960px;margin:auto}.mf-map .legend{display:flex;align-items:center;gap:10px;margin-top:10px;color:var(--muted);font-size:12px}.mf-grad{height:12px;flex:1;max-width:300px;border-radius:999px;background:linear-gradient(90deg,#eff6ff,#1d4ed8)}
+  .mf-hero{padding:20px 22px;display:grid;gap:10px}.mf-kicker{margin:0;color:var(--blue);font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.mf-title{margin:0;font-size:clamp(2rem,4vw,3rem);line-height:.95}.mf-sub{margin:0;color:var(--muted);max-width:72ch}.mf-grid{display:grid;gap:16px;margin-top:16px}.mf-card{padding:18px}.mf-head{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:end;margin-bottom:12px}.mf-card h2,.mf-modal-body h2{margin:0;font-size:1.25rem}.mf-note{margin:0;color:var(--muted)}.mf-controls{display:flex;flex-wrap:wrap;gap:8px}.mf-toggle{display:flex;flex-wrap:wrap;gap:6px}.mf-toggle button{padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:#fff;color:#344054;cursor:pointer}.mf-toggle button.on{background:var(--blue);border-color:var(--blue);color:#fff}.mf-section-body{display:grid;gap:16px}.mf-section-main{min-width:0}.mf-code{padding:14px 16px;border:1px solid #1e293b;border-radius:16px;background:#0f172a;color:#e2e8f0;overflow:auto}.mf-code-label{margin:0 0 10px;color:#93c5fd;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.mf-code pre{margin:0;white-space:pre-wrap;word-break:break-word;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}.mf-figure,.mf-map{overflow:auto}.mf-empty{color:var(--muted);padding:14px 0}.mf-stats{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin:12px 0 16px}.mf-stat{padding:16px;text-align:center}.mf-stat b{display:block;font-size:1.6rem;line-height:1}.mf-meta{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));margin-bottom:16px}.mf-meta div{min-width:0}.mf-meta p{margin:.1rem 0 0;color:var(--muted)}.mf-table-wrap{overflow:auto;max-height:55vh;border:1px solid var(--line);border-radius:14px}.mf-table{width:100%;border-collapse:collapse;min-width:720px;background:#fff}.mf-table th,.mf-table td{padding:12px 14px;border-bottom:1px solid #eef1f4;text-align:left;vertical-align:top}.mf-table th{position:sticky;top:0;background:#fff;color:#667085;font-size:12px;text-transform:uppercase;letter-spacing:.04em}.mf-strong{font-weight:700}.mf-overlay{position:fixed;inset:0;padding:16px;background:rgba(15,23,42,.42);backdrop-filter:blur(6px);display:flex;justify-content:center;align-items:flex-start;z-index:9999}.mf-modal{width:min(1180px,100%);max-height:calc(100vh - 32px);overflow:auto}.mf-modal-body{padding:20px}.mf-close-row{display:flex;justify-content:flex-end;position:sticky;top:0;z-index:2}.mf-close{width:40px;height:40px;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.92);font-size:24px;cursor:pointer}.mf-map svg{display:block;width:100%;height:auto;max-width:960px;margin:auto}.mf-map .legend{display:flex;align-items:center;gap:10px;margin-top:10px;color:var(--muted);font-size:12px}.mf-grad{height:12px;flex:1;max-width:300px;border-radius:999px;background:linear-gradient(90deg,#eff6ff,#1d4ed8)}
   ${SUMMARY_CARDS_CSS}
-  @media (max-width:900px){.mf-section-body.has-code{grid-template-columns:1fr}}
   @media (max-width:720px){.mf-root{padding:14px}.mf-card,.mf-modal-body,.mf-hero{border-radius:16px;padding:16px}}
   `,
     }),
@@ -189,62 +126,6 @@ function resolveDatasets(options = {}) {
     throw new Error('Faltan window.documentosIngresos o window.documentosEgresos.');
   }
   return { ingresos: window.documentosIngresos, egresos: window.documentosEgresos };
-}
-
-function incomeBreakdown(rows) {
-  return INCOME_TYPES.map((d, i) => ({ ...d, value: sum(rows, (r) => num(r[d.key])), color: COLORS[i] }))
-    .filter((d) => d.value > 0)
-    .sort((a, b) => d3.descending(a.value, b.value));
-}
-
-function expenseBreakdown(rows) {
-  return d3
-    .rollups(
-      rows,
-      (values) => sum(values, (r) => num(r.totalDeGastosDePropagandaYCampania)),
-      (r) => TEXT(r.GastoCategoria) || TEXT(r.detalleGastoResumido) || 'Sin categoría',
-    )
-    .map(([label, value], i) => ({ id: slugify(label) || `c-${i}`, label, value, color: COLORS[i % COLORS.length] }))
-    .sort((a, b) => d3.descending(a.value, b.value));
-}
-
-function partyBreakdown(rows) {
-  return d3
-    .rollups(
-      rows,
-      (values) => sum(values, (r) => num(r.total)),
-      (r) => TEXT(r.candidateParty) || 'Sin partido',
-    )
-    .map(([label, value], i) => ({ id: slugify(label) || `p-${i}`, label, value, color: COLORS[i % COLORS.length] }))
-    .sort((a, b) => d3.descending(a.value, b.value));
-}
-
-function contributionLabel(row) {
-  return (
-    INCOME_TYPES.filter((d) => num(row[d.key]) > 0)
-      .map((d) => d.label)
-      .join(' · ') || 'Sin clasificar'
-  );
-}
-
-function expenseTimeline(rows, grain = 'día') {
-  return d3
-    .rollups(
-      rows.flatMap((r) => {
-        const d = parsePanamaDate(r.fecha);
-        const value = num(r.totalDeGastosDePropagandaYCampania);
-        return d && value ? [{ date: bucketDate(d, grain), value }] : [];
-      }),
-      (values) => ({ value: sum(values, (d) => d.value), count: values.length }),
-      (d) => +d.date,
-    )
-    .map(([time, stats]) => ({
-      date: new Date(time),
-      value: stats.value,
-      count: stats.count,
-      label: bucketLabel(new Date(time), grain),
-    }))
-    .sort((a, b) => d3.ascending(a.date, b.date));
 }
 
 function topPartyRows(rows, n = 4) {
@@ -359,149 +240,10 @@ function buildStore({ ingresos = [], egresos = [] }) {
   };
 }
 
-function parseHashRoute(hash) {
-  const parts = TEXT(hash).replace(/^#/, '').split('/').filter(Boolean);
-  if (!parts.length || parts[0] === '') return { kind: 'none' };
-  if (parts[0] === 'ficha' && ['candidato', 'aportante', 'proveedor'].includes(parts[1]) && parts[2]) {
-    return { kind: parts[1], id: decodeURIComponent(parts.slice(2).join('/')) };
-  }
-  if (['candidato', 'aportante', 'proveedor'].includes(parts[0]) && parts[1]) {
-    return { kind: parts[0], id: decodeURIComponent(parts.slice(1).join('/')) };
-  }
-  return { kind: 'unknown', raw: hash };
-}
-
-function entityFor(store, route) {
-  if (route.kind === 'candidato') return store.candidateById.get(route.id);
-  if (route.kind === 'aportante') return store.donorById.get(route.id);
-  if (route.kind === 'proveedor') return store.providerById.get(route.id);
-  return null;
-}
-
 function targetNode(target) {
   if (typeof target === 'string') return document.querySelector(target);
   if (target instanceof Element) return target;
   return document.body.appendChild(document.createElement('div'));
-}
-
-function PlotFigure({ renderNode, deps = [] }) {
-  const ref = useRef(null);
-  useEffect(() => {
-    const node = renderNode();
-    if (node) ref.current?.replaceChildren(node);
-    else ref.current?.replaceChildren();
-    return () => node?.remove?.();
-  }, deps);
-  return <div className="mf-figure" ref={ref} />;
-}
-
-function Toggle({ value, options, onChange, format = (d) => d }) {
-  return (
-    <div className="mf-toggle">
-      {options.map((option) => (
-        <button className={option === value ? 'on' : ''} type="button" key={option} onClick={() => onChange(option)}>
-          {format(option)}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function Select({ value, options, onChange }) {
-  return (
-    <select className="mf-select" value={value} onChange={(e) => onChange(e.currentTarget.value)}>
-      {options.map((option) => (
-        <option value={option.value} key={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
-  );
-}
-
-function Code({ code }) {
-  return (
-    <aside className="mf-code">
-      <div className="mf-code-label">Embed</div>
-      <pre>{code}</pre>
-    </aside>
-  );
-}
-
-function Section({ title, note, controls, embedCode, children }) {
-  return (
-    <section className="mf-card">
-      <div className="mf-head">
-        <div>
-          <h2>{title}</h2>
-          {note ? <p className="mf-note">{note}</p> : null}
-        </div>
-        {controls ? <div className="mf-controls">{controls}</div> : null}
-      </div>
-      <div className={`mf-section-body${embedCode ? ' has-code' : ''}`}>
-        {embedCode ? <Code code={embedCode} /> : null}
-        <div className="mf-section-main">{children}</div>
-      </div>
-    </section>
-  );
-}
-
-function Stats({ items }) {
-  return (
-    <div className="mf-stats">
-      {items.map((item) => (
-        <div className="mf-stat" key={item.label}>
-          <b>{item.value}</b>
-          <span>{item.label}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function Meta({ items }) {
-  return (
-    <div className="mf-meta">
-      {items.map((item) => (
-        <div key={item.label}>
-          <strong>{item.label}</strong>
-          <p>{item.values?.filter(Boolean).join(' · ') || '—'}</p>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function Empty({ text }) {
-  return <div className="mf-empty">{text}</div>;
-}
-
-function Table({ columns, rows, emptyText }) {
-  if (!rows.length) return <Empty text={emptyText} />;
-  return (
-    <div className="mf-table-wrap">
-      <table className="mf-table">
-        <thead>
-          <tr>
-            {columns.map((column) => (
-              <th key={column.key}>{column.header}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, rowIndex) => (
-            <tr key={rowIndex}>
-              {columns.map((column) => (
-                <td className={column.strong ? 'mf-strong' : ''} key={column.key}>
-                  {row[column.key] ?? '—'}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
 }
 
 function getCandidatesRows(store, position) {
@@ -929,281 +671,6 @@ function defineChartElements() {
     renderExpenseTreemapChart(store),
   );
   defineRouterElement();
-}
-
-function CandidateModal({ entity }) {
-  const [pos, setPos] = useState('total');
-  const expenseRows = byPos(entity.egresos, pos);
-  return (
-    <div>
-      <Meta
-        items={[
-          { label: 'Candidato', values: [entity.name] },
-          { label: plural(entity.parties.length, 'Partido', 'Partidos'), values: entity.parties },
-          { label: plural(entity.positions.length, 'Candidatura', 'Candidaturas'), values: entity.positions },
-          { label: 'Ubicación', values: [entity.provinces[0], entity.districts[0]].filter(Boolean) },
-        ]}
-      />
-      <Stats
-        items={[
-          { value: INT(entity.contributorCount), label: plural(entity.contributorCount, 'Aportante', 'Aportantes') },
-          { value: MONEY(entity.ingresoTotal), label: 'Ingresos totales' },
-          { value: MONEY(entity.egresoTotal), label: 'Gastos totales' },
-        ]}
-      />
-      <Section title="Financiación por tipo">
-        {incomeBreakdown(entity.ingresos).length ? (
-          <PlotFigure renderNode={() => bars(incomeBreakdown(entity.ingresos), chartOpts)} deps={[entity.ingresos]} />
-        ) : (
-          <Empty text="No hay ingresos clasificados." />
-        )}
-      </Section>
-      <Section title="Tabla de aportantes">
-        <Table
-          emptyText="Este candidato no tiene aportes cargados."
-          columns={[
-            { header: 'Fecha', key: 'fecha' },
-            { header: 'Aportante', key: 'aportante', strong: true },
-            { header: 'Cédula / RUC', key: 'cedula' },
-            { header: 'Tipo', key: 'tipo' },
-            { header: 'Monto', key: 'monto' },
-          ]}
-          rows={entity.ingresos.map((row) => ({
-            fecha: TEXT(row.fecha) || '—',
-            aportante: TEXT(row.contribuyenteNombre) || 'Sin nombre',
-            cedula: TEXT(row.cedulaRuc) || '—',
-            tipo: contributionLabel(row),
-            monto: MONEY(num(row.total)),
-          }))}
-        />
-      </Section>
-      <Section
-        title="Tipo de gastos de campaña"
-        controls={
-          entity.positions.length ? (
-            <Toggle
-              value={pos}
-              options={posOptions(entity.egresos)}
-              onChange={setPos}
-              format={(d) => (d === 'total' ? 'Total' : d)}
-            />
-          ) : null
-        }
-      >
-        {expenseBreakdown(expenseRows).length ? (
-          <PlotFigure renderNode={() => treemap(expenseBreakdown(expenseRows), chartOpts)} deps={[expenseRows]} />
-        ) : (
-          <Empty text="No hay gastos clasificados para esta selección." />
-        )}
-      </Section>
-      <Section
-        title="Línea de tiempo de gastos"
-        controls={
-          entity.positions.length ? (
-            <Toggle
-              value={pos}
-              options={posOptions(entity.egresos)}
-              onChange={setPos}
-              format={(d) => (d === 'total' ? 'Total' : d)}
-            />
-          ) : null
-        }
-      >
-        {expenseTimeline(expenseRows, 'día').length ? (
-          <PlotFigure renderNode={() => line(expenseTimeline(expenseRows, 'día'), chartOpts)} deps={[expenseRows]} />
-        ) : (
-          <Empty text="No hay fechas válidas suficientes." />
-        )}
-      </Section>
-      <Section title="Tabla de gastos">
-        <Table
-          emptyText="Este candidato no tiene gastos cargados."
-          columns={[
-            { header: 'Fecha', key: 'fecha' },
-            { header: 'Proveedor', key: 'proveedor', strong: true },
-            { header: 'Detalle', key: 'detalle' },
-            { header: 'Categoría', key: 'categoria' },
-            { header: 'Monto', key: 'monto' },
-          ]}
-          rows={expenseRows.map((row) => ({
-            fecha: TEXT(row.fecha) || '—',
-            proveedor: TEXT(row.proveedorNombre) || 'Sin nombre',
-            detalle: TEXT(row.detalleGastoResumido) || TEXT(row.detalleGasto) || '—',
-            categoria: TEXT(row.GastoCategoria) || 'Sin categoría',
-            monto: MONEY(num(row.totalDeGastosDePropagandaYCampania)),
-          }))}
-        />
-      </Section>
-    </div>
-  );
-}
-
-function DonorModal({ entity }) {
-  return (
-    <div>
-      <Meta
-        items={[
-          { label: 'Aportante', values: [entity.name] },
-          { label: plural(entity.parties.length, 'Partido', 'Partidos'), values: entity.parties },
-          { label: plural(entity.positions.length, 'Candidatura', 'Candidaturas'), values: entity.positions },
-        ]}
-      />
-      <Stats
-        items={[
-          { value: INT(entity.candidateCount), label: plural(entity.candidateCount, 'Candidato', 'Candidatos') },
-          { value: MONEY(entity.total), label: 'Aportes totales' },
-        ]}
-      />
-      <Section title="Aportes por tipo">
-        {incomeBreakdown(entity.ingresos).length ? (
-          <PlotFigure renderNode={() => bars(incomeBreakdown(entity.ingresos), chartOpts)} deps={[entity.ingresos]} />
-        ) : (
-          <Empty text="Este aportante no tiene aportes clasificados." />
-        )}
-      </Section>
-      <Section title="Tabla de aportes">
-        <Table
-          emptyText="Este aportante no tiene registros cargados."
-          columns={[
-            { header: 'Fecha', key: 'fecha' },
-            { header: 'Candidato', key: 'candidato', strong: true },
-            { header: 'Partido', key: 'partido' },
-            { header: 'Tipo', key: 'tipo' },
-            { header: 'Monto', key: 'monto' },
-          ]}
-          rows={entity.ingresos.map((row) => ({
-            fecha: TEXT(row.fecha) || '—',
-            candidato: TEXT(row.candidateName) || 'Sin nombre',
-            partido: TEXT(row.candidateParty) || 'Sin partido',
-            tipo: contributionLabel(row),
-            monto: MONEY(num(row.total)),
-          }))}
-        />
-      </Section>
-      <Section title="Aportes por partido">
-        {partyBreakdown(entity.ingresos).length ? (
-          <PlotFigure renderNode={() => bars(partyBreakdown(entity.ingresos), chartOpts)} deps={[entity.ingresos]} />
-        ) : (
-          <Empty text="No hay partidos suficientes para desglosar los aportes." />
-        )}
-      </Section>
-    </div>
-  );
-}
-
-function ProviderModal({ entity }) {
-  const [pos, setPos] = useState('total');
-  const rows = byPos(entity.egresos, pos);
-  return (
-    <div>
-      <Meta
-        items={[
-          { label: 'Proveedor', values: [entity.name] },
-          { label: plural(entity.parties.length, 'Partido', 'Partidos'), values: entity.parties },
-          { label: plural(entity.positions.length, 'Candidatura', 'Candidaturas'), values: entity.positions },
-        ]}
-      />
-      <Stats
-        items={[
-          { value: INT(entity.candidateCount), label: plural(entity.candidateCount, 'Candidato', 'Candidatos') },
-          { value: MONEY(entity.total), label: 'Gastos totales' },
-        ]}
-      />
-      <Section
-        title="Tipo de gastos de campaña"
-        controls={
-          entity.positions.length ? (
-            <Toggle
-              value={pos}
-              options={posOptions(entity.egresos)}
-              onChange={setPos}
-              format={(d) => (d === 'total' ? 'Total' : d)}
-            />
-          ) : null
-        }
-      >
-        {expenseBreakdown(rows).length ? (
-          <PlotFigure renderNode={() => treemap(expenseBreakdown(rows), chartOpts)} deps={[rows]} />
-        ) : (
-          <Empty text="No hay gastos clasificados para esta selección." />
-        )}
-      </Section>
-      <Section title="Tabla de gastos">
-        <Table
-          emptyText="Este proveedor no tiene gastos cargados."
-          columns={[
-            { header: 'Fecha', key: 'fecha' },
-            { header: 'Candidato', key: 'candidato', strong: true },
-            { header: 'Partido', key: 'partido' },
-            { header: 'Categoría', key: 'categoria' },
-            { header: 'Monto', key: 'monto' },
-          ]}
-          rows={rows.map((row) => ({
-            fecha: TEXT(row.fecha) || '—',
-            candidato: TEXT(row.candidateName) || 'Sin nombre',
-            partido: TEXT(row.candidateParty) || 'Sin partido',
-            categoria: TEXT(row.GastoCategoria) || TEXT(row.detalleGastoResumido) || 'Sin categoría',
-            monto: MONEY(num(row.totalDeGastosDePropagandaYCampania)),
-          }))}
-        />
-      </Section>
-    </div>
-  );
-}
-
-function ModalRouter({ store, emptyHash }) {
-  const [route, setRoute] = useState(() =>
-    typeof window === 'undefined' ? { kind: 'none' } : parseHashRoute(window.location.hash),
-  );
-
-  useEffect(() => {
-    const onHash = () => setRoute(parseHashRoute(window.location.hash));
-    window.addEventListener('hashchange', onHash);
-    return () => window.removeEventListener('hashchange', onHash);
-  }, []);
-
-  useEffect(() => {
-    if (route.kind === 'none') return;
-    const previous = document.body.style.overflow;
-    const onKey = (event) => {
-      if (event.key === 'Escape') window.location.hash = emptyHash;
-    };
-    document.body.style.overflow = 'hidden';
-    window.addEventListener('keydown', onKey);
-    return () => {
-      document.body.style.overflow = previous;
-      window.removeEventListener('keydown', onKey);
-    };
-  }, [route, emptyHash]);
-
-  if (route.kind === 'none') return null;
-  const entity = entityFor(store, route);
-  const close = () => {
-    window.location.hash = emptyHash;
-  };
-
-  let body = <Empty text="Ruta no soportada." />;
-  if (route.kind !== 'unknown') {
-    if (!entity) body = <Empty text="No encontré esa ficha." />;
-    else if (entity.kind === 'candidato') body = <CandidateModal entity={entity} />;
-    else if (entity.kind === 'aportante') body = <DonorModal entity={entity} />;
-    else body = <ProviderModal entity={entity} />;
-  }
-
-  return (
-    <div className="mf-overlay" onClick={(event) => event.target === event.currentTarget && close()}>
-      <div className="mf-modal">
-        <div className="mf-modal-body">
-          <div className="mf-close-row">
-            <button className="mf-close" type="button" onClick={close}>
-              ×
-            </button>
-          </div>
-          {body}
-        </div>
-      </div>
-    </div>
-  );
 }
 
 function App({ store, emptyHash }) {
