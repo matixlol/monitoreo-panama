@@ -8,14 +8,16 @@
     "dev": "npm-run-all --parallel dev:frontend dev:backend",
     "dev:frontend": "vite dev",
     "dev:backend": "convex dev",
-    "dev:embeds": "vite embeds --host 127.0.0.1 --port 4173",
+    "dev:embeds": "vite --config embeds/vite.config.ts --host 127.0.0.1 --port 4173",
     "predev": "convex dev --until-success && convex dashboard",
     "build": "vite build",
+    "build:embeds": "vite build --config embeds/vite.config.ts",
     "start": "vite start",
     "format": "prettier --write .",
     "scrape": "bun run scraper.ts"
   },
   "dependencies": {
+    "@observablehq/plot": "^0.6.17",
     "@auth/core": "0.37.0",
     "@convex-dev/action-retrier": "^0.3.0",
     "@convex-dev/auth": "^0.0.90",

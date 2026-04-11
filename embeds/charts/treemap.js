@@ -1,4 +1,4 @@
-import * as d3 from 'https://esm.sh/d3@7.9.0?bundle';
+import * as d3 from 'd3';
 
 export const treemap = (items, { colors, money }) => {
   if (!items.length) return null;

@@ -1,4 +1,4 @@
-import * as d3 from 'https://esm.sh/d3@7.9.0?bundle';
+import * as d3 from 'd3';
 import { easyBeeSwarm } from './easy-beeswarm.observable.js';
 
 const esc = (value) =>
@@ -42,7 +42,11 @@ const attachOpenFicha = (chart, kind, buildHashRoute) => {
 
   const radii = circles.nodes().map((node) => Number(node.getAttribute('r')) || 0);
   const maxDistance = (d3.max(radii) ?? 0) * 2;
-  const delaunay = d3.Delaunay.from(nodes, (d) => d.x, (d) => d.y);
+  const delaunay = d3.Delaunay.from(
+    nodes,
+    (d) => d.x,
+    (d) => d.y,
+  );
 
   overlay.style('cursor', 'pointer').on(`click.open-ficha-${kind}`, (event) => {
     const [mx, my] = d3.pointer(event, plotGroup.node());

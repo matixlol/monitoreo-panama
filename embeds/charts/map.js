@@ -1,4 +1,4 @@
-import * as d3 from 'https://esm.sh/d3@7.9.0?bundle';
+import * as d3 from 'd3';
 
 export const mapChart = ({ rows, valueKey, domain, colorScale, valueFormat, tooltip, mapMarkup, provinces }) => {
   const data = new Map(rows.filter((d) => d?.provincia).map((d) => [d.provincia, d]));

@@ -1,4 +1,4 @@
-import * as Plot from 'https://esm.sh/@observablehq/plot@0.6.17?bundle';
+import * as Plot from '@observablehq/plot';
 
 const plotBase = {
   style: { maxWidth: '100%', height: 'auto', overflow: 'visible' },

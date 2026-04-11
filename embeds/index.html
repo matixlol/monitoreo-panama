@@ -1,24 +1,194 @@
 <!doctype html>
 <html lang="es">
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Monitoreo Panamá · demo</title>
-  <div id="app"></div>
-  <script type="module">
-    import { loadCsvDatasets, mountDemo } from './visualizaciones-panama.js';
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Monitoreo Panamá · demo</title>
+  </head>
+  <body>
+    <div class="mf-root">
+      <section class="mf-hero">
+        <p class="mf-kicker">embeds / demo</p>
+        <h1 class="mf-title">Visualizaciones y fichas</h1>
+        <p class="mf-sub">
+          Demo HTML con los mismos custom elements que usaría una página externa. Las visualizaciones cargan sus datos
+          solas y las fichas se abren por hash route.
+        </p>
+      </section>
 
-    try {
-      mountDemo({
-        target: '#app',
-        datasets: await loadCsvDatasets({
-          ingresosUrl: './data/documentos-ingresos.csv',
-          egresosUrl: './data/documentos-egresos.csv',
-        }),
-        emptyHash: '#/',
-      });
-    } catch (error) {
-      document.body.innerHTML = `<pre style="padding:24px;font:14px/1.5 ui-monospace,monospace">${String(error?.stack || error)}</pre>`;
-      throw error;
-    }
-  </script>
+      <div class="mf-grid">
+        <section class="mf-card">
+          <div class="mf-head">
+            <div>
+              <h2>Resumen general</h2>
+              <p class="mf-note">Cuatro tarjetas con los acumulados principales del dataset cargado.</p>
+            </div>
+          </div>
+          <div class="mf-section-body">
+            <aside class="mf-code">
+              <div class="mf-code-label">Embed</div>
+              <pre>
+&lt;script type="module" src="https://fichas.panama.datos.party/visualizaciones-panama.js"&gt;&lt;/script&gt;
+&lt;panama-resumen-cards&gt;&lt;/panama-resumen-cards&gt;</pre
+              >
+            </aside>
+            <div class="mf-section-main">
+              <panama-resumen-cards></panama-resumen-cards>
+            </div>
+          </div>
+        </section>
+
+        <section class="mf-card">
+          <div class="mf-head">
+            <div>
+              <h2>Candidaturas por volumen de fondos</h2>
+              <p class="mf-note">Bubble chart con apertura directa de ficha por hash route.</p>
+            </div>
+          </div>
+          <div class="mf-section-body">
+            <aside class="mf-code">
+              <div class="mf-code-label">Embed</div>
+              <pre>
+&lt;script type="module" src="https://fichas.panama.datos.party/visualizaciones-panama.js"&gt;&lt;/script&gt;
+&lt;panama-candidaturas-chart&gt;&lt;/panama-candidaturas-chart&gt;</pre
+              >
+            </aside>
+            <div class="mf-section-main">
+              <panama-candidaturas-chart></panama-candidaturas-chart>
+            </div>
+          </div>
+        </section>
+
+        <section class="mf-card">
+          <div class="mf-head">
+            <div>
+              <h2>Financiación por tipo</h2>
+              <p class="mf-note">Desglose acumulado de ingresos por tipo.</p>
+            </div>
+          </div>
+          <div class="mf-section-body">
+            <aside class="mf-code">
+              <div class="mf-code-label">Embed</div>
+              <pre>
+&lt;script type="module" src="https://fichas.panama.datos.party/visualizaciones-panama.js"&gt;&lt;/script&gt;
+&lt;panama-financiacion-chart&gt;&lt;/panama-financiacion-chart&gt;</pre
+              >
+            </aside>
+            <div class="mf-section-main">
+              <panama-financiacion-chart></panama-financiacion-chart>
+            </div>
+          </div>
+        </section>
+
+        <section class="mf-card">
+          <div class="mf-head">
+            <div>
+              <h2>Línea de tiempo de gastos</h2>
+              <p class="mf-note">Serie temporal con selector de cobertura y granularidad.</p>
+            </div>
+          </div>
+          <div class="mf-section-body">
+            <aside class="mf-code">
+              <div class="mf-code-label">Embed</div>
+              <pre>
+&lt;script type="module" src="https://fichas.panama.datos.party/visualizaciones-panama.js"&gt;&lt;/script&gt;
+&lt;panama-gastos-tiempo-chart&gt;&lt;/panama-gastos-tiempo-chart&gt;</pre
+              >
+            </aside>
+            <div class="mf-section-main">
+              <panama-gastos-tiempo-chart></panama-gastos-tiempo-chart>
+            </div>
+          </div>
+        </section>
+
+        <section class="mf-card">
+          <div class="mf-head">
+            <div>
+              <h2>Paridad de género por provincia</h2>
+              <p class="mf-note">Mapa de participación de mujeres sobre candidaturas únicas.</p>
+            </div>
+          </div>
+          <div class="mf-section-body">
+            <aside class="mf-code">
+              <div class="mf-code-label">Embed</div>
+              <pre>
+&lt;script type="module" src="https://fichas.panama.datos.party/visualizaciones-panama.js"&gt;&lt;/script&gt;
+&lt;panama-paridad-chart&gt;&lt;/panama-paridad-chart&gt;</pre
+              >
+            </aside>
+            <div class="mf-section-main">
+              <panama-paridad-chart></panama-paridad-chart>
+            </div>
+          </div>
+        </section>
+
+        <section class="mf-card">
+          <div class="mf-head">
+            <div>
+              <h2>Mapa financiero</h2>
+              <p class="mf-note">Mapa con selector de cargo, métrica y filtro.</p>
+            </div>
+          </div>
+          <div class="mf-section-body">
+            <aside class="mf-code">
+              <div class="mf-code-label">Embed</div>
+              <pre>
+&lt;script type="module" src="https://fichas.panama.datos.party/visualizaciones-panama.js"&gt;&lt;/script&gt;
+&lt;panama-mapa-financiero-chart&gt;&lt;/panama-mapa-financiero-chart&gt;</pre
+              >
+            </aside>
+            <div class="mf-section-main">
+              <panama-mapa-financiero-chart></panama-mapa-financiero-chart>
+            </div>
+          </div>
+        </section>
+
+        <section class="mf-card">
+          <div class="mf-head">
+            <div>
+              <h2>Aportantes</h2>
+              <p class="mf-note">Bubble chart de aportantes con apertura directa de ficha.</p>
+            </div>
+          </div>
+          <div class="mf-section-body">
+            <aside class="mf-code">
+              <div class="mf-code-label">Embed</div>
+              <pre>
+&lt;script type="module" src="https://fichas.panama.datos.party/visualizaciones-panama.js"&gt;&lt;/script&gt;
+&lt;panama-aportantes-chart&gt;&lt;/panama-aportantes-chart&gt;</pre
+              >
+            </aside>
+            <div class="mf-section-main">
+              <panama-aportantes-chart></panama-aportantes-chart>
+            </div>
+          </div>
+        </section>
+
+        <section class="mf-card">
+          <div class="mf-head">
+            <div>
+              <h2>Tipo de gastos de campaña</h2>
+              <p class="mf-note">Treemap global de gastos.</p>
+            </div>
+          </div>
+          <div class="mf-section-body">
+            <aside class="mf-code">
+              <div class="mf-code-label">Embed</div>
+              <pre>
+&lt;script type="module" src="https://fichas.panama.datos.party/visualizaciones-panama.js"&gt;&lt;/script&gt;
+&lt;panama-gastos-treemap-chart&gt;&lt;/panama-gastos-treemap-chart&gt;</pre
+              >
+            </aside>
+            <div class="mf-section-main">
+              <panama-gastos-treemap-chart></panama-gastos-treemap-chart>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <panama-fichas-router empty-hash="#/"></panama-fichas-router>
+    </div>
+
+    <script type="module" src="./visualizaciones-panama.jsx"></script>
+  </body>
 </html>
