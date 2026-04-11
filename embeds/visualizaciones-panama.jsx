@@ -37,8 +37,9 @@ import {
 
 const ROOTS = new WeakMap();
 const STORE_CACHE = new Map();
-const DEFAULT_INGRESOS_URL = ingresosDatasetUrl;
-const DEFAULT_EGRESOS_URL = egresosDatasetUrl;
+const resolveModuleAssetUrl = (assetUrl) => new URL(assetUrl, import.meta.url).href;
+const DEFAULT_INGRESOS_URL = resolveModuleAssetUrl(ingresosDatasetUrl);
+const DEFAULT_EGRESOS_URL = resolveModuleAssetUrl(egresosDatasetUrl);
 
 const PROVINCE_ALIASES = new Map(
   Object.entries({
