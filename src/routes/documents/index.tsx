@@ -4,6 +4,7 @@ import { api } from '../../../convex/_generated/api';
 import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { PDFDocument } from 'pdf-lib';
 import { createEgressCsvStream, createIngressCsvStream, type CsvExportDocument } from '../../lib/csvExport';
+import { autofixCsvExportDates } from '../../lib/csvDateAutofix';
 import type { Id } from '../../../convex/_generated/dataModel';
 import documentsIndex from '../../data/documents-index.json';
 import bundledLocalExportData from '../../data/local-export-data.json';
@@ -295,17 +296,19 @@ function DocumentsPage() {
         const localDocs = await loadLocalExportAugmentation();
         const mergedExportData = mergeExportData(exportData, localDocs);
 
-        const exportPayload: CsvExportDocument[] = mergedExportData.map((doc) => {
-          const candidate = findCandidateByFilename(doc.name);
-          return {
-            ...doc,
-            candidateName: candidate?.candidateName ?? doc.candidateName ?? null,
-            candidatePosition: candidate?.position ?? doc.candidatePosition ?? null,
-            candidateParty: candidate?.party ?? doc.candidateParty ?? null,
-            candidateProvince: candidate?.province ?? doc.candidateProvince ?? null,
-            candidateDistrict: candidate?.district ?? doc.candidateDistrict ?? null,
-          };
-        });
+        const exportPayload: CsvExportDocument[] = autofixCsvExportDates(
+          mergedExportData.map((doc) => {
+            const candidate = findCandidateByFilename(doc.name);
+            return {
+              ...doc,
+              candidateName: candidate?.candidateName ?? doc.candidateName ?? null,
+              candidatePosition: candidate?.position ?? doc.candidatePosition ?? null,
+              candidateParty: candidate?.party ?? doc.candidateParty ?? null,
+              candidateProvince: candidate?.province ?? doc.candidateProvince ?? null,
+              candidateDistrict: candidate?.district ?? doc.candidateDistrict ?? null,
+            };
+          }),
+        );
         const dateStamp = new Date().toISOString().slice(0, 10);
         const ingressFileName = `documentos-ingresos-${dateStamp}.csv`;
         const egressFileName = `documentos-egresos-${dateStamp}.csv`;
