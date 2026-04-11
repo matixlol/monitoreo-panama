@@ -205,6 +205,50 @@
             </div>
           </div>
         </section>
+
+        <section class="mf-card">
+          <div class="mf-head">
+            <div>
+              <h2>Listado de candidatos</h2>
+              <p class="mf-note">
+                Tabla con búsqueda, filtros por partido, provincia y cargo, y apertura directa de ficha.
+              </p>
+            </div>
+          </div>
+          <div class="mf-section-body">
+            <aside class="mf-code">
+              <div class="mf-code-label">Embed</div>
+              <pre>
+&lt;script type="module" src="https://fichas.panama.datos.party/visualizaciones-panama.js"&gt;&lt;/script&gt;
+&lt;panama-candidatos-table&gt;&lt;/panama-candidatos-table&gt;</pre
+              >
+            </aside>
+            <div class="mf-section-main">
+              <panama-candidatos-table></panama-candidatos-table>
+            </div>
+          </div>
+        </section>
+
+        <section class="mf-card">
+          <div class="mf-head">
+            <div>
+              <h2>Transacciones por candidato</h2>
+              <p class="mf-note">Tabla de ingresos y egresos con filtro por candidato, tipo de movimiento y cargo.</p>
+            </div>
+          </div>
+          <div class="mf-section-body">
+            <aside class="mf-code">
+              <div class="mf-code-label">Embed</div>
+              <pre>
+&lt;script type="module" src="https://fichas.panama.datos.party/visualizaciones-panama.js"&gt;&lt;/script&gt;
+&lt;panama-transacciones-table candidate-id="francisco-javier-agapi-chami"&gt;&lt;/panama-transacciones-table&gt;</pre
+              >
+            </aside>
+            <div class="mf-section-main">
+              <panama-transacciones-table candidate-id="francisco-javier-agapi-chami"></panama-transacciones-table>
+            </div>
+          </div>
+        </section>
       </div>
 
       <panama-fichas-router empty-hash="#/"></panama-fichas-router>
