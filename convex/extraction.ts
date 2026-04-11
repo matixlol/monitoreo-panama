@@ -308,6 +308,8 @@ export const startExtraction = internalAction({
         status: 'failed',
         errorMessage: error instanceof Error ? error.message : 'Unknown error',
       });
+
+      throw error;
     }
 
     return null;

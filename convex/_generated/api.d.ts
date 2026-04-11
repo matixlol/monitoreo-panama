@@ -20,6 +20,7 @@ import type * as http from "../http.js";
 import type * as lib_tableHistory from "../lib/tableHistory.js";
 import type * as lib_withAuth from "../lib/withAuth.js";
 import type * as pageExtractionProposals from "../pageExtractionProposals.js";
+import type * as retrier from "../retrier.js";
 import type * as summaryExtraction from "../summaryExtraction.js";
 import type * as summaryExtractions from "../summaryExtractions.js";
 
@@ -42,6 +43,7 @@ declare const fullApi: ApiFromModules<{
   "lib/tableHistory": typeof lib_tableHistory;
   "lib/withAuth": typeof lib_withAuth;
   pageExtractionProposals: typeof pageExtractionProposals;
+  retrier: typeof retrier;
   summaryExtraction: typeof summaryExtraction;
   summaryExtractions: typeof summaryExtractions;
 }>;
@@ -73,6 +75,53 @@ export declare const internal: FilterApi<
 >;
 
 export declare const components: {
+  actionRetrier: {
+    public: {
+      cancel: FunctionReference<
+        "mutation",
+        "internal",
+        { runId: string },
+        boolean
+      >;
+      cleanup: FunctionReference<
+        "mutation",
+        "internal",
+        { runId: string },
+        any
+      >;
+      start: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          functionArgs: any;
+          functionHandle: string;
+          options: {
+            base: number;
+            initialBackoffMs: number;
+            logLevel: "DEBUG" | "INFO" | "WARN" | "ERROR";
+            maxFailures: number;
+            onComplete?: string;
+            runAfter?: number;
+            runAt?: number;
+          };
+        },
+        string
+      >;
+      status: FunctionReference<
+        "query",
+        "internal",
+        { runId: string },
+        | { type: "inProgress" }
+        | {
+            result:
+              | { returnValue: any; type: "success" }
+              | { error: string; type: "failed" }
+              | { type: "canceled" };
+            type: "completed";
+          }
+      >;
+    };
+  };
   documentsHistory: {
     lib: {
       listDocumentHistory: FunctionReference<

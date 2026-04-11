@@ -3,6 +3,7 @@ import { internal } from './_generated/api';
 import { authMutation, authQuery } from './lib/withAuth';
 import { EgressRow, IngressRow } from './extractions';
 import { documentsHistory, historyAttribution } from './lib/tableHistory';
+import { retrier } from './retrier';
 
 export const getDocumentStats = authQuery({
   args: {},
@@ -64,7 +65,7 @@ export const createDocument = authMutation({
     await documentsHistory.update(ctx, documentId, doc, await historyAttribution(ctx, 'documents.createDocument'));
 
     // Trigger the extraction workflow
-    await ctx.scheduler.runAfter(0, internal.extraction.startExtraction, {
+    await retrier.run(ctx, internal.extraction.startExtraction, {
       documentId,
     });
 
@@ -92,7 +93,7 @@ export const retryAllExtractions = authMutation({
         updated,
         await historyAttribution(ctx, 'documents.retryAllExtractions'),
       );
-      await ctx.scheduler.runAfter(0, internal.extraction.startExtraction, {
+      await retrier.run(ctx, internal.extraction.startExtraction, {
         documentId: document._id,
       });
     }
@@ -129,7 +130,7 @@ export const retryExtraction = authMutation({
     );
 
     // Trigger the extraction workflow
-    await ctx.scheduler.runAfter(0, internal.extraction.startExtraction, {
+    await retrier.run(ctx, internal.extraction.startExtraction, {
       documentId: args.documentId,
     });
 
@@ -437,7 +438,7 @@ export const reprocessStuckDocuments = authMutation({
         await historyAttribution(ctx, 'documents.reprocessStuckDocuments'),
       );
 
-      await ctx.scheduler.runAfter(0, internal.extraction.startExtraction, {
+      await retrier.run(ctx, internal.extraction.startExtraction, {
         documentId: doc._id,
       });
     }

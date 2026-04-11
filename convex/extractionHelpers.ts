@@ -51,6 +51,34 @@ export const storeExtraction = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query('extractions')
+      .withIndex('by_document', (q) => q.eq('documentId', args.documentId))
+      .collect();
+
+    const latestForModel = existing
+      .filter((extraction) => extraction.model === args.model)
+      .sort((a, b) => b.completedAt - a.completedAt)[0];
+
+    if (latestForModel) {
+      await ctx.db.patch(latestForModel._id, {
+        ingress: args.ingress,
+        egress: args.egress,
+        completedAt: Date.now(),
+      });
+      const updated = await ctx.db.get(latestForModel._id);
+      await extractionsHistory.update(
+        ctx,
+        latestForModel._id,
+        updated,
+        await historyAttribution(ctx, 'extractionHelpers.storeExtraction', {
+          documentId: args.documentId,
+          model: args.model,
+        }),
+      );
+      return null;
+    }
+
     const extractionId = await ctx.db.insert('extractions', {
       documentId: args.documentId,
       model: args.model,
@@ -63,7 +91,10 @@ export const storeExtraction = internalMutation({
       ctx,
       extractionId,
       inserted,
-      await historyAttribution(ctx, 'extractionHelpers.storeExtraction', { documentId: args.documentId, model: args.model }),
+      await historyAttribution(ctx, 'extractionHelpers.storeExtraction', {
+        documentId: args.documentId,
+        model: args.model,
+      }),
     );
     return null;
   },
