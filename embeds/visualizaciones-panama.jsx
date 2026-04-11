@@ -8,6 +8,7 @@ import { line } from './charts/line.js';
 import { mapChart } from './charts/map.js';
 import { treemap } from './charts/treemap.js';
 import { ModalRouter } from './modal-router.jsx';
+import { CandidatesTableElementApp, TransactionsTableElementApp } from './tables-elements.jsx';
 import {
   ALL,
   COLORS,
@@ -19,6 +20,7 @@ import {
   TEXT,
   buildHashRoute,
   byPos,
+  chartOpts,
   expenseBreakdown,
   expenseTimeline,
   incomeBreakdown,
@@ -517,6 +519,65 @@ function defineChartElement(name, observedAttributes, renderChart, getControls =
   customElements.define(name, PanamaChartElement);
 }
 
+function defineReactElement(name, observedAttributes, renderApp) {
+  if (typeof window === 'undefined' || customElements.get(name)) return;
+  class PanamaReactElement extends HTMLElement {
+    static get observedAttributes() {
+      return observedAttributes;
+    }
+
+    applyAttrs(patch = {}) {
+      this._suppressRender = true;
+      Object.entries(patch).forEach(([key, value]) => {
+        if (value == null || value === '') this.removeAttribute(key);
+        else this.setAttribute(key, String(value));
+      });
+      this._suppressRender = false;
+      if (this.isConnected) this.render();
+    }
+
+    connectedCallback() {
+      this.render();
+    }
+
+    attributeChangedCallback(name) {
+      if (name === 'ingresos-url' || name === 'egresos-url') this._store = null;
+      if (!this._suppressRender && this.isConnected) this.render();
+    }
+
+    disconnectedCallback() {
+      this._root?.unmount();
+      this._root = null;
+      this._token = 0;
+    }
+
+    async render() {
+      const token = (this._token || 0) + 1;
+      this._token = token;
+      const shadowRoot = this.shadowRoot || this.attachShadow({ mode: 'open' });
+      this._root ||= createRoot(shadowRoot);
+      if (this._store) {
+        this._root.render(renderApp({ element: this, store: this._store, loading: false, error: null }));
+        return;
+      }
+      this._root.render(renderApp({ element: this, store: null, loading: true, error: null }));
+      try {
+        const store = await resolveStoreForElement(this);
+        if (token !== this._token) return;
+        this._store = store;
+        this._root.render(renderApp({ element: this, store, loading: false, error: null }));
+      } catch (error) {
+        if (token !== this._token) return;
+        this._root.render(
+          renderApp({ element: this, store: null, loading: false, error: String(error?.message || error) }),
+        );
+      }
+    }
+  }
+
+  customElements.define(name, PanamaReactElement);
+}
+
 function defineRouterElement() {
   if (typeof window === 'undefined' || customElements.get('panama-fichas-router')) return;
   class PanamaFichasRouterElement extends HTMLElement {
@@ -669,6 +730,20 @@ function defineChartElements() {
   );
   defineChartElement('panama-gastos-treemap-chart', ['ingresos-url', 'egresos-url'], (_, store) =>
     renderExpenseTreemapChart(store),
+  );
+  defineReactElement(
+    'panama-candidatos-table',
+    ['search', 'party', 'province', 'position', 'ingresos-url', 'egresos-url'],
+    ({ element, store, loading, error }) => (
+      <CandidatesTableElementApp element={element} store={store} loading={loading} error={error} />
+    ),
+  );
+  defineReactElement(
+    'panama-transacciones-table',
+    ['search', 'candidate', 'candidate-id', 'kind', 'position', 'ingresos-url', 'egresos-url'],
+    ({ element, store, loading, error }) => (
+      <TransactionsTableElementApp element={element} store={store} loading={loading} error={error} />
+    ),
   );
   defineRouterElement();
 }
