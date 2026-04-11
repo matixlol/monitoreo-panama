@@ -394,7 +394,10 @@ function contributionDatesByPosition(store) {
 }
 
 function contributorDateExtent(rows) {
-  const dates = rows.map((row) => +row.date).filter(Number.isFinite).sort(d3.ascending);
+  const dates = rows
+    .map((row) => +row.date)
+    .filter(Number.isFinite)
+    .sort(d3.ascending);
   if (!dates.length) return null;
   const min = dates.length > 200 ? d3.quantileSorted(dates, 0.01) : dates[0];
   const max = dates.length > 200 ? d3.quantileSorted(dates, 0.99) : dates[dates.length - 1];
@@ -418,7 +421,9 @@ function contributorHistogramModel(store, mode = 'count') {
     const minDate = d3.timeWeek.floor(rawMin);
     const maxDate = d3.timeWeek.offset(d3.timeWeek.ceil(rawMax), 1);
     const thresholds = d3.timeWeek.range(minDate, maxDate).map((date) => +date);
-    const positions = CONTRIBUTOR_HISTOGRAM_POSITIONS.filter((position) => rows.some((row) => row.position === position));
+    const positions = CONTRIBUTOR_HISTOGRAM_POSITIONS.filter((position) =>
+      rows.some((row) => row.position === position),
+    );
     const minTime = +minDate;
     const maxTime = +maxDate;
 
@@ -691,7 +696,8 @@ function defineContributorHistogramElement() {
         if (token !== this._token) return;
         const node = renderContributorHistogramChart(store, mode);
         root.innerHTML = `<style>${contributorHistogramElementCss}</style><section class="wh-root"><h2 class="wh-title">Histograma de aportantes</h2><div class="wh-tabs" role="tablist">${CONTRIBUTOR_HISTOGRAM_TABS.map(
-          (tab) => `<button class="wh-tab" type="button" role="tab" data-mode="${tab.value}" aria-selected="${tab.value === mode}">${tab.label}</button>`,
+          (tab) =>
+            `<button class="wh-tab" type="button" role="tab" data-mode="${tab.value}" aria-selected="${tab.value === mode}">${tab.label}</button>`,
         ).join('')}</div><div class="wh-chart"></div></section>`;
         const chart = root.querySelector('.wh-chart');
         chart.append(
@@ -809,6 +815,36 @@ function defineRouterElement() {
   }
 
   customElements.define('panama-fichas-router', PanamaFichasRouterElement);
+}
+
+let autoRouterEnabled = false;
+
+function ensureAutoRouterElement() {
+  if (typeof document === 'undefined') return;
+  if (document.querySelector('panama-fichas-router') || !document.body) return;
+  document.body.appendChild(document.createElement('panama-fichas-router'));
+}
+
+function enableAutoRouter() {
+  if (typeof window === 'undefined' || autoRouterEnabled) return;
+  autoRouterEnabled = true;
+
+  const maybeMountRouter = () => {
+    if (parseHashRoute(window.location.hash).kind === 'none') return;
+    ensureAutoRouterElement();
+  };
+
+  const init = () => {
+    maybeMountRouter();
+    window.addEventListener('hashchange', maybeMountRouter);
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init, { once: true });
+    return;
+  }
+
+  init();
 }
 
 function defineChartElements() {
@@ -941,6 +977,7 @@ function defineChartElements() {
     ),
   );
   defineRouterElement();
+  enableAutoRouter();
 }
 
 function App({ store, emptyHash }) {
