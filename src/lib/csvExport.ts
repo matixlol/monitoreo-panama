@@ -1,3 +1,5 @@
+import { categorizeEgress, summarizeDetalleGasto } from './egressClassification';
+
 type CsvIngressRow = {
   pageNumber: number;
   fecha?: string | null;
@@ -25,6 +27,8 @@ type CsvEgressRow = {
   cedulaRuc?: string | null;
   proveedorNombre?: string | null;
   detalleGasto?: string | null;
+  detalleGastoResumido?: string | null;
+  GastoCategoria?: string | null;
   pagoTipo?: 'Efectivo' | 'Especie' | 'Cheque' | null;
   movilizacion?: number | null;
   combustible?: number | null;
@@ -111,6 +115,8 @@ const EGRESS_CSV_COLUMNS = [
   'cedulaRuc',
   'proveedorNombre',
   'detalleGasto',
+  'detalleGastoResumido',
+  'GastoCategoria',
   'pagoTipo',
   'movilizacion',
   'combustible',
@@ -173,6 +179,14 @@ const getCsvValue = (column: string, doc: CsvExportDocument, row: CsvIngressRow 
       return doc.sourceModel ?? null;
     case 'sourceCompletedAt':
       return doc.sourceCompletedAt ?? null;
+    case 'detalleGastoResumido':
+      return 'detalleGastoResumido' in row && row.detalleGastoResumido !== undefined
+        ? row.detalleGastoResumido
+        : summarizeDetalleGasto(row as CsvEgressRow);
+    case 'GastoCategoria':
+      return 'GastoCategoria' in row && row.GastoCategoria !== undefined
+        ? row.GastoCategoria
+        : categorizeEgress(row as CsvEgressRow);
     default:
       return (row as Record<string, unknown>)[column] ?? null;
   }
