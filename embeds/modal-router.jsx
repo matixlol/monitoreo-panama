@@ -17,6 +17,7 @@ import {
   chartOpts,
   contributionLabel,
   entityFor,
+  expenseAmount,
   expenseBreakdown,
   expenseTimeline,
   incomeBreakdown,
@@ -126,7 +127,7 @@ function CandidateModal({ entity }) {
             proveedor: TEXT(row.proveedorNombre) || 'Sin nombre',
             detalle: TEXT(row.detalleGastoResumido) || TEXT(row.detalleGasto) || '—',
             categoria: TEXT(row.GastoCategoria) || 'Sin categoría',
-            monto: MONEY(num(row.totalDeGastosDePropagandaYCampania)),
+            monto: MONEY(expenseAmount(row)),
           }))}
         />
       </Section>
@@ -239,7 +240,7 @@ function ProviderModal({ entity }) {
             candidato: TEXT(row.candidateName) || 'Sin nombre',
             partido: TEXT(row.candidateParty) || 'Sin partido',
             categoria: TEXT(row.GastoCategoria) || TEXT(row.detalleGastoResumido) || 'Sin categoría',
-            monto: MONEY(num(row.totalDeGastosDePropagandaYCampania)),
+            monto: MONEY(expenseAmount(row)),
           }))}
         />
       </Section>

@@ -8,6 +8,7 @@ import {
   TEXT,
   buildHashRoute,
   contributionLabel,
+  expenseAmount,
   num,
   parsePanamaDate,
   slugify,
@@ -523,7 +524,7 @@ function buildTransactionRows(store) {
   const egresos = store.egresos.map((row, index) => {
     const candidateName = TEXT(row.candidateName) || 'Sin nombre';
     const candidateId = slugify(candidateName);
-    const amount = num(row.totalDeGastosDePropagandaYCampania);
+    const amount = expenseAmount(row);
     const parsedDate = parsePanamaDate(row.fecha);
     const counterparty = TEXT(row.proveedorNombre) || 'Sin nombre';
     const detail = TEXT(row.detalleGastoResumido) || TEXT(row.detalleGasto) || 'Sin detalle';

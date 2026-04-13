@@ -22,6 +22,7 @@ import {
   chartOpts,
   buildHashRoute,
   byPos,
+  expenseAmount,
   expenseBreakdown,
   expenseTimeline,
   incomeBreakdown,
@@ -183,7 +184,7 @@ function buildStore({ ingresos = [], egresos = [] }) {
         ingresos: bucket.ingresos.sort((a, b) => d3.descending(parsePanamaDate(a.fecha), parsePanamaDate(b.fecha))),
         egresos: bucket.egresos.sort((a, b) => d3.descending(parsePanamaDate(a.fecha), parsePanamaDate(b.fecha))),
         ingresoTotal: sum(bucket.ingresos, (r) => num(r.total)),
-        egresoTotal: sum(bucket.egresos, (r) => num(r.totalDeGastosDePropagandaYCampania)),
+        egresoTotal: sum(bucket.egresos, (r) => expenseAmount(r)),
         contributorCount: new Set(bucket.ingresos.map((r) => NORM(r.contribuyenteNombre)).filter(Boolean)).size,
         providerCount: new Set(bucket.egresos.map((r) => NORM(r.proveedorNombre)).filter(Boolean)).size,
       };
@@ -211,7 +212,7 @@ function buildStore({ ingresos = [], egresos = [] }) {
       parties: uniq(bucket.egresos.map((r) => r.candidateParty)),
       positions: uniq(bucket.egresos.map((r) => r.candidatePosition)).sort(sortPos),
       egresos: bucket.egresos.sort((a, b) => d3.descending(parsePanamaDate(a.fecha), parsePanamaDate(b.fecha))),
-      total: sum(bucket.egresos, (r) => num(r.totalDeGastosDePropagandaYCampania)),
+      total: sum(bucket.egresos, (r) => expenseAmount(r)),
       candidateCount: new Set(bucket.egresos.map((r) => NORM(r.candidateName)).filter(Boolean)).size,
     }))
     .sort((a, b) => d3.descending(a.total, b.total));
@@ -521,7 +522,7 @@ function summaryItems(store) {
     {
       key: 'expense',
       label: 'Gastos totales',
-      value: MONEY(sum(store.egresos, (d) => num(d.totalDeGastosDePropagandaYCampania))),
+      value: MONEY(sum(store.egresos, (d) => expenseAmount(d))),
       icon: SUMMARY_ICONS.expense,
     },
     {

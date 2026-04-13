@@ -95,11 +95,32 @@ export function incomeBreakdown(rows) {
     .sort((a, b) => d3.descending(a.value, b.value));
 }
 
+export function expenseAmount(row) {
+  const explicitTotal = TEXT(row.totalDeGastosDePropagandaYCampania);
+  if (explicitTotal) return num(explicitTotal);
+
+  const hasCategoryTotals = TEXT(row.totalGastosCampania) || TEXT(row.totalGastosPropaganda);
+  if (hasCategoryTotals) return num(row.totalGastosCampania) + num(row.totalGastosPropaganda);
+
+  return (
+    num(row.movilizacion) +
+    num(row.combustible) +
+    num(row.hospedaje) +
+    num(row.activistas) +
+    num(row.caravanaConcentraciones) +
+    num(row.comidaBrindis) +
+    num(row.alquilerLocalServiciosBasicos) +
+    num(row.cargosBancarios) +
+    num(row.personalizacionArticulosPromocionales) +
+    num(row.propagandaElectoral)
+  );
+}
+
 export function expenseBreakdown(rows) {
   return d3
     .rollups(
       rows,
-      (values) => sum(values, (r) => num(r.totalDeGastosDePropagandaYCampania)),
+      (values) => sum(values, (r) => expenseAmount(r)),
       (r) => TEXT(r.GastoCategoria) || TEXT(r.detalleGastoResumido) || 'Sin categoría',
     )
     .map(([label, value], i) => ({ id: slugify(label) || `c-${i}`, label, value, color: COLORS[i % COLORS.length] }))
@@ -130,7 +151,7 @@ export function expenseTimeline(rows, grain = 'día') {
     .rollups(
       rows.flatMap((r) => {
         const d = parsePanamaDate(r.fecha);
-        const value = num(r.totalDeGastosDePropagandaYCampania);
+        const value = expenseAmount(r);
         return d && value ? [{ date: bucketDate(d, grain), value }] : [];
       }),
       (values) => ({ value: sum(values, (d) => d.value), count: values.length }),
