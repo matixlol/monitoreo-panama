@@ -15,6 +15,7 @@ interface CandidateMetadata {
   province: string | null;
   district: string | null;
   township: string | null;
+  candidateGender: string | null;
   status: string;
   isProclaimed: boolean;
   dateSent: string | null;
@@ -59,6 +60,7 @@ async function generateIndex() {
         province: postulation?.Province?.name || null,
         district: postulation?.District?.name || null,
         township: postulation?.Township?.name || null,
+        candidateGender: typeof candidate?.gender === 'string' ? candidate.gender.toLowerCase() : null,
         status: detail.status || 'unknown',
         isProclaimed: detail.isProclaimed || false,
         dateSent: detail.dateSent || null,
@@ -74,10 +76,15 @@ async function generateIndex() {
   // Sort by candidate name
   documents.sort((a, b) => a.candidateName.localeCompare(b.candidateName));
 
-  const outputPath = join(import.meta.dirname, '..', 'data', 'documents-index.json');
-  await writeFile(outputPath, JSON.stringify(documents, null, 2));
+  const outputPaths = [
+    join(import.meta.dirname, '..', 'data', 'documents-index.json'),
+    join(import.meta.dirname, '..', 'src', 'data', 'documents-index.json'),
+  ];
+  const payload = JSON.stringify(documents, null, 2);
 
-  console.log(`Generated index with ${documents.length} documents at ${outputPath}`);
+  await Promise.all(outputPaths.map((outputPath) => writeFile(outputPath, payload)));
+
+  console.log(`Generated index with ${documents.length} documents at ${outputPaths.join(', ')}`);
 }
 
 generateIndex().catch(console.error);

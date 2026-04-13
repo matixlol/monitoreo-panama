@@ -40,11 +40,12 @@ type LocalExportDocument = {
   candidateParty?: string | null;
   candidateProvince?: string | null;
   candidateDistrict?: string | null;
+  candidateGender?: string | null;
 };
 
 type LocalCandidateMetadata = Pick<
   LocalExportDocument,
-  'candidateName' | 'candidatePosition' | 'candidateParty' | 'candidateProvince' | 'candidateDistrict'
+  'candidateName' | 'candidatePosition' | 'candidateParty' | 'candidateProvince' | 'candidateDistrict' | 'candidateGender'
 >;
 
 function parseArgs(argv: string[]) {
@@ -131,6 +132,7 @@ function extractCandidateMetadata(detail: unknown): LocalCandidateMetadata {
       candidateParty: null,
       candidateProvince: null,
       candidateDistrict: null,
+      candidateGender: null,
     };
   }
 
@@ -139,6 +141,7 @@ function extractCandidateMetadata(detail: unknown): LocalCandidateMetadata {
   const nameParts = [candidate?.firstName, candidate?.middleName, candidate?.lastName, candidate?.secondLastName]
     .map((part) => cleanText(part))
     .filter((part): part is string => Boolean(part));
+  const candidateGender = cleanText(candidate?.gender)?.toLowerCase() ?? null;
 
   return {
     candidateName: nameParts.length > 0 ? nameParts.join(' ') : null,
@@ -146,6 +149,7 @@ function extractCandidateMetadata(detail: unknown): LocalCandidateMetadata {
     candidateParty: cleanText((detail as any).Party?.name) ?? cleanText(candidate?.Party?.name),
     candidateProvince: cleanText(postulation?.Province?.name),
     candidateDistrict: cleanText(postulation?.District?.name),
+    candidateGender,
   };
 }
 

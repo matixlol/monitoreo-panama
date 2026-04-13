@@ -18,6 +18,7 @@ type CandidateMetadata = {
   province: string | null;
   district: string | null;
   township: string | null;
+  candidateGender: string | null;
   status: string;
   isProclaimed: boolean;
   dateSent: string | null;
@@ -306,6 +307,7 @@ function DocumentsPage() {
               candidateParty: candidate?.party ?? doc.candidateParty ?? null,
               candidateProvince: candidate?.province ?? doc.candidateProvince ?? null,
               candidateDistrict: candidate?.district ?? doc.candidateDistrict ?? null,
+              candidateGender: candidate?.candidateGender ?? doc.candidateGender ?? null,
             };
           }),
         );
@@ -315,9 +317,10 @@ function DocumentsPage() {
         const ingressStream = createIngressCsvStream(exportPayload);
         const egressStream = createEgressCsvStream(exportPayload);
 
-        if (hasFilePicker(window)) {
+        const pickerWindow = window;
+        if (hasFilePicker(pickerWindow)) {
           const saveStream = async (stream: ReadableStream<Uint8Array>, suggestedName: string) => {
-            const handle = await window.showSaveFilePicker({
+            const handle = await pickerWindow.showSaveFilePicker({
               suggestedName,
               types: [
                 {
@@ -331,7 +334,7 @@ function DocumentsPage() {
             while (true) {
               const { value, done } = await reader.read();
               if (done) break;
-              await writable.write(value);
+              await writable.write(new Uint8Array(value));
             }
             await writable.close();
           };

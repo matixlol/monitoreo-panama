@@ -61,6 +61,7 @@ export type CsvExportDocument = {
   candidateParty?: string | null;
   candidateProvince?: string | null;
   candidateDistrict?: string | null;
+  candidateGender?: string | null;
 };
 
 type CsvRow = CsvIngressRow | CsvEgressRow;
@@ -77,6 +78,7 @@ const BASE_CSV_COLUMNS = [
   'candidateParty',
   'candidateProvince',
   'candidateDistrict',
+  'candidateGender',
   'source',
   'sourceModel',
   'sourceCompletedAt',
@@ -163,6 +165,8 @@ const getCsvValue = (column: string, doc: CsvExportDocument, row: CsvIngressRow 
       return doc.candidateProvince ?? null;
     case 'candidateDistrict':
       return doc.candidateDistrict ?? null;
+    case 'candidateGender':
+      return doc.candidateGender ?? null;
     case 'source':
       return doc.source;
     case 'sourceModel':
