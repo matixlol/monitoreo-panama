@@ -35,9 +35,9 @@ function CandidateModal({ entity }) {
     <div>
       <Meta
         items={[
-          { label: 'Candidato', values: [entity.name] },
+          { label: 'Nombre', values: [entity.name] },
           { label: plural(entity.parties.length, 'Partido', 'Partidos'), values: entity.parties },
-          { label: plural(entity.positions.length, 'Candidatura', 'Candidaturas'), values: entity.positions },
+          { label: plural(entity.positions.length, 'Cargo', 'Cargos'), values: entity.positions },
           { label: 'Ubicación', values: [entity.provinces[0], entity.districts[0]].filter(Boolean) },
         ]}
       />
@@ -57,7 +57,7 @@ function CandidateModal({ entity }) {
       </Section>
       <Section title="Tabla de aportantes">
         <Table
-          emptyText="Este candidato no tiene aportes cargados."
+          emptyText="Esta candidatura no tiene aportes cargados."
           columns={[
             { header: 'Fecha', key: 'fecha' },
             { header: 'Aportante', key: 'aportante', strong: true },
@@ -77,7 +77,7 @@ function CandidateModal({ entity }) {
       <Section
         title="Tipo de gastos de campaña"
         controls={
-          entity.positions.length ? (
+          entity.positions.length > 1 ? (
             <Toggle
               value={pos}
               options={posOptions(entity.egresos)}
@@ -96,7 +96,7 @@ function CandidateModal({ entity }) {
       <Section
         title="Línea de tiempo de gastos"
         controls={
-          entity.positions.length ? (
+          entity.positions.length > 1 ? (
             <Toggle
               value={pos}
               options={posOptions(entity.egresos)}
@@ -114,7 +114,7 @@ function CandidateModal({ entity }) {
       </Section>
       <Section title="Tabla de gastos">
         <Table
-          emptyText="Este candidato no tiene gastos cargados."
+          emptyText="Esta candidatura no tiene gastos cargados."
           columns={[
             { header: 'Fecha', key: 'fecha' },
             { header: 'Proveedor', key: 'proveedor', strong: true },
@@ -147,7 +147,7 @@ function DonorModal({ entity }) {
       />
       <Stats
         items={[
-          { value: INT(entity.candidateCount), label: plural(entity.candidateCount, 'Candidato', 'Candidatos') },
+          { value: INT(entity.candidateCount), label: plural(entity.candidateCount, 'Candidatura', 'Candidaturas') },
           { value: MONEY(entity.total), label: 'Aportes totales' },
         ]}
       />
@@ -163,14 +163,14 @@ function DonorModal({ entity }) {
           emptyText="Este aportante no tiene registros cargados."
           columns={[
             { header: 'Fecha', key: 'fecha' },
-            { header: 'Candidato', key: 'candidato', strong: true },
+            { header: 'Candidatura', key: 'candidato', strong: true },
             { header: 'Partido', key: 'partido' },
             { header: 'Tipo', key: 'tipo' },
             { header: 'Monto', key: 'monto' },
           ]}
           rows={entity.ingresos.map((row) => ({
             fecha: TEXT(row.fecha) || '—',
-            candidato: TEXT(row.candidateName) || 'Sin nombre',
+            candidato: [TEXT(row.candidateName), TEXT(row.candidatePosition)].filter(Boolean).join(' · ') || 'Sin nombre',
             partido: TEXT(row.candidateParty) || 'Sin partido',
             tipo: contributionLabel(row),
             monto: MONEY(num(row.total)),
@@ -202,14 +202,14 @@ function ProviderModal({ entity }) {
       />
       <Stats
         items={[
-          { value: INT(entity.candidateCount), label: plural(entity.candidateCount, 'Candidato', 'Candidatos') },
+          { value: INT(entity.candidateCount), label: plural(entity.candidateCount, 'Candidatura', 'Candidaturas') },
           { value: MONEY(entity.total), label: 'Gastos totales' },
         ]}
       />
       <Section
         title="Tipo de gastos de campaña"
         controls={
-          entity.positions.length ? (
+          entity.positions.length > 1 ? (
             <Toggle
               value={pos}
               options={posOptions(entity.egresos)}
@@ -230,14 +230,14 @@ function ProviderModal({ entity }) {
           emptyText="Este proveedor no tiene gastos cargados."
           columns={[
             { header: 'Fecha', key: 'fecha' },
-            { header: 'Candidato', key: 'candidato', strong: true },
+            { header: 'Candidatura', key: 'candidato', strong: true },
             { header: 'Partido', key: 'partido' },
             { header: 'Categoría', key: 'categoria' },
             { header: 'Monto', key: 'monto' },
           ]}
           rows={rows.map((row) => ({
             fecha: TEXT(row.fecha) || '—',
-            candidato: TEXT(row.candidateName) || 'Sin nombre',
+            candidato: [TEXT(row.candidateName), TEXT(row.candidatePosition)].filter(Boolean).join(' · ') || 'Sin nombre',
             partido: TEXT(row.candidateParty) || 'Sin partido',
             categoria: TEXT(row.GastoCategoria) || TEXT(row.detalleGastoResumido) || 'Sin categoría',
             monto: MONEY(expenseAmount(row)),

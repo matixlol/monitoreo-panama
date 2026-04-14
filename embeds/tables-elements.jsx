@@ -7,6 +7,8 @@ import {
   NORM,
   TEXT,
   buildHashRoute,
+  candidateIdFromRow,
+  candidateLabel,
   contributionLabel,
   expenseAmount,
   num,
@@ -278,6 +280,10 @@ function joinValues(values, fallback = '—') {
   return values.filter(Boolean).join(' · ') || fallback;
 }
 
+function candidateFilterLabel(candidate) {
+  return candidateLabel(candidate) || TEXT(candidate?.name) || 'Sin nombre';
+}
+
 function hasFilters(values) {
   return Object.values(values).some(Boolean);
 }
@@ -482,7 +488,7 @@ function buildCandidateRows(store) {
 function buildTransactionRows(store) {
   const ingresos = store.ingresos.map((row, index) => {
     const candidateName = TEXT(row.candidateName) || 'Sin nombre';
-    const candidateId = slugify(candidateName);
+    const candidateId = candidateIdFromRow(row);
     const amount = num(row.total);
     const parsedDate = parsePanamaDate(row.fecha);
     const counterparty = TEXT(row.contribuyenteNombre) || 'Sin nombre';
@@ -523,7 +529,7 @@ function buildTransactionRows(store) {
 
   const egresos = store.egresos.map((row, index) => {
     const candidateName = TEXT(row.candidateName) || 'Sin nombre';
-    const candidateId = slugify(candidateName);
+    const candidateId = candidateIdFromRow(row);
     const amount = expenseAmount(row);
     const parsedDate = parsePanamaDate(row.fecha);
     const counterparty = TEXT(row.proveedorNombre) || 'Sin nombre';
@@ -576,7 +582,10 @@ function resolveCandidateId(store, element) {
   if (!rawName) return '';
   const bySlug = slugify(rawName);
   if (bySlug && store.candidateById.has(bySlug)) return bySlug;
-  return store.candidates.find((candidate) => NORM(candidate.name) === NORM(rawName))?.id || '';
+  const byLabel = store.candidates.find((candidate) => NORM(candidateFilterLabel(candidate)) === NORM(rawName));
+  if (byLabel) return byLabel.id;
+  const byName = store.candidates.filter((candidate) => NORM(candidate.name) === NORM(rawName));
+  return byName.length === 1 ? byName[0].id : byName[0]?.id || '';
 }
 
 function CandidatesTable({ element, store }) {
@@ -632,7 +641,7 @@ function CandidatesTable({ element, store }) {
       {
         id: 'candidate',
         accessorKey: 'name',
-        header: 'Candidato',
+        header: 'Candidatura',
         cell: ({ row }) => (
           <>
             <a className="pt-link" href={buildHashRoute('candidato', row.original.id)}>
@@ -703,7 +712,7 @@ function CandidatesTable({ element, store }) {
       <div className="pt-toolbar pt-toolbar--candidates">
         <SearchField
           label="Buscar"
-          placeholder="Buscar candidato, partido, provincia o distrito"
+          placeholder="Buscar candidatura, partido, provincia o distrito"
           value={search}
           onChange={(event) => element.applyAttrs({ search: event.currentTarget.value })}
         />
@@ -731,14 +740,14 @@ function CandidatesTable({ element, store }) {
       </div>
 
       <div className="pt-results">
-        <TableView table={table} emptyText="No encontré candidatos para esos filtros." />
+        <TableView table={table} emptyText="No encontré candidaturas para esos filtros." />
       </div>
 
       <div className="pt-footer">
         <div className="pt-footer-text">
           {filteredCount
-            ? `${INT(filteredCount)} de ${INT(data.length)} candidatos`
-            : `0 de ${INT(data.length)} candidatos`}
+            ? `${INT(filteredCount)} de ${INT(data.length)} candidaturas`
+            : `0 de ${INT(data.length)} candidaturas`}
         </div>
         <div className="pt-actions">
           {anyFilters ? (
@@ -768,7 +777,7 @@ function TransactionsTable({ element, store }) {
   const candidateOptions = useMemo(
     () =>
       store.candidates
-        .map((candidate) => ({ value: candidate.id, label: TEXT(candidate.name) || candidate.id }))
+        .map((candidate) => ({ value: candidate.id, label: candidateFilterLabel(candidate) }))
         .sort((a, b) => localeAsc(a.label, b.label)),
     [store],
   );
@@ -786,7 +795,7 @@ function TransactionsTable({ element, store }) {
       {
         id: 'candidateIdFilter',
         accessorKey: 'candidateId',
-        header: 'Candidato filtro',
+        header: 'Candidatura filtro',
         cell: () => null,
         filterFn: includesValueFilter,
       },
@@ -817,7 +826,7 @@ function TransactionsTable({ element, store }) {
           {
             id: 'candidateName',
             accessorKey: 'candidateName',
-            header: 'Candidato',
+            header: 'Candidatura',
             cell: ({ row }) => (
               <>
                 <a className="pt-link" href={buildHashRoute('candidato', row.original.candidateId)}>
@@ -910,13 +919,13 @@ function TransactionsTable({ element, store }) {
       <div className="pt-toolbar pt-toolbar--transactions">
         <SearchField
           label="Buscar"
-          placeholder="Buscar candidato, aportante, proveedor o detalle"
+          placeholder="Buscar candidatura, aportante, proveedor o detalle"
           value={search}
           onChange={(event) => element.applyAttrs({ search: event.currentTarget.value })}
         />
         <SelectField
-          label="Candidato"
-          allLabel="Todos los candidatos"
+          label="Candidatura"
+          allLabel="Todas las candidaturas"
           value={candidateId}
           options={candidateOptions}
           onChange={(event) =>
@@ -949,7 +958,7 @@ function TransactionsTable({ element, store }) {
           minWidth={selectedCandidate ? '900px' : '1120px'}
           emptyText={
             selectedCandidate
-              ? `No encontré movimientos para ${selectedCandidate.name} con esos filtros.`
+              ? `No encontré movimientos para ${candidateFilterLabel(selectedCandidate)} con esos filtros.`
               : 'No encontré movimientos para esos filtros.'
           }
         />
@@ -960,7 +969,7 @@ function TransactionsTable({ element, store }) {
           {filteredCount
             ? `${INT(filteredCount)} de ${INT(data.length)} movimientos`
             : `0 de ${INT(data.length)} movimientos`}
-          {selectedCandidate ? ` · ${selectedCandidate.name}` : ''}
+          {selectedCandidate ? ` · ${candidateFilterLabel(selectedCandidate)}` : ''}
         </div>
         <div className="pt-actions">
           {anyFilters ? (

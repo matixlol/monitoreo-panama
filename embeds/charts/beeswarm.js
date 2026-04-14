@@ -16,7 +16,8 @@ const tooltipFor = (kind, d, money) => {
   const amount = money(amountOf(d));
   if (kind === 'candidato') {
     return [
-      `<div style="margin-bottom:4px">Candidato: ${esc(d.name)}</div>`,
+      `<div style="margin-bottom:4px">Candidatura: ${esc(d.name)}</div>`,
+      `<div style="margin-bottom:4px">Cargo: ${esc(d.position || 'Sin cargo')}</div>`,
       `<div style="margin-bottom:4px">Partido: ${esc(d.party || 'Sin partido')}</div>`,
       `<div>Fondos: ${amount}</div>`,
       `<div style="margin-top:6px;opacity:.7">Click para abrir ficha</div>`,

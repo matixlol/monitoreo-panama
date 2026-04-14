@@ -21,6 +21,20 @@ export const NORM = (v) =>
     .replace(/[^a-z0-9]+/g, ' ')
     .trim();
 export const slugify = (v) => NORM(v).replace(/ /g, '-').slice(0, 120);
+export const candidateIdFromRow = (row) => {
+  const name = TEXT(row?.candidateName);
+  const position = TEXT(row?.candidatePosition);
+  const province = TEXT(row?.candidateProvince);
+  const party = TEXT(row?.candidateParty);
+  return slugify([name, position, province, party].filter(Boolean).join(' | ')) || slugify(name);
+};
+export const candidateLabel = (candidate) => {
+  const name = TEXT(candidate?.name || candidate?.candidateName) || 'Sin nombre';
+  const position = TEXT(candidate?.position || candidate?.candidatePosition || candidate?.positions?.[0]);
+  const province = TEXT(candidate?.province || candidate?.candidateProvince || candidate?.provinces?.[0]);
+  const district = TEXT(candidate?.district || candidate?.candidateDistrict || candidate?.districts?.[0]);
+  return [name, position, province, district].filter(Boolean).join(' · ');
+};
 export const num = (v) => {
   const n = Number(TEXT(v).replace(/\s+/g, '').replace(/,/g, ''));
   return Number.isFinite(n) ? n : 0;

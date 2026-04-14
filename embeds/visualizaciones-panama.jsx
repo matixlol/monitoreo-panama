@@ -19,6 +19,8 @@ import {
   POS,
   SHORT,
   TEXT,
+  candidateIdFromRow,
+  candidateLabel,
   chartOpts,
   buildHashRoute,
   byPos,
@@ -157,14 +159,14 @@ function buildStore({ ingresos = [], egresos = [] }) {
   const put = (map, key, make) => map.get(key) || (map.set(key, make()), map.get(key));
 
   for (const row of ingresos) {
-    const candidateId = slugify(row.candidateName);
+    const candidateId = candidateIdFromRow(row);
     const donorId = slugify(row.contribuyenteNombre);
     if (candidateId) put(candidateBuckets, candidateId, () => ({ ingresos: [], egresos: [] })).ingresos.push(row);
     if (donorId) put(donorBuckets, donorId, () => ({ ingresos: [] })).ingresos.push(row);
   }
 
   for (const row of egresos) {
-    const candidateId = slugify(row.candidateName);
+    const candidateId = candidateIdFromRow(row);
     const providerId = slugify(row.proveedorNombre);
     if (candidateId) put(candidateBuckets, candidateId, () => ({ ingresos: [], egresos: [] })).egresos.push(row);
     if (providerId) put(providerBuckets, providerId, () => ({ egresos: [] })).egresos.push(row);
@@ -200,7 +202,7 @@ function buildStore({ ingresos = [], egresos = [] }) {
       positions: uniq(bucket.ingresos.map((r) => r.candidatePosition)).sort(sortPos),
       ingresos: bucket.ingresos.sort((a, b) => d3.descending(parsePanamaDate(a.fecha), parsePanamaDate(b.fecha))),
       total: sum(bucket.ingresos, (r) => num(r.total)),
-      candidateCount: new Set(bucket.ingresos.map((r) => NORM(r.candidateName)).filter(Boolean)).size,
+      candidateCount: new Set(bucket.ingresos.map((r) => candidateIdFromRow(r)).filter(Boolean)).size,
     }))
     .sort((a, b) => d3.descending(a.total, b.total));
 
@@ -213,7 +215,7 @@ function buildStore({ ingresos = [], egresos = [] }) {
       positions: uniq(bucket.egresos.map((r) => r.candidatePosition)).sort(sortPos),
       egresos: bucket.egresos.sort((a, b) => d3.descending(parsePanamaDate(a.fecha), parsePanamaDate(b.fecha))),
       total: sum(bucket.egresos, (r) => expenseAmount(r)),
-      candidateCount: new Set(bucket.egresos.map((r) => NORM(r.candidateName)).filter(Boolean)).size,
+      candidateCount: new Set(bucket.egresos.map((r) => candidateIdFromRow(r)).filter(Boolean)).size,
     }))
     .sort((a, b) => d3.descending(a.total, b.total));
 
@@ -282,7 +284,7 @@ function getFinancialRows(store, position, filter = 'all') {
   const rows = store.overview.candidates.filter(
     (d) =>
       d.position === position &&
-      (filter === 'all' || (filter.startsWith('party:') ? d.party === filter.slice(6) : d.name === filter.slice(10))),
+      (filter === 'all' || (filter.startsWith('party:') ? d.party === filter.slice(6) : d.id === filter.slice(10))),
   );
   return d3
     .rollups(
@@ -942,9 +944,13 @@ function defineChartElements() {
             ...uniq(rows.map((d) => d.party))
               .sort(d3.ascending)
               .map((value) => ({ value: `party:${value}`, label: `Partido: ${value}` })),
-            ...uniq(rows.map((d) => d.name))
-              .sort(d3.ascending)
-              .map((value) => ({ value: `candidate:${value}`, label: `Candidatura: ${value}` })),
+            ...rows
+              .slice()
+              .sort((a, b) => d3.ascending(candidateLabel(a), candidateLabel(b)))
+              .map((candidate) => ({
+                value: `candidate:${candidate.id}`,
+                label: `Candidatura: ${candidateLabel(candidate)}`,
+              })),
           ],
         },
       ];
