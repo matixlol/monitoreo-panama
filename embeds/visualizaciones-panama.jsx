@@ -96,7 +96,7 @@ function inject() {
     Object.assign(document.createElement('style'), {
       textContent: `
   :root{--bg:#f3f5f7;--card:#fff;--ink:#111827;--muted:#667085;--line:#e4e7ec;--blue:#2f80ed}
-  *{box-sizing:border-box} body{margin:0;background:radial-gradient(circle at top,rgba(47,128,237,.1),transparent 32%),var(--bg);color:var(--ink);font:14px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+  *{box-sizing:border-box} body{margin:0;background:radial-gradient(circle at top,rgba(47,128,237,.1),transparent 32%),var(--bg);color:var(--ink);}
   a{color:inherit}.mf-root{max-width:1200px;margin:0 auto;padding:24px}.mf-hero,.mf-card,.mf-modal-body,.mf-stat{background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:20px;box-shadow:0 12px 32px rgba(15,23,42,.05)}
   .mf-hero{padding:20px 22px;display:grid;gap:10px}.mf-kicker{margin:0;color:var(--blue);font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.mf-title{margin:0;font-size:clamp(2rem,4vw,3rem);line-height:.95}.mf-sub{margin:0;color:var(--muted);max-width:72ch}.mf-grid{display:grid;gap:16px;margin-top:16px}.mf-card{padding:18px}.mf-head{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:end;margin-bottom:12px}.mf-card h2,.mf-modal-body h2{margin:0;font-size:1.25rem}.mf-note{margin:0;color:var(--muted)}.mf-controls{display:flex;flex-wrap:wrap;gap:8px}.mf-toggle{display:flex;flex-wrap:wrap;gap:6px}.mf-toggle button{padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:#fff;color:#344054;cursor:pointer}.mf-toggle button.on{background:var(--blue);border-color:var(--blue);color:#fff}.mf-section-body{display:grid;gap:16px}.mf-section-main{min-width:0}.mf-code{padding:14px 16px;border:1px solid #1e293b;border-radius:16px;background:#0f172a;color:#e2e8f0;overflow:auto}.mf-code-label{margin:0 0 10px;color:#93c5fd;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.mf-code pre{margin:0;white-space:pre-wrap;word-break:break-word;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}.mf-figure,.mf-map{overflow:auto}.mf-empty{color:var(--muted);padding:14px 0}.mf-stats{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin:12px 0 16px}.mf-stat{padding:16px;text-align:center}.mf-stat b{display:block;font-size:1.6rem;line-height:1}.mf-meta{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));margin-bottom:16px}.mf-meta div{min-width:0}.mf-meta p{margin:.1rem 0 0;color:var(--muted)}.mf-table-wrap{overflow:auto;max-height:55vh;border:1px solid var(--line);border-radius:14px}.mf-table{width:100%;border-collapse:collapse;min-width:720px;background:#fff}.mf-table th,.mf-table td{padding:12px 14px;border-bottom:1px solid #eef1f4;text-align:left;vertical-align:top}.mf-table th{position:sticky;top:0;background:#fff;color:#667085;font-size:12px;text-transform:uppercase;letter-spacing:.04em}.mf-strong{font-weight:700}.mf-overlay{position:fixed;inset:0;padding:16px;background:rgba(15,23,42,.42);backdrop-filter:blur(6px);display:flex;justify-content:center;align-items:flex-start;z-index:9999}.mf-modal{width:min(1180px,100%);max-height:calc(100vh - 32px);overflow:auto}.mf-modal-body{padding:20px}.mf-close-row{display:flex;justify-content:flex-end;position:sticky;top:0;z-index:2}.mf-close{width:40px;height:40px;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.92);font-size:24px;cursor:pointer}.mf-map svg{display:block;width:100%;height:auto;max-width:960px;margin:auto}.mf-map .legend{display:flex;align-items:center;gap:10px;margin-top:10px;color:var(--muted);font-size:12px}.mf-grad{height:12px;flex:1;max-width:300px;border-radius:999px;background:linear-gradient(90deg,#eff6ff,#1d4ed8)}
   ${SUMMARY_CARDS_CSS}
@@ -883,7 +883,7 @@ function defineChartElements() {
   defineChartElement(
     'panama-gastos-tiempo-chart',
     ['position', 'grain', 'ingresos-url', 'egresos-url'],
-    (el, store) => renderExpenseTimelineChart(store, attr(el, 'position', ALL), attr(el, 'grain', 'mes')),
+    (el, store) => renderExpenseTimelineChart(store, attr(el, 'position', ALL), 'semana'),
     (el, store) => [
       {
         attr: 'position',
@@ -893,12 +893,6 @@ function defineChartElements() {
           value,
           label: value,
         })),
-      },
-      {
-        attr: 'grain',
-        label: 'Agrupar por',
-        value: attr(el, 'grain', 'mes'),
-        options: ['mes', 'semana', 'día'].map((value) => ({ value, label: value })),
       },
     ],
   );

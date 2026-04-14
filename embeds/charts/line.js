@@ -18,8 +18,8 @@ export const line = (points, { int, money, short }) =>
         y: { label: null, grid: true, tickFormat: short },
         marks: [
           Plot.ruleY([0], { stroke: '#cbd5e1' }),
-          Plot.areaY(points, { x: 'date', y: 'value', curve: 'monotone-x', fill: '#2f80ed', fillOpacity: 0.12 }),
-          Plot.lineY(points, { x: 'date', y: 'value', curve: 'monotone-x', stroke: '#111827', strokeWidth: 2.5 }),
+          Plot.areaY(points, { x: 'date', y: 'value', curve: 'linear', fill: '#2f80ed', fillOpacity: 0.12 }),
+          Plot.lineY(points, { x: 'date', y: 'value', curve: 'linear', stroke: '#111827', strokeWidth: 2.5 }),
           Plot.dot(points, {
             x: 'date',
             y: 'value',
