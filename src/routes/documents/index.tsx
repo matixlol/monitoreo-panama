@@ -6,6 +6,7 @@ import { PDFDocument } from 'pdf-lib';
 import { createEgressCsvStream, createIngressCsvStream, type CsvExportDocument } from '../../lib/csvExport';
 import { autofixCsvExportDates } from '../../lib/csvDateAutofix';
 import type { Id } from '../../../convex/_generated/dataModel';
+import { formatPanamaCurrency } from '@/lib/currency';
 import documentsIndex from '../../data/documents-index.json';
 import bundledLocalExportData from '../../data/local-export-data.json';
 
@@ -640,12 +641,12 @@ function DocumentsPage() {
                             <>
                               {doc.totalIngresos != null && (
                                 <span className="text-emerald-600 dark:text-emerald-400 font-medium">
-                                  +${doc.totalIngresos.toLocaleString('es-PA', { minimumFractionDigits: 2 })}
+                                  +{formatPanamaCurrency(doc.totalIngresos)}
                                 </span>
                               )}
                               {doc.totalGastos != null && (
                                 <span className="text-red-600 dark:text-red-400 font-medium">
-                                  -${doc.totalGastos.toLocaleString('es-PA', { minimumFractionDigits: 2 })}
+                                  -{formatPanamaCurrency(doc.totalGastos)}
                                 </span>
                               )}
                               <span>•</span>

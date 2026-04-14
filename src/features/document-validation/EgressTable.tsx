@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createColumnHelper, getCoreRowModel, useReactTable, type ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
+import { formatPanamaNumber } from '@/lib/currency';
 import { EditableCell } from './EditableCell';
 import { getCellRowIndex, isAdditiveMultiSelectEvent, makeCellId, type CellId } from './cellSelection';
 import { shiftSelectedCells } from './shiftSelectedCells';
@@ -32,7 +33,7 @@ const columnHelper = createColumnHelper<EgressRow>();
 
 const formatEgressValue = (field: string, value: unknown, type: 'string' | 'number') => {
   if (type === 'number' && value != null) {
-    return Number(value).toLocaleString('es-PA', { minimumFractionDigits: 2 });
+    return formatPanamaNumber(Number(value));
   }
   return normalizeValueForDisplay(field, value);
 };

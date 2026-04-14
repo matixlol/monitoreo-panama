@@ -1,5 +1,6 @@
 import { useRef, useEffect, useMemo } from 'react';
 import * as d3 from 'd3';
+import { formatPanamaCurrency } from '@/lib/currency';
 import type { IngressRow, EgressRow } from './types';
 
 type Props = {
@@ -37,13 +38,8 @@ const INGRESS_CATEGORY_KEYS = [
   'recursosPropiosEspecie',
 ] as const;
 
-const fullCurrencyFormatter = new Intl.NumberFormat('es-PA', {
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 0,
-});
-
 function formatCurrencyFull(value: number): string {
-  return `$${fullCurrencyFormatter.format(value)}`;
+  return formatPanamaCurrency(value, 0);
 }
 
 export function AmountByPageChart({ ingressRows, egressRows, onPageClick, currentPage, mode = 'totals' }: Props) {

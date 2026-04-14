@@ -2,6 +2,7 @@ import { createFileRoute, Link } from '@tanstack/react-router';
 import { useQuery } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { formatPanamaCurrency } from '@/lib/currency';
 import documentsIndex from '../../data/documents-index.json';
 
 type CandidateMetadata = {
@@ -91,14 +92,14 @@ function DiscrepanciasPage() {
 
   const formatCurrency = (value: number | null | undefined) => {
     if (value == null) return '—';
-    return `$${value.toLocaleString('es-PA', { minimumFractionDigits: 2 })}`;
+    return formatPanamaCurrency(value);
   };
 
   const formatDiscrepancy = (value: number | null | undefined) => {
     if (value == null) return '—';
     const formatted = formatCurrency(Math.abs(value));
     if (value > 0) return `+${formatted}`;
-    if (value < 0) return `-${formatted.slice(1)}`;
+    if (value < 0) return `-${formatted}`;
     return formatted;
   };
 
@@ -148,7 +149,7 @@ function DiscrepanciasPage() {
         </p>
         <div className="mt-2 flex items-center gap-3 text-sm">
           <span className="inline-flex items-center gap-1.5 rounded-md bg-red-100 dark:bg-red-900/40 px-2.5 py-1 font-medium text-red-700 dark:text-red-300">
-            {withLargeDiscrepancy} con discrepancia {'>'}$1,000
+            {withLargeDiscrepancy} con discrepancia {'>'} {formatPanamaCurrency(1000, 0)}
           </span>
           <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-100 dark:bg-amber-900/40 px-2.5 py-1 font-medium text-amber-700 dark:text-amber-300">
             {unflagged} sin marcar

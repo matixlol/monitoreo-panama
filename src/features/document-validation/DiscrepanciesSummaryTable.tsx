@@ -1,3 +1,4 @@
+import { formatPanamaCurrency } from '@/lib/currency';
 import type { EgressRow, IngressRow } from './types';
 
 type Props = {
@@ -9,14 +10,14 @@ type Props = {
 
 function formatCurrency(value: number | null | undefined) {
   if (value == null) return '—';
-  return `$${value.toLocaleString('es-PA', { minimumFractionDigits: 2 })}`;
+  return formatPanamaCurrency(value);
 }
 
 function formatDiscrepancy(value: number | null | undefined) {
   if (value == null) return '—';
   const formatted = formatCurrency(Math.abs(value));
   if (value > 0) return `+${formatted}`;
-  if (value < 0) return `-${formatted.slice(1)}`;
+  if (value < 0) return `-${formatted}`;
   return formatted;
 }
 
