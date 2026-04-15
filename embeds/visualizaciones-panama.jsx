@@ -2,7 +2,9 @@ import { createRoot } from 'react-dom/client';
 import * as d3 from 'd3';
 import ingresosDatasetUrl from './data/documentos-ingresos.csv?url';
 import egresosDatasetUrl from './data/documentos-egresos.csv?url';
+import donorBeeswarmLayout from './data/donor-beeswarm.json';
 import { beeswarm } from './charts/beeswarm.js';
+import { createDonorBeeswarmSignature } from './charts/beeswarm-precomputed.js';
 import { contributorHistogram } from './charts/contributor-histogram.js';
 import { groupedBarsChart, groupedBarsChartCss } from './charts/grouped-bars.js';
 import { incomeBreakdownChart, incomeBreakdownChartCss } from './charts/income-breakdown.js';
@@ -403,7 +405,10 @@ function renderFinancialMapChart(store, position = POS[0], metric = 'ingresoTota
 }
 
 function renderDonorsChart(store) {
-  return beeswarm(store.overview.donors, 'aportante', chartOpts);
+  const rows = store.overview.donors;
+  const precomputedPositions =
+    donorBeeswarmLayout.signature === createDonorBeeswarmSignature(rows) ? donorBeeswarmLayout.positionsById : null;
+  return beeswarm(rows, 'aportante', { ...chartOpts, precomputedPositions });
 }
 
 function renderExpenseTreemapChart(store) {

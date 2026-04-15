@@ -4,123 +4,122 @@ import * as d3 from 'd3';
 // Source: https://observablehq.com/@rusosnith/beeswarm-reutilizable
 // Snapshot imported on 2026-04-10 via https://api.observablehq.com/@rusosnith/beeswarm-reutilizable.js?v=4
 
-export const easyBeeSwarm = (data, options = {}) => {
-  const defaults = {
-    // Layout
-    width: 800,
-    height: 600,
-    margin: { top: 20, right: 40, bottom: 40, left: 60 },
+const defaults = {
+  // Layout
+  width: 800,
+  height: 600,
+  margin: { top: 20, right: 40, bottom: 40, left: 60 },
 
-    // Modo
-    separateVertically: true,
+  // Modo
+  separateVertically: true,
 
-    // Accesores (genéricos)
-    x: (d) => d.x,
-    r: (d) => d.r ?? 1,
-    y: (d) => d.category,
-    color: (d) => d.subcategory ?? d.category,
+  // Accesores (genéricos)
+  x: (d) => d.x,
+  r: (d) => d.r ?? 1,
+  y: (d) => d.category,
+  color: (d) => d.subcategory ?? d.category,
 
-    // Escalas (override opcional)
-    xScale: null,
-    yScale: null,
-    rScale: null,
-    colorScale: null,
+  // Escalas (override opcional)
+  xScale: null,
+  yScale: null,
+  rScale: null,
+  colorScale: null,
 
-    // Atajos de escala
-    rRange: [2, 20],
+  // Atajos de escala
+  rRange: [2, 20],
 
-    // Simulación (calidad/performance)
-    xForceStrength: 1,
-    yForceStrength: 1,
-    collisionPadding: 1,
-    alphaMin: 0.02, // cortar antes (más rápido) [web:32]
-    alphaDecay: null, // null = default d3 (~300 iters) [web:32]
-    velocityDecay: null, // null = default d3 (0.4) [web:121]
-    collideIterations: 1, // más = menos overlap, más lento
+  // Simulación (calidad/performance)
+  xForceStrength: 1,
+  yForceStrength: 1,
+  collisionPadding: 1,
+  alphaMin: 0.02, // cortar antes (más rápido) [web:32]
+  alphaDecay: null, // null = default d3 (~300 iters) [web:32]
+  velocityDecay: null, // null = default d3 (0.4) [web:121]
+  collideIterations: 1, // más = menos overlap, más lento
 
-    // Ejes
-    showXAxis: true,
-    showYAxis: true,
-    xAxisPosition: 'bottom',
-    yAxisPosition: 'right',
-    xTickSize: null,
-    yTickSize: null,
-    xTickCount: 5,
-    xTickFormat: ',.0f', // 1,000
+  // Precompute
+  precomputedPositions: null,
+  precomputedKey: (d) => d.id,
 
-    // Estilos
-    xAxisColor: '#ccc',
-    yAxisColor: '#eee',
-    xAxisWidth: 0.1,
-    yAxisWidth: 1,
-    fontSize: 14,
-    yAxisTickPadding: 50,
+  // Ejes
+  showXAxis: true,
+  showYAxis: true,
+  xAxisPosition: 'bottom',
+  yAxisPosition: 'right',
+  xTickSize: null,
+  yTickSize: null,
+  xTickCount: 5,
+  xTickFormat: ',.0f', // 1,000
 
-    // Círculos
-    circleOpacity: 1, // opacidad “normal” cuando no hay hover
-    circleStroke: 'none',
-    circleStrokeWidth: 0,
+  // Estilos
+  xAxisColor: '#ccc',
+  yAxisColor: '#eee',
+  xAxisWidth: 0.1,
+  yAxisWidth: 1,
+  fontSize: 14,
+  yAxisTickPadding: 50,
 
-    // Nuevos defaults a agregar en el objeto defaults:
-    labels: false, // activar/desactivar
-    labelMinR: 15, // radio mínimo en px para mostrar label
-    labelAccessor: (d) => d.__cv, // qué texto mostrar
-    labelColor: 'white',
-    labelFontSize: 11,
-    labelLineHeight: 1.2,
+  // Círculos
+  circleOpacity: 1, // opacidad “normal” cuando no hay hover
+  circleStroke: 'none',
+  circleStrokeWidth: 0,
 
-    // Tooltip + Delaunay
-    tooltip: true,
-    tooltipHTML: (d) => {
-      const xv = d.__xv ?? d.x;
-      const rv = d.__rv ?? d.r;
-      const yv = d.__yv ?? d.category;
-      const cv = d.__cv ?? d.subcategory ?? d.category;
-      return `<div style="font-weight:600;margin-bottom:4px">${cv ?? ''}</div>
-              <div><span style="opacity:.7">x:</span> ${xv}</div>
-              <div><span style="opacity:.7">r:</span> ${rv}</div>
-              ${yv != null ? `<div><span style="opacity:.7">y:</span> ${yv}</div>` : ''}`;
-    },
-    tooltipOffset: [12, 12],
-    tooltipMaxWidth: 280,
-    tooltipClamp: true,
+  // Nuevos defaults a agregar en el objeto defaults:
+  labels: false, // activar/desactivar
+  labelMinR: 15, // radio mínimo en px para mostrar label
+  labelAccessor: (d) => d.__cv, // qué texto mostrar
+  labelColor: 'white',
+  labelFontSize: 11,
+  labelLineHeight: 1.2,
 
-    // Distancia máxima para activar tooltip:
-    // null => auto = (maxRadiusPx * 2)
-    hoverMaxDistance: null,
+  // Tooltip + Delaunay
+  tooltip: true,
+  tooltipHTML: (d) => {
+    const xv = d.__xv ?? d.x;
+    const rv = d.__rv ?? d.r;
+    const yv = d.__yv ?? d.category;
+    const cv = d.__cv ?? d.subcategory ?? d.category;
+    return `<div style="font-weight:600;margin-bottom:4px">${cv ?? ''}</div>
+            <div><span style="opacity:.7">x:</span> ${xv}</div>
+            <div><span style="opacity:.7">r:</span> ${rv}</div>
+            ${yv != null ? `<div><span style="opacity:.7">y:</span> ${yv}</div>` : ''}`;
+  },
+  tooltipOffset: [12, 12],
+  tooltipMaxWidth: 280,
+  tooltipClamp: true,
 
-    // Dimming por hover (CSS)
-    dimOthersOnHover: true,
-    dimOpacity: 0.2,
-  };
+  // Distancia máxima para activar tooltip:
+  // null => auto = (maxRadiusPx * 2)
+  hoverMaxDistance: null,
 
-  const config = {
-    ...defaults,
-    ...options,
-    margin: { ...defaults.margin, ...options.margin },
-  };
+  // Dimming por hover (CSS)
+  dimOthersOnHover: true,
+  dimOpacity: 0.2,
+};
 
+const buildConfig = (options = {}) => ({
+  ...defaults,
+  ...options,
+  margin: { ...defaults.margin, ...options.margin },
+});
+
+const buildLayoutState = (data, options = {}) => {
+  const config = buildConfig(options);
   const innerWidth = config.width - config.margin.left - config.margin.right;
   const innerHeight = config.height - config.margin.top - config.margin.bottom;
 
-  // ---- Dominios derivados ----
   const X = data.map(config.x);
   const R = data.map(config.r);
   const Y = config.separateVertically ? Array.from(new Set(data.map(config.y))) : [];
   const C = data.map(config.color);
 
-  // ---- Escalas ----
   const x = config.xScale ?? d3.scaleLinear().domain(d3.extent(X)).nice().range([0, innerWidth]);
-
   const r = config.rScale ?? d3.scaleSqrt().domain(d3.extent(R)).range(config.rRange);
-
   const y = config.separateVertically
     ? (config.yScale ?? d3.scaleBand().domain(Y).range([0, innerHeight]).paddingInner(0.2).paddingOuter(0.1))
     : null;
-
   const z = config.colorScale ?? d3.scaleOrdinal(d3.schemeTableau10).domain(Array.from(new Set(C)));
 
-  // ---- Nodos (no mutar el data original) ----
   const nodes = data.map((d) => ({
     ...d,
     __xv: config.x(d),
@@ -129,7 +128,27 @@ export const easyBeeSwarm = (data, options = {}) => {
     __cv: config.color(d),
   }));
 
-  // ---- Simulación ----
+  return { config, innerWidth, innerHeight, x, r, y, z, nodes };
+};
+
+const applyPrecomputedPositions = ({ config, nodes }) => {
+  const positions = config.precomputedPositions;
+  if (!positions) return false;
+
+  for (const node of nodes) {
+    const key = config.precomputedKey(node);
+    const position = positions instanceof Map ? positions.get(key) : positions[key];
+    if (!position || !Number.isFinite(position.x) || !Number.isFinite(position.y)) {
+      return false;
+    }
+    node.x = position.x;
+    node.y = position.y;
+  }
+
+  return true;
+};
+
+const runForceLayout = ({ config, innerHeight, x, r, y, nodes }) => {
   const simulation = d3.forceSimulation(nodes);
 
   simulation.alphaMin(config.alphaMin); // el timer corta cuando alpha < alphaMin [web:32]
@@ -157,6 +176,21 @@ export const easyBeeSwarm = (data, options = {}) => {
 
   simulation.stop();
   while (simulation.alpha() > simulation.alphaMin()) simulation.tick(); // [web:32]
+};
+
+export const computeBeeSwarmLayout = (data, options = {}) => {
+  const state = buildLayoutState(data, options);
+  runForceLayout(state);
+  return state;
+};
+
+export const easyBeeSwarm = (data, options = {}) => {
+  const state = buildLayoutState(data, options);
+  const { config, innerWidth, innerHeight, x, r, y, z, nodes } = state;
+
+  if (!applyPrecomputedPositions(state)) {
+    runForceLayout(state);
+  }
 
   // ---- Umbral auto: maxRadiusPx * 2 ----
   const maxRadiusPx = d3.max(nodes, (d) => r(d.__rv)) ?? 0;

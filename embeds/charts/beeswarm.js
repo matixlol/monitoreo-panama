@@ -1,5 +1,6 @@
 import * as d3 from 'd3';
 import { easyBeeSwarm } from './easy-beeswarm.observable.js';
+import { getBeeswarmLayoutOptions } from './beeswarm-layout-config.js';
 
 const esc = (value) =>
   String(value ?? '')
@@ -9,8 +10,6 @@ const esc = (value) =>
     .replace(/"/g, '&quot;');
 
 const amountOf = (d) => d.ingresoTotal ?? d.total ?? 0;
-const candidateGroupOf = (d) => d.group || d.position || 'Sin grupo';
-const donorGroupOf = (d) => d.position || 'Sin cargo';
 
 const tooltipFor = (kind, d, money) => {
   const amount = money(amountOf(d));
@@ -62,32 +61,18 @@ const attachOpenFicha = (chart, kind, buildHashRoute) => {
   });
 };
 
-export const beeswarm = (rows, kind, { buildHashRoute, money, short }) => {
+export const beeswarm = (rows, kind, { buildHashRoute, money, precomputedPositions, short }) => {
   if (!rows.length) return null;
 
-  const isCandidate = kind === 'candidato';
-  const chart = easyBeeSwarm(rows, {
-    width: 1000,
-    height: isCandidate ? 400 : 600,
-    margin: isCandidate
-      ? { left: 350, bottom: 50, top: 50, right: 100 }
-      : { left: 250, bottom: 50, top: 20, right: 40 },
-    x: amountOf,
-    r: amountOf,
-    y: isCandidate ? candidateGroupOf : donorGroupOf,
-    color: (d) => (isCandidate ? candidateGroupOf(d) : d.party || 'Sin partido'),
-    tooltipHTML: (d) => tooltipFor(kind, d, money),
-    yAxisTickPadding: isCandidate ? 20 : 100,
-    alphaMin: isCandidate ? 0.004 : 0.0001,
-    rRange: isCandidate ? [1, 50] : [1, 10],
-    xTickCount: 5,
-    xTickFormat: short,
-    labels: isCandidate,
-    labelMinR: 20,
-    labelAccessor: (d) => d.name,
-    labelColor: 'white',
-    labelFontSize: 11,
-  });
+  const chart = easyBeeSwarm(
+    rows,
+    getBeeswarmLayoutOptions(kind, {
+      precomputedPositions,
+      precomputedKey: (d) => d.id,
+      tooltipHTML: (d) => tooltipFor(kind, d, money),
+      xTickFormat: short,
+    }),
+  );
 
   attachOpenFicha(chart, kind, buildHashRoute);
   return chart;

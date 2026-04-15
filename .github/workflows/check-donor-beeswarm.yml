@@ -1,0 +1,29 @@
+name: Check Donor Beeswarm
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  donor-beeswarm:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Regenerate donor beeswarm layout
+        run: bun run precompute:donor-beeswarm
+
+      - name: Fail if donor beeswarm layout is outdated
+        run: git diff --exit-code -- embeds/data/donor-beeswarm.json
