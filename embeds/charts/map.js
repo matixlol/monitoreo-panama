@@ -1,5 +1,5 @@
 import * as d3 from 'd3';
-import { createPanamaMapSvg } from './panama-map.js';
+import { createPanamaMapSvg, PANAMA_PROVINCE_NAMES } from './panama-map.js';
 
 const NO_DATA_COLOR = '#f2f2f2';
 
@@ -131,6 +131,88 @@ function buildLegend({ scale, valueFormat, explicitScale, min, rawMax }) {
   return legend;
 }
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function tooltipHtml(text) {
+  const lines = String(text ?? '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (!lines.length) return '';
+
+  return [
+    `<div style="font-weight:700;margin-bottom:4px">${escapeHtml(lines[0])}</div>`,
+    ...lines.slice(1).map((line) => `<div style="font-size:12px;line-height:1.35">${escapeHtml(line)}</div>`),
+  ].join('');
+}
+
+function attachTooltip({ wrap, stage, svg, htmlByProvince }) {
+  const tooltip = document.createElement('div');
+  Object.assign(tooltip.style, {
+    position: 'absolute',
+    zIndex: '3',
+    minWidth: '180px',
+    maxWidth: '280px',
+    padding: '10px 12px',
+    borderRadius: '10px',
+    background: 'rgba(15,23,42,.96)',
+    color: '#fff',
+    boxShadow: '0 10px 30px rgba(15,23,42,.22)',
+    pointerEvents: 'none',
+    opacity: '0',
+    transform: 'translateY(4px)',
+    transition: 'opacity 120ms ease, transform 120ms ease',
+  });
+  stage.append(tooltip);
+
+  const hideTooltip = () => {
+    tooltip.style.opacity = '0';
+    tooltip.style.transform = 'translateY(4px)';
+  };
+
+  const showTooltip = (event, provinceName) => {
+    const html = htmlByProvince(provinceName);
+    if (!html) return hideTooltip();
+
+    tooltip.innerHTML = html;
+    tooltip.style.opacity = '1';
+    tooltip.style.transform = 'translateY(0)';
+
+    const stageBounds = stage.getBoundingClientRect();
+    const tooltipBounds = tooltip.getBoundingClientRect();
+    const offset = 14;
+    const left = Math.min(
+      Math.max(offset, event.clientX - stageBounds.left + offset),
+      Math.max(offset, stageBounds.width - tooltipBounds.width - offset),
+    );
+    const top = Math.min(
+      Math.max(offset, event.clientY - stageBounds.top + offset),
+      Math.max(offset, stageBounds.height - tooltipBounds.height - offset),
+    );
+    tooltip.style.left = `${left}px`;
+    tooltip.style.top = `${top}px`;
+  };
+
+  for (const [id, provinceName] of PANAMA_PROVINCE_NAMES) {
+    const node = svg.querySelector(`#${id}`);
+    if (!node) continue;
+
+    node.style.cursor = 'default';
+    node.addEventListener('pointerenter', (event) => showTooltip(event, provinceName));
+    node.addEventListener('pointermove', (event) => showTooltip(event, provinceName));
+    node.addEventListener('pointerleave', hideTooltip);
+  }
+
+  wrap.addEventListener('pointerleave', hideTooltip);
+}
+
 export const mapChart = ({ rows, valueKey, domain, colorScale, valueFormat, tooltip }) => {
   const data = new Map(rows.filter((d) => d?.provincia).map((d) => [d.provincia, d]));
   const vals = rows.map((d) => d?.[valueKey]).filter(Number.isFinite);
@@ -154,6 +236,27 @@ export const mapChart = ({ rows, valueKey, domain, colorScale, valueFormat, tool
 
   const wrap = document.createElement('div');
   wrap.className = 'mf-map';
-  wrap.append(svg, buildLegend({ scale, valueFormat, explicitScale, min, rawMax }));
+
+  const stage = document.createElement('div');
+  Object.assign(stage.style, {
+    position: 'relative',
+    width: '100%',
+    maxWidth: '960px',
+    margin: '0 auto',
+  });
+  stage.append(svg);
+
+  attachTooltip({
+    wrap,
+    stage,
+    svg,
+    htmlByProvince: (provincia) => {
+      const row = data.get(provincia);
+      const value = row?.[valueKey];
+      return tooltipHtml(Number.isFinite(value) ? tooltip(row, value) : `${provincia}\nSin datos`);
+    },
+  });
+
+  wrap.append(stage, buildLegend({ scale, valueFormat, explicitScale, min, rawMax }));
   return wrap;
 };

@@ -106,7 +106,10 @@ export function createPanamaMapSvg({
 
     parts.attr('fill', fill);
     parts.selectAll('title').remove();
-    if (title) parts.append('title').text(title);
+    if (title) {
+      province.attr('aria-label', title);
+      parts.attr('data-tooltip', title);
+    }
 
     const label = provinceLabel(svg, id);
     if (!label.empty()) {
