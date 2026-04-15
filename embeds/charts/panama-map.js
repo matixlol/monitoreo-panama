@@ -83,7 +83,7 @@ export function createPanamaMapSvg({
   svg
     .selectAll('polygon, path')
     .attr('stroke', '#a6a6a6')
-    .attr('stroke-width', 2.25)
+    .attr('stroke-width', 1)
     .attr('stroke-linejoin', 'round')
     .attr('stroke-linecap', 'round')
     .attr('vector-effect', 'non-scaling-stroke');
