@@ -318,7 +318,7 @@ function renderParityChart(store, position = POS[0]) {
     colorScale: d3
       .scaleLinear()
       .domain([0, 0.5, 1])
-      .range(['#1d4ed8', '#f8fafc', '#b91c1c'])
+      .range(['#1d4ed8', '#e9e2cf', '#b91c1c'])
       .interpolate(d3.interpolateRgb),
     tooltip: (row, value) =>
       `${row.provincia}\n${d3.format('.0%')(value)} mujeres\nMujeres: ${row.mujeres}\nHombres: ${row.hombres}\nTotal: ${row.totalCandidaturas}`,
