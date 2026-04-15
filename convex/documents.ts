@@ -1,9 +1,69 @@
 import { v } from 'convex/values';
 import { internal } from './_generated/api';
+import { query, type QueryCtx } from './_generated/server';
 import { authMutation, authQuery } from './lib/withAuth';
 import { EgressRow, IngressRow } from './extractions';
 import { documentsHistory, historyAttribution } from './lib/tableHistory';
 import { retrier } from './retrier';
+import { buildCsvExportPayload, getBundledLocalExportAugmentation } from '../src/lib/csvExportSupport';
+
+function isArchivedDocument(doc: { structuredNotes?: { flags?: Record<string, boolean> } | undefined }) {
+  return Boolean(doc.structuredNotes?.flags?.archived);
+}
+
+async function buildDocumentsForCsvExport(ctx: Pick<QueryCtx, 'db'>) {
+  const documents = await ctx.db.query('documents').order('desc').collect();
+  const activeDocuments = documents.filter((doc) => !isArchivedDocument(doc));
+
+  return await Promise.all(
+    activeDocuments.map(async (doc) => {
+      const validatedData = await ctx.db
+        .query('validatedData')
+        .withIndex('by_document', (q) => q.eq('documentId', doc._id))
+        .unique();
+
+      if (validatedData) {
+        return {
+          ...doc,
+          source: 'validated' as const,
+          sourceModel: null,
+          sourceCompletedAt: validatedData.validatedAt,
+          ingress: validatedData.ingress,
+          egress: validatedData.egress,
+        };
+      }
+
+      const extractions = await ctx.db
+        .query('extractions')
+        .withIndex('by_document', (q) => q.eq('documentId', doc._id))
+        .collect();
+
+      const latestGemini3Extraction = extractions
+        .filter((extraction) => extraction.model.startsWith('gemini-3'))
+        .sort((a, b) => b.completedAt - a.completedAt)[0];
+
+      if (!latestGemini3Extraction) {
+        return {
+          ...doc,
+          source: 'none' as const,
+          sourceModel: null,
+          sourceCompletedAt: null,
+          ingress: [],
+          egress: [],
+        };
+      }
+
+      return {
+        ...doc,
+        source: 'gemini-3' as const,
+        sourceModel: latestGemini3Extraction.model,
+        sourceCompletedAt: latestGemini3Extraction.completedAt,
+        ingress: latestGemini3Extraction.ingress,
+        egress: latestGemini3Extraction.egress,
+      };
+    }),
+  );
+}
 
 export const getDocumentStats = authQuery({
   args: {},
@@ -195,7 +255,7 @@ export const listDocuments = authQuery({
   handler: async (ctx) => {
     const documents = await ctx.db.query('documents').order('desc').collect();
 
-    return await Promise.all(
+    const results = await Promise.all(
       documents.map(async (doc) => {
         // First check if there's validated data
         const validatedData = await ctx.db
@@ -253,6 +313,13 @@ export const listDocuments = authQuery({
         };
       }),
     );
+
+    return results.sort((a, b) => {
+      const aArchived = isArchivedDocument(a);
+      const bArchived = isArchivedDocument(b);
+      if (aArchived !== bArchived) return aArchived ? 1 : -1;
+      return b._creationTime - a._creationTime;
+    });
   },
 });
 
@@ -261,57 +328,18 @@ export const listDocuments = authQuery({
  */
 export const getDocumentsForCsvExport = authQuery({
   args: {},
+  handler: async (ctx) => buildDocumentsForCsvExport(ctx),
+});
+
+export const getCsvExportPayloadPublic = query({
+  args: {},
   handler: async (ctx) => {
-    const documents = await ctx.db.query('documents').order('desc').collect();
+    const dbDocs = await buildDocumentsForCsvExport(ctx);
+    const archivedDocumentNames = (await ctx.db.query('documents').collect())
+      .filter((doc) => isArchivedDocument(doc))
+      .map((doc) => doc.name);
 
-    return await Promise.all(
-      documents.map(async (doc) => {
-        const validatedData = await ctx.db
-          .query('validatedData')
-          .withIndex('by_document', (q) => q.eq('documentId', doc._id))
-          .unique();
-
-        if (validatedData) {
-          return {
-            ...doc,
-            source: 'validated' as const,
-            sourceModel: null,
-            sourceCompletedAt: validatedData.validatedAt,
-            ingress: validatedData.ingress,
-            egress: validatedData.egress,
-          };
-        }
-
-        const extractions = await ctx.db
-          .query('extractions')
-          .withIndex('by_document', (q) => q.eq('documentId', doc._id))
-          .collect();
-
-        const latestGemini3Extraction = extractions
-          .filter((extraction) => extraction.model.startsWith('gemini-3'))
-          .sort((a, b) => b.completedAt - a.completedAt)[0];
-
-        if (!latestGemini3Extraction) {
-          return {
-            ...doc,
-            source: 'none' as const,
-            sourceModel: null,
-            sourceCompletedAt: null,
-            ingress: [],
-            egress: [],
-          };
-        }
-
-        return {
-          ...doc,
-          source: 'gemini-3' as const,
-          sourceModel: latestGemini3Extraction.model,
-          sourceCompletedAt: latestGemini3Extraction.completedAt,
-          ingress: latestGemini3Extraction.ingress,
-          egress: latestGemini3Extraction.egress,
-        };
-      }),
-    );
+    return buildCsvExportPayload(dbDocs, getBundledLocalExportAugmentation(), archivedDocumentNames);
   },
 });
 
