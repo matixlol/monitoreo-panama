@@ -221,6 +221,26 @@ export function contributionLabel(row) {
   );
 }
 
+export function incomeTimeline(rows, grain = 'día') {
+  return d3
+    .rollups(
+      rows.flatMap((r) => {
+        const d = parsePanamaDate(r.fecha);
+        const value = num(r.total);
+        return d && value ? [{ date: bucketDate(d, grain), value }] : [];
+      }),
+      (values) => ({ value: sum(values, (d) => d.value), count: values.length }),
+      (d) => +d.date,
+    )
+    .map(([time, stats]) => ({
+      date: new Date(time),
+      value: stats.value,
+      count: stats.count,
+      label: bucketLabel(new Date(time), grain),
+    }))
+    .sort((a, b) => d3.ascending(a.date, b.date));
+}
+
 export function expenseTimeline(rows, grain = 'día') {
   return d3
     .rollups(
