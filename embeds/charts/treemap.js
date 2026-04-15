@@ -44,7 +44,10 @@ function colorForNode(node, currentNode, colors, siblings) {
   if (node.color) return node.color;
   const base = currentNode.color || colors[0] || '#2f80ed';
   if (!siblings?.length) return base;
-  const index = Math.max(0, siblings.findIndex((item) => item.id === node.id));
+  const index = Math.max(
+    0,
+    siblings.findIndex((item) => item.id === node.id),
+  );
   const t = siblings.length === 1 ? 0.72 : 0.35 + (index / Math.max(1, siblings.length - 1)) * 0.55;
   return d3.interpolateRgb('#f8fafc', base)(t);
 }
@@ -96,7 +99,7 @@ function rectStrokeWidth(width, height) {
 }
 
 const STYLE = `
-.tm-root{display:grid;gap:10px;color:#111827;font:14px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.tm-root{display:grid;gap:10px;color:#111827;}
 .tm-bar{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;align-items:start}
 .tm-heading{display:grid;gap:2px;min-width:0}
 .tm-breadcrumb{font-size:12px;color:#667085}

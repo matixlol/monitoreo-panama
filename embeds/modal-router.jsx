@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { bars } from './charts/bars.js';
+import { incomeBreakdownChart } from './charts/income-breakdown.js';
 import { line } from './charts/line.js';
 import { treemap } from './charts/treemap.js';
 import {
@@ -51,7 +52,10 @@ function CandidateModal({ entity }) {
       />
       <Section title="Financiación por tipo">
         {incomeBreakdown(entity.ingresos).length ? (
-          <PlotFigure renderNode={() => bars(incomeBreakdown(entity.ingresos), chartOpts)} deps={[entity.ingresos]} />
+          <PlotFigure
+            renderNode={() => incomeBreakdownChart(incomeBreakdown(entity.ingresos), chartOpts)}
+            deps={[entity.ingresos]}
+          />
         ) : (
           <Empty text="No hay ingresos clasificados." />
         )}

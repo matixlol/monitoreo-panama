@@ -104,9 +104,9 @@ function bucketLabel(d, grain) {
 }
 
 export function incomeBreakdown(rows) {
-  return INCOME_TYPES.map((d, i) => ({ ...d, value: sum(rows, (r) => num(r[d.key])), color: COLORS[i] }))
-    .filter((d) => d.value > 0)
-    .sort((a, b) => d3.descending(a.value, b.value));
+  return INCOME_TYPES.map((d, i) => ({ ...d, value: sum(rows, (r) => num(r[d.key])), color: COLORS[i] })).filter(
+    (d) => d.value > 0,
+  );
 }
 
 export function expenseAmount(row) {
