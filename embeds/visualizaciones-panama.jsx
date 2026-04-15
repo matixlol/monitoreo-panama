@@ -282,6 +282,12 @@ function parityPositionLabel(position) {
   return position === 'Diputado(a)' ? 'Diputado/a' : position;
 }
 
+const PARITY_MAP_COLORS = {
+  male: '#1d4ed8',
+  midpoint: '#e9e2cf',
+  female: '#b91c1c',
+};
+
 function getParitySummaryRows(store) {
   const counts = d3.rollup(
     store.overview.candidates.filter((d) => d.gender),
@@ -303,7 +309,7 @@ function getParitySummaryRows(store) {
         seriesLabel: 'Varón',
         seriesIndex: 0,
         value: group.male,
-        color: COLORS[0],
+        color: PARITY_MAP_COLORS.male,
       },
       {
         group: position,
@@ -312,7 +318,7 @@ function getParitySummaryRows(store) {
         seriesLabel: 'Mujer',
         seriesIndex: 1,
         value: group.female,
-        color: COLORS[1],
+        color: PARITY_MAP_COLORS.female,
       },
     ];
   });
@@ -365,7 +371,7 @@ function renderParityChart(store, position = POS[0]) {
       colorScale: d3
         .scaleLinear()
         .domain([0, 0.5, 1])
-        .range(['#1d4ed8', '#e9e2cf', '#b91c1c'])
+        .range([PARITY_MAP_COLORS.male, PARITY_MAP_COLORS.midpoint, PARITY_MAP_COLORS.female])
         .interpolate(d3.interpolateRgb),
       tooltip: (row, value) =>
         `${row.provincia}\n${d3.format('.0%')(value)} mujeres\nMujeres: ${row.mujeres}\nHombres: ${row.hombres}\nTotal: ${row.totalCandidaturas}`,
