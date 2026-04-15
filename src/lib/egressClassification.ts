@@ -109,7 +109,6 @@ const EXACT_DETAIL_SUMMARY_MAP: Record<string, string> = {
   'copias e impresiones': 'Copias E Impresiones',
   'impresiones publicitarias': 'Impresiones Publicitarias',
   'impresion baners': 'Banners',
-  'impresión banners': 'Banners',
   'alquiler de local': 'Alquiler De Local',
   'alquiler de local / servicios básicos': 'Alquiler De Local',
   'alquiler de buses': 'Alquiler De Buses',
