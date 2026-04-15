@@ -612,9 +612,11 @@ function summaryCardsMarkup(items) {
     .join('')}</div>`;
 }
 
-const chartElementCss = `:host{display:block;}.wc-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin:0 0 12px}.wc-field{display:grid;gap:4px;min-width:180px;color:#344054;}.wc-field select{padding:8px 12px;border:1px solid #e4e7ec;border-radius:999px;background:#fff;color:#344054;}.mf-map{overflow:auto}.mf-map svg{display:block;width:100%;height:auto;max-width:960px;margin:auto}.legend{display:flex;align-items:center;gap:10px;margin-top:10px;color:#667085;}.mf-grad{height:12px;flex:1;max-width:300px;border-radius:999px;background:linear-gradient(90deg,#eff6ff,#1d4ed8)}.mf-parity-layout{display:grid;gap:24px;align-items:start;grid-template-columns:minmax(0,1.7fr) minmax(210px,.65fr)}.mf-parity-layout__map,.mf-parity-layout__breakdown{min-width:0}.mf-parity-layout__breakdown{display:grid;align-content:start}@media (max-width:1040px){.mf-parity-layout{grid-template-columns:1fr}}${incomeBreakdownChartCss}${groupedBarsChartCss}.empty,.error,.loading{padding:14px 0;color:#667085;}`;
 const summaryCardsElementCss = `:host{display:block;;color:#111827}${SUMMARY_CARDS_CSS}.loading,.error{padding:14px 0;color:#667085}`;
-const contributorHistogramElementCss = `:host{display:block;color:#111827;}.wh-root{display:grid;gap:18px}.wh-title{margin:0;font-size:clamp(1.95rem,4vw,2.5rem);font-weight:500;line-height:1.05;letter-spacing:-.04em}.wh-tabs{display:flex;gap:28px;overflow:auto;border-bottom:1px solid #d0d7de}.wh-tab{appearance:none;border:0;border-bottom:4px solid transparent;background:none;color:#4b5563;cursor:pointer;font-weight:600;font-size:16px;line-height:1.2;font-family:inherit;margin:0;padding:0 4px 14px;white-space:nowrap}.wh-tab[aria-selected='true']{color:#3b82f6;border-bottom-color:#3b82f6}.wh-chart{min-width:0}.loading,.error,.empty{padding:14px 0;color:#667085}@media (max-width:720px){.wh-root{gap:14px}.wh-title{font-size:clamp(1.5rem,8vw,2rem)}.wh-tabs{gap:18px}.wh-tab{font-size:15px;padding-bottom:12px}}`;
+const bootstrapTabsCss = `.wc-tabs-wrap,.wc-tabs,.wc-tab-item,.wc-tab-link{box-sizing:border-box}.wc-tabs-wrap{margin:0 0 16px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans","Liberation Sans",sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";font-size:1rem;font-weight:400;line-height:1.5;color:#212529;-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}.wc-tabs{display:flex;flex-wrap:wrap;margin-top:0;margin-bottom:0;padding-left:0;list-style:none;border-bottom:1px solid #dee2e6}.wc-tab-item{margin-bottom:-1px;flex:none;list-style:none}.wc-tab-link{display:block;padding:.5rem 1rem;background-color:transparent;color:inherit;font:inherit;line-height:1.5;text-decoration:none;white-space:nowrap}.wc-tabs .wc-tab-link{border:1px solid transparent;border-top-left-radius:.25rem;border-top-right-radius:.25rem}.wc-tabs .wc-tab-link:hover,.wc-tabs .wc-tab-link:focus{text-decoration:none;border-color:#e9ecef #e9ecef #dee2e6}.wc-tab-link:focus-visible{outline:2px solid rgba(0,123,255,.35);outline-offset:2px}.wc-tabs .wc-tab-link.active,.wc-tabs .wc-tab-item.show .wc-tab-link{color:#495057;background-color:#fff;border-color:#dee2e6 #dee2e6 #fff}@media (max-width:720px){.wc-tabs-wrap{margin-bottom:14px}.wc-tab-link{padding:.5rem .875rem;font-size:.95rem}}`;
+const chartPanelCss = `:host{display:block;color:#111827;}.wc-panel{display:grid;gap:16px;padding:16px;background:#f8f8f8;border-radius:12px}.wc-title{margin:0;font:inherit;font-size:clamp(1.95rem,4vw,2.5rem);font-weight:500;line-height:1.05;letter-spacing:-.04em}.wc-body,.wh-chart{min-width:0}.loading,.error,.empty{padding:14px 0;color:#667085}@media (max-width:720px){.wc-panel{gap:14px;padding:14px}.wc-title{font-size:clamp(1.5rem,8vw,2rem)}}`;
+const chartElementCss = `${chartPanelCss}.wc-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin:0 0 12px}.wc-field{display:grid;gap:4px;min-width:180px;color:#344054;}.wc-field select{padding:8px 12px;border:1px solid #e4e7ec;border-radius:999px;background:#fff;color:#344054;}${bootstrapTabsCss}.mf-map{overflow:auto}.mf-map svg{display:block;width:100%;height:auto;max-width:960px;margin:auto}.legend{display:flex;align-items:center;gap:10px;margin-top:10px;color:#667085;}.mf-grad{height:12px;flex:1;max-width:300px;border-radius:999px;background:linear-gradient(90deg,#eff6ff,#1d4ed8)}.mf-parity-layout{display:grid;gap:24px;align-items:start;grid-template-columns:minmax(0,1.7fr) minmax(210px,.65fr)}.mf-parity-layout__map,.mf-parity-layout__breakdown{min-width:0}.mf-parity-layout__breakdown{display:grid;align-content:start}@media (max-width:1040px){.mf-parity-layout{grid-template-columns:1fr}}${incomeBreakdownChartCss}${groupedBarsChartCss}`;
+const contributorHistogramElementCss = `${chartPanelCss}${bootstrapTabsCss}`;
 
 function attr(el, name, fallback) {
   return el.getAttribute(name) || fallback;
@@ -640,6 +642,55 @@ function resolveStoreForElement(el) {
     );
   }
   return STORE_CACHE.get(key);
+}
+
+function createTabsControl(control, onSelect, wrapClassName = 'wc-tabs-wrap') {
+  const wrap = document.createElement('div');
+  wrap.className = wrapClassName;
+
+  const list = document.createElement('ul');
+  list.className = 'nav nav-tabs wc-tabs';
+  list.setAttribute('role', 'tablist');
+  list.setAttribute('aria-label', control.label);
+
+  control.options.forEach((option) => {
+    const active = option.value === control.value;
+    const item = document.createElement('li');
+    item.className = 'nav-item wc-tab-item';
+
+    const link = document.createElement('a');
+    link.href = '#';
+    link.className = `nav-link wc-tab-link${active ? ' active' : ''}`;
+    link.setAttribute('role', 'tab');
+    link.setAttribute('aria-selected', active ? 'true' : 'false');
+    link.tabIndex = active ? 0 : -1;
+    link.textContent = option.label;
+    link.addEventListener('click', (event) => {
+      event.preventDefault();
+      if (!active) onSelect(option.value);
+    });
+
+    item.append(link);
+    list.append(item);
+  });
+
+  wrap.append(list);
+  return wrap;
+}
+
+function createChartPanel(title) {
+  const panel = document.createElement('section');
+  panel.className = 'wc-panel';
+
+  const heading = document.createElement('h2');
+  heading.className = 'wc-title';
+  heading.textContent = title;
+
+  const body = document.createElement('div');
+  body.className = 'wc-body';
+
+  panel.append(heading, body);
+  return { panel, body };
 }
 
 function defineSummaryCardsElement() {
@@ -676,7 +727,7 @@ function defineSummaryCardsElement() {
   customElements.define('panama-resumen-cards', PanamaSummaryCardsElement);
 }
 
-function defineChartElement(name, observedAttributes, renderChart, getControls = () => []) {
+function defineChartElement(name, title, observedAttributes, renderChart, getControls = () => []) {
   if (typeof window === 'undefined' || customElements.get(name)) return;
   class PanamaChartElement extends HTMLElement {
     static get observedAttributes() {
@@ -695,14 +746,22 @@ function defineChartElement(name, observedAttributes, renderChart, getControls =
       const root = this.shadowRoot || this.attachShadow({ mode: 'open' });
       const token = (this._token || 0) + 1;
       this._token = token;
-      root.innerHTML = `<style>${chartElementCss}</style><div class="loading">Cargando…</div>`;
+      root.innerHTML = `<style>${chartElementCss}</style>`;
+      const loadingPanel = createChartPanel(title);
+      loadingPanel.body.append(
+        Object.assign(document.createElement('div'), { className: 'loading', textContent: 'Cargando…' }),
+      );
+      root.append(loadingPanel.panel);
       try {
         const store = await resolveStoreForElement(this);
         if (token !== this._token) return;
         const controls = getControls(this, store);
         const node = renderChart(this, store);
         root.innerHTML = `<style>${chartElementCss}</style>`;
-        if (controls.length) {
+        const panel = createChartPanel(title);
+        if (controls.length === 1) {
+          panel.body.append(createTabsControl(controls[0], (value) => this.setAttribute(controls[0].attr, value)));
+        } else if (controls.length) {
           const wrap = document.createElement('div');
           wrap.className = 'wc-controls';
           controls.forEach((control) => {
@@ -721,14 +780,23 @@ function defineChartElement(name, observedAttributes, renderChart, getControls =
             label.append(select);
             wrap.append(label);
           });
-          root.append(wrap);
+          panel.body.append(wrap);
         }
-        root.append(
+        panel.body.append(
           node || Object.assign(document.createElement('div'), { className: 'empty', textContent: 'Sin datos.' }),
         );
+        root.append(panel.panel);
       } catch (error) {
         if (token !== this._token) return;
-        root.innerHTML = `<style>${chartElementCss}</style><div class="error">${String(error?.message || error)}</div>`;
+        root.innerHTML = `<style>${chartElementCss}</style>`;
+        const errorPanel = createChartPanel(title);
+        errorPanel.body.append(
+          Object.assign(document.createElement('div'), {
+            className: 'error',
+            textContent: String(error?.message || error),
+          }),
+        );
+        root.append(errorPanel.panel);
       }
     }
   }
@@ -757,28 +825,41 @@ function defineContributorHistogramElement() {
       const token = (this._token || 0) + 1;
       this._token = token;
       const mode = contributorHistogramMode(attr(this, 'mode', 'count'));
-      root.innerHTML = `<style>${contributorHistogramElementCss}</style><div class="loading">Cargando…</div>`;
+      root.innerHTML = `<style>${contributorHistogramElementCss}</style>`;
+      const loadingPanel = createChartPanel('Histograma de aportantes');
+      loadingPanel.body.append(
+        Object.assign(document.createElement('div'), { className: 'loading', textContent: 'Cargando…' }),
+      );
+      root.append(loadingPanel.panel);
       try {
         const store = await resolveStoreForElement(this);
         if (token !== this._token) return;
         const node = renderContributorHistogramChart(store, mode);
-        root.innerHTML = `<style>${contributorHistogramElementCss}</style><section class="wh-root"><h2 class="wh-title">Histograma de aportantes</h2><div class="wh-tabs" role="tablist">${CONTRIBUTOR_HISTOGRAM_TABS.map(
-          (tab) =>
-            `<button class="wh-tab" type="button" role="tab" data-mode="${tab.value}" aria-selected="${tab.value === mode}">${tab.label}</button>`,
-        ).join('')}</div><div class="wh-chart"></div></section>`;
-        const chart = root.querySelector('.wh-chart');
+        root.innerHTML = `<style>${contributorHistogramElementCss}</style>`;
+        const panel = createChartPanel('Histograma de aportantes');
+        const chart = document.createElement('div');
+        chart.className = 'wh-chart';
+        panel.body.append(
+          createTabsControl({ label: 'Modo', value: mode, options: CONTRIBUTOR_HISTOGRAM_TABS }, (value) =>
+            this.setAttribute('mode', value),
+          ),
+        );
+        panel.body.append(chart);
         chart.append(
           node || Object.assign(document.createElement('div'), { className: 'empty', textContent: 'Sin datos.' }),
         );
-        root.querySelectorAll('.wh-tab').forEach((button) => {
-          button.addEventListener('click', () => {
-            const nextMode = button.getAttribute('data-mode');
-            if (nextMode && nextMode !== mode) this.setAttribute('mode', nextMode);
-          });
-        });
+        root.append(panel.panel);
       } catch (error) {
         if (token !== this._token) return;
-        root.innerHTML = `<style>${contributorHistogramElementCss}</style><div class="error">${esc(String(error?.message || error))}</div>`;
+        root.innerHTML = `<style>${contributorHistogramElementCss}</style>`;
+        const errorPanel = createChartPanel('Histograma de aportantes');
+        errorPanel.body.append(
+          Object.assign(document.createElement('div'), {
+            className: 'error',
+            textContent: String(error?.message || error),
+          }),
+        );
+        root.append(errorPanel.panel);
       }
     }
   }
@@ -919,6 +1000,7 @@ function defineChartElements() {
   defineSummaryCardsElement();
   defineChartElement(
     'panama-candidaturas-chart',
+    'Candidaturas por volumen de fondos',
     ['position', 'ingresos-url', 'egresos-url'],
     (el, store) => renderCandidateChart(store, attr(el, 'position', POS[0])),
     (el) => [
@@ -932,6 +1014,7 @@ function defineChartElements() {
   );
   defineChartElement(
     'panama-financiacion-chart',
+    'Financiación por tipo',
     ['position', 'ingresos-url', 'egresos-url'],
     (el, store) => renderIncomeChart(store, attr(el, 'position', ALL)),
     (el, store) => [
@@ -948,6 +1031,7 @@ function defineChartElements() {
   );
   defineChartElement(
     'panama-gastos-tiempo-chart',
+    'Línea de tiempo de gastos',
     ['position', 'grain', 'ingresos-url', 'egresos-url'],
     (el, store) => renderExpenseTimelineChart(store, attr(el, 'position', ALL), 'semana'),
     (el, store) => [
@@ -964,6 +1048,7 @@ function defineChartElements() {
   );
   defineChartElement(
     'panama-paridad-chart',
+    'Paridad de género por provincia',
     ['position', 'ingresos-url', 'egresos-url'],
     (el, store) => renderParityChart(store, attr(el, 'position', POS[0])),
     (el) => [
@@ -977,6 +1062,7 @@ function defineChartElements() {
   );
   defineChartElement(
     'panama-mapa-financiero-chart',
+    'Mapa financiero',
     ['position', 'metric', 'filter', 'ingresos-url', 'egresos-url'],
     (el, store) =>
       renderFinancialMapChart(
@@ -1020,15 +1106,21 @@ function defineChartElements() {
       ];
     },
   );
-  defineChartElement('panama-aportantes-chart', ['ingresos-url', 'egresos-url'], (_, store) =>
+  defineChartElement('panama-aportantes-chart', 'Aportantes', ['ingresos-url', 'egresos-url'], (_, store) =>
     renderDonorsChart(store),
   );
   defineContributorHistogramElement();
-  defineChartElement('panama-gastos-treemap-chart', ['ingresos-url', 'egresos-url'], (_, store) =>
-    renderExpenseTreemapChart(store),
+  defineChartElement(
+    'panama-gastos-treemap-chart',
+    'Tipo de gastos de campaña',
+    ['ingresos-url', 'egresos-url'],
+    (_, store) => renderExpenseTreemapChart(store),
   );
-  defineChartElement('panama-home-gastos-treemap-chart', ['ingresos-url', 'egresos-url'], (_, store) =>
-    renderHomeExpenseTreemapChart(store),
+  defineChartElement(
+    'panama-home-gastos-treemap-chart',
+    'Tipo de gastos de campaña',
+    ['ingresos-url', 'egresos-url'],
+    (_, store) => renderHomeExpenseTreemapChart(store),
   );
   defineReactElement(
     'panama-candidatos-table',
