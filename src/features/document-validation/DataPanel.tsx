@@ -4,6 +4,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { EgressTable } from './EgressTable';
 import { IngressTable } from './IngressTable';
 import { AmountByPageChart } from './AmountByPageChart';
+import { AmountByWeekChart } from './AmountByWeekChart';
 import { RowCountByPageChart } from './RowCountByPageChart';
 import { DiscrepanciesSummaryTable } from './DiscrepanciesSummaryTable';
 import type { EgressRow, IngressRow } from './types';
@@ -455,6 +456,10 @@ export function DataPanel({
                 mode="categorySums"
               />
             )}
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300 px-4">$ por Semana</h3>
+            <AmountByWeekChart ingressRows={allIngressRows} egressRows={allEgressRows} />
           </div>
           <div>
             <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300 px-4"># Filas por Página</h3>
