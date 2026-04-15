@@ -2,7 +2,13 @@
   "mcpServers": {
     "observablehq": {
       "command": "npx",
-      "args": ["-y", "github:matixlol/agents"]
+      "args": [
+        "-y",
+        "github:matixlol/agents"
+      ]
+    },
+    "figma": {
+      "baseUrl": "https://mcp.figma.com/mcp"
     }
   }
 }
