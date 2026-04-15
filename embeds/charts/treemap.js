@@ -82,7 +82,10 @@ function labelLines(node, width, height, money) {
 
 function rectCornerRadius(width, height) {
   if (!(width > 0) || !(height > 0)) return 0;
-  return Math.max(1, Math.min(8, width / 4, height / 4));
+  const minSide = Math.min(width, height);
+  if (minSide <= 12) return 0;
+  if (minSide >= 24) return 1;
+  return (minSide - 12) / 12;
 }
 
 function rectStrokeWidth(width, height) {
@@ -103,10 +106,10 @@ const STYLE = `
 .tm-back{appearance:none;border:1px solid #d0d7de;border-radius:8px;background:#fff;color:#111827;padding:6px 10px;font:600 13px/1.2 inherit;cursor:pointer}
 .tm-back:hover{background:#f8fafc}
 .tm-note{font-size:12px;color:#667085}
-.tm-stage{position:relative;border:1px solid #e4e7ec;border-radius:12px;background:#fff;overflow:hidden}
+.tm-stage{position:relative;border:1px solid #e4e7ec;background:#fff;overflow:hidden}
 .tm-canvas{position:relative;width:100%;aspect-ratio:1000 / 420;overflow:hidden}
 .tm-canvas svg{position:absolute;inset:0;display:block;width:100%;height:100%;max-width:none}
-.tm-zoom-overlay{position:absolute;z-index:2;border-radius:8px;border:1px solid rgba(255,255,255,.95);box-shadow:0 10px 24px rgba(15,23,42,.08);pointer-events:none;transform-origin:center center}
+.tm-zoom-overlay{position:absolute;z-index:2;border:1px solid rgba(255,255,255,.95);box-shadow:0 10px 24px rgba(15,23,42,.08);pointer-events:none;transform-origin:center center}
 .tm-node{cursor:default}
 .tm-node.is-zoomable{cursor:pointer}
 .tm-tooltip{position:absolute;z-index:3;min-width:180px;max-width:280px;padding:10px 12px;border-radius:10px;background:rgba(15,23,42,.96);color:#fff;box-shadow:0 10px 30px rgba(15,23,42,.22);pointer-events:none;opacity:0;transform:translateY(4px);transition:opacity 120ms ease,transform 120ms ease}
@@ -229,7 +232,7 @@ export const treemap = (data, { colors = [], money, int }) => {
             width: `${transition.width}px`,
             height: `${transition.height}px`,
             opacity: 0.96,
-            borderRadius: '8px',
+            borderRadius: '0px',
           },
           {
             left: '0px',
@@ -237,7 +240,7 @@ export const treemap = (data, { colors = [], money, int }) => {
             width: `${canvasWidth}px`,
             height: `${canvasHeight}px`,
             opacity: 1,
-            borderRadius: '12px',
+            borderRadius: '0px',
           },
         ],
         { duration, easing, fill: 'forwards' },
@@ -308,7 +311,7 @@ export const treemap = (data, { colors = [], money, int }) => {
               width: `${canvas.clientWidth}px`,
               height: `${canvas.clientHeight}px`,
               opacity: 1,
-              borderRadius: '12px',
+              borderRadius: '0px',
             },
             {
               left: `${left}px`,
@@ -316,7 +319,7 @@ export const treemap = (data, { colors = [], money, int }) => {
               width: `${width}px`,
               height: `${height}px`,
               opacity: 0.96,
-              borderRadius: '8px',
+              borderRadius: '0px',
             },
           ],
           { duration, easing, fill: 'forwards' },
