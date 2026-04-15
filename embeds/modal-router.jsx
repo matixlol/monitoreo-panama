@@ -18,8 +18,8 @@ import {
   contributionLabel,
   entityFor,
   expenseAmount,
-  expenseBreakdown,
   expenseTimeline,
+  expenseTreemapBreakdown,
   incomeBreakdown,
   num,
   parseHashRoute,
@@ -31,6 +31,7 @@ import {
 function CandidateModal({ entity }) {
   const [pos, setPos] = useState('total');
   const expenseRows = byPos(entity.egresos, pos);
+  const expenseTree = expenseTreemapBreakdown(expenseRows);
   return (
     <div>
       <Meta
@@ -87,8 +88,8 @@ function CandidateModal({ entity }) {
           ) : null
         }
       >
-        {expenseBreakdown(expenseRows).length ? (
-          <PlotFigure renderNode={() => treemap(expenseBreakdown(expenseRows), chartOpts)} deps={[expenseRows]} />
+        {expenseTree.children.length ? (
+          <PlotFigure renderNode={() => treemap(expenseTree, chartOpts)} deps={[expenseRows]} />
         ) : (
           <Empty text="No hay gastos clasificados para esta selección." />
         )}
@@ -191,6 +192,7 @@ function DonorModal({ entity }) {
 function ProviderModal({ entity }) {
   const [pos, setPos] = useState('total');
   const rows = byPos(entity.egresos, pos);
+  const expenseTree = expenseTreemapBreakdown(rows);
   return (
     <div>
       <Meta
@@ -219,8 +221,8 @@ function ProviderModal({ entity }) {
           ) : null
         }
       >
-        {expenseBreakdown(rows).length ? (
-          <PlotFigure renderNode={() => treemap(expenseBreakdown(rows), chartOpts)} deps={[rows]} />
+        {expenseTree.children.length ? (
+          <PlotFigure renderNode={() => treemap(expenseTree, chartOpts)} deps={[rows]} />
         ) : (
           <Empty text="No hay gastos clasificados para esta selección." />
         )}

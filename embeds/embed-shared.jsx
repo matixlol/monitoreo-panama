@@ -130,15 +130,76 @@ export function expenseAmount(row) {
   );
 }
 
-export function expenseBreakdown(rows) {
-  return d3
+export function expenseTreemapBreakdown(rows) {
+  const normalizedRows = rows.flatMap((row) => {
+    const value = expenseAmount(row);
+    if (!(value > 0)) return [];
+
+    const category = TEXT(row.GastoCategoria) || TEXT(row.detalleGastoResumido) || TEXT(row.detalleGasto) || 'Sin categoría';
+    const detail = TEXT(row.detalleGastoResumido) || TEXT(row.detalleGasto) || category;
+
+    return [{ category, detail, value }];
+  });
+
+  const children = d3
     .rollups(
-      rows,
-      (values) => sum(values, (r) => expenseAmount(r)),
-      (r) => TEXT(r.GastoCategoria) || TEXT(r.detalleGastoResumido) || 'Sin categoría',
+      normalizedRows,
+      (values) => {
+        const label = values[0]?.category || 'Sin categoría';
+        const detailChildren = d3
+          .rollups(
+            values,
+            (group) => ({
+              label: group[0]?.detail || label,
+              value: sum(group, (entry) => entry.value),
+              count: group.length,
+            }),
+            (entry) => entry.detail || label,
+          )
+          .map(([detail, stats], detailIndex) => ({
+            id: slugify(`${label}-${detail}`) || `d-${detailIndex}`,
+            label: stats.label,
+            value: stats.value,
+            count: stats.count,
+          }))
+          .sort((a, b) => d3.descending(a.value, b.value));
+
+        return {
+          label,
+          value: sum(values, (entry) => entry.value),
+          count: values.length,
+          children: detailChildren,
+        };
+      },
+      (entry) => entry.category,
     )
-    .map(([label, value], i) => ({ id: slugify(label) || `c-${i}`, label, value, color: COLORS[i % COLORS.length] }))
+    .map(([label, stats], index) => ({
+      id: slugify(label) || `c-${index}`,
+      label,
+      value: stats.value,
+      count: stats.count,
+      color: COLORS[index % COLORS.length],
+      children: stats.children,
+    }))
     .sort((a, b) => d3.descending(a.value, b.value));
+
+  return {
+    id: 'gastos',
+    label: 'Gastos de campaña',
+    value: sum(children, (entry) => entry.value),
+    count: sum(children, (entry) => entry.count || 0),
+    children,
+  };
+}
+
+export function expenseBreakdown(rows) {
+  return expenseTreemapBreakdown(rows).children.map(({ id, label, value, color, count }) => ({
+    id,
+    label,
+    value,
+    color,
+    count,
+  }));
 }
 
 export function partyBreakdown(rows) {

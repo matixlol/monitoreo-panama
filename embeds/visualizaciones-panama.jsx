@@ -25,7 +25,7 @@ import {
   buildHashRoute,
   byPos,
   expenseAmount,
-  expenseBreakdown,
+  expenseTreemapBreakdown,
   expenseTimeline,
   incomeBreakdown,
   num,
@@ -347,7 +347,11 @@ function renderDonorsChart(store) {
 }
 
 function renderExpenseTreemapChart(store) {
-  return treemap(expenseBreakdown(store.egresos), chartOpts);
+  return treemap(expenseTreemapBreakdown(store.egresos), chartOpts);
+}
+
+function renderHomeExpenseTreemapChart(store) {
+  return treemap(expenseTreemapBreakdown(store.egresos), chartOpts);
 }
 
 const CONTRIBUTOR_HISTOGRAM_TABS = [
@@ -962,6 +966,9 @@ function defineChartElements() {
   defineContributorHistogramElement();
   defineChartElement('panama-gastos-treemap-chart', ['ingresos-url', 'egresos-url'], (_, store) =>
     renderExpenseTreemapChart(store),
+  );
+  defineChartElement('panama-home-gastos-treemap-chart', ['ingresos-url', 'egresos-url'], (_, store) =>
+    renderHomeExpenseTreemapChart(store),
   );
   defineReactElement(
     'panama-candidatos-table',
