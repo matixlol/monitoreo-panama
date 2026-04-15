@@ -2,7 +2,7 @@ import * as d3 from 'd3';
 
 const WIDTH = 1000;
 const HEIGHT = 420;
-const PADDING = 3;
+const PADDING = 1;
 
 const esc = (value) =>
   String(value ?? '')
@@ -78,6 +78,18 @@ function labelLines(node, width, height, money) {
   const lines = [truncateLabel(node.label, Math.min(32, maxChars))];
   if (height >= 62) lines.push(money(node.value || 0));
   return lines;
+}
+
+function rectCornerRadius(width, height) {
+  if (!(width > 0) || !(height > 0)) return 0;
+  return Math.max(1, Math.min(8, width / 4, height / 4));
+}
+
+function rectStrokeWidth(width, height) {
+  const minSide = Math.min(width, height);
+  if (minSide < 6) return 0;
+  if (minSide < 12) return 0.5;
+  return 1;
 }
 
 const STYLE = `
@@ -423,10 +435,10 @@ export const treemap = (data, { colors = [], money, int }) => {
       .attr('width', (leaf) => Math.max(0, leaf.x1 - leaf.x0))
       .attr('height', (leaf) => Math.max(0, leaf.y1 - leaf.y0))
       .attr('fill', (leaf) => colorForNode(leaf.data, currentNode, colors, nodes))
-      .attr('rx', 8)
-      .attr('ry', 8)
+      .attr('rx', (leaf) => rectCornerRadius(Math.max(0, leaf.x1 - leaf.x0), Math.max(0, leaf.y1 - leaf.y0)))
+      .attr('ry', (leaf) => rectCornerRadius(Math.max(0, leaf.x1 - leaf.x0), Math.max(0, leaf.y1 - leaf.y0)))
       .attr('stroke', '#ffffff')
-      .attr('stroke-width', 1);
+      .attr('stroke-width', (leaf) => rectStrokeWidth(Math.max(0, leaf.x1 - leaf.x0), Math.max(0, leaf.y1 - leaf.y0)));
 
     groups.append('title').text((leaf) => {
       const prefix = path.length ? `${currentNode.label} / ` : '';
