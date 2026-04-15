@@ -4,6 +4,7 @@ import ingresosDatasetUrl from './data/documentos-ingresos.csv?url';
 import egresosDatasetUrl from './data/documentos-egresos.csv?url';
 import { beeswarm } from './charts/beeswarm.js';
 import { contributorHistogram } from './charts/contributor-histogram.js';
+import { groupedBarsChart, groupedBarsChartCss } from './charts/grouped-bars.js';
 import { incomeBreakdownChart, incomeBreakdownChartCss } from './charts/income-breakdown.js';
 import { line } from './charts/line.js';
 import { mapChart } from './charts/map.js';
@@ -277,6 +278,46 @@ function getParityRows(store, position) {
     .map(([, value]) => value);
 }
 
+function parityPositionLabel(position) {
+  return position === 'Diputado(a)' ? 'Diputado/a' : position;
+}
+
+function getParitySummaryRows(store) {
+  const counts = d3.rollup(
+    store.overview.candidates.filter((d) => d.gender),
+    (values) => ({
+      male: sum(values, (d) => (d.gender === 'male' ? 1 : 0)),
+      female: sum(values, (d) => (d.gender === 'female' ? 1 : 0)),
+    }),
+    (d) => d.position,
+  );
+
+  return POS.flatMap((position) => {
+    const group = counts.get(position) || { male: 0, female: 0 };
+    const groupLabel = parityPositionLabel(position);
+    return [
+      {
+        group: position,
+        groupLabel,
+        series: 'male',
+        seriesLabel: 'Varón',
+        seriesIndex: 0,
+        value: group.male,
+        color: COLORS[0],
+      },
+      {
+        group: position,
+        groupLabel,
+        series: 'female',
+        seriesLabel: 'Mujer',
+        seriesIndex: 1,
+        value: group.female,
+        color: COLORS[1],
+      },
+    ];
+  });
+}
+
 function getFinancialRows(store, position, filter = 'all') {
   const rows = store.overview.candidates.filter(
     (d) =>
@@ -310,19 +351,39 @@ function renderExpenseTimelineChart(store, position = ALL, grain = 'mes') {
 }
 
 function renderParityChart(store, position = POS[0]) {
-  return mapChart({
-    rows: getParityRows(store, position),
-    valueKey: 'paridad',
-    domain: [0, 1],
-    valueFormat: (v) => d3.format('.0%')(v),
-    colorScale: d3
-      .scaleLinear()
-      .domain([0, 0.5, 1])
-      .range(['#1d4ed8', '#e9e2cf', '#b91c1c'])
-      .interpolate(d3.interpolateRgb),
-    tooltip: (row, value) =>
-      `${row.provincia}\n${d3.format('.0%')(value)} mujeres\nMujeres: ${row.mujeres}\nHombres: ${row.hombres}\nTotal: ${row.totalCandidaturas}`,
-  });
+  const root = document.createElement('div');
+  root.className = 'mf-parity-layout';
+
+  const mapWrap = document.createElement('div');
+  mapWrap.className = 'mf-parity-layout__map';
+  mapWrap.append(
+    mapChart({
+      rows: getParityRows(store, position),
+      valueKey: 'paridad',
+      domain: [0, 1],
+      valueFormat: (v) => d3.format('.0%')(v),
+      colorScale: d3
+        .scaleLinear()
+        .domain([0, 0.5, 1])
+        .range(['#1d4ed8', '#e9e2cf', '#b91c1c'])
+        .interpolate(d3.interpolateRgb),
+      tooltip: (row, value) =>
+        `${row.provincia}\n${d3.format('.0%')(value)} mujeres\nMujeres: ${row.mujeres}\nHombres: ${row.hombres}\nTotal: ${row.totalCandidaturas}`,
+    }),
+  );
+
+  const breakdownWrap = document.createElement('div');
+  breakdownWrap.className = 'mf-parity-layout__breakdown';
+  breakdownWrap.append(
+    groupedBarsChart(getParitySummaryRows(store), chartOpts) ||
+      Object.assign(document.createElement('div'), {
+        className: 'empty',
+        textContent: 'Sin datos.',
+      }),
+  );
+
+  root.append(mapWrap, breakdownWrap);
+  return root;
 }
 
 function renderFinancialMapChart(store, position = POS[0], metric = 'ingresoTotal', filter = 'all') {
@@ -545,7 +606,7 @@ function summaryCardsMarkup(items) {
     .join('')}</div>`;
 }
 
-const chartElementCss = `:host{display:block;}.wc-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin:0 0 12px}.wc-field{display:grid;gap:4px;min-width:180px;color:#344054;}.wc-field select{padding:8px 12px;border:1px solid #e4e7ec;border-radius:999px;background:#fff;color:#344054;}.mf-map{overflow:auto}.mf-map svg{display:block;width:100%;height:auto;max-width:960px;margin:auto}.legend{display:flex;align-items:center;gap:10px;margin-top:10px;color:#667085;}.mf-grad{height:12px;flex:1;max-width:300px;border-radius:999px;background:linear-gradient(90deg,#eff6ff,#1d4ed8)}${incomeBreakdownChartCss}.empty,.error,.loading{padding:14px 0;color:#667085;}`;
+const chartElementCss = `:host{display:block;}.wc-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin:0 0 12px}.wc-field{display:grid;gap:4px;min-width:180px;color:#344054;}.wc-field select{padding:8px 12px;border:1px solid #e4e7ec;border-radius:999px;background:#fff;color:#344054;}.mf-map{overflow:auto}.mf-map svg{display:block;width:100%;height:auto;max-width:960px;margin:auto}.legend{display:flex;align-items:center;gap:10px;margin-top:10px;color:#667085;}.mf-grad{height:12px;flex:1;max-width:300px;border-radius:999px;background:linear-gradient(90deg,#eff6ff,#1d4ed8)}.mf-parity-layout{display:grid;gap:24px;align-items:start;grid-template-columns:minmax(0,1.7fr) minmax(300px,.95fr)}.mf-parity-layout__map,.mf-parity-layout__breakdown{min-width:0}.mf-parity-layout__breakdown{display:grid;align-content:start}@media (max-width:1040px){.mf-parity-layout{grid-template-columns:1fr}}${incomeBreakdownChartCss}${groupedBarsChartCss}.empty,.error,.loading{padding:14px 0;color:#667085;}`;
 const summaryCardsElementCss = `:host{display:block;;color:#111827}${SUMMARY_CARDS_CSS}.loading,.error{padding:14px 0;color:#667085}`;
 const contributorHistogramElementCss = `:host{display:block;color:#111827;}.wh-root{display:grid;gap:18px}.wh-title{margin:0;font-size:clamp(1.95rem,4vw,2.5rem);font-weight:500;line-height:1.05;letter-spacing:-.04em}.wh-tabs{display:flex;gap:28px;overflow:auto;border-bottom:1px solid #d0d7de}.wh-tab{appearance:none;border:0;border-bottom:4px solid transparent;background:none;color:#4b5563;cursor:pointer;font-weight:600;font-size:16px;line-height:1.2;font-family:inherit;margin:0;padding:0 4px 14px;white-space:nowrap}.wh-tab[aria-selected='true']{color:#3b82f6;border-bottom-color:#3b82f6}.wh-chart{min-width:0}.loading,.error,.empty{padding:14px 0;color:#667085}@media (max-width:720px){.wh-root{gap:14px}.wh-title{font-size:clamp(1.5rem,8vw,2rem)}.wh-tabs{gap:18px}.wh-tab{font-size:15px;padding-bottom:12px}}`;
 
