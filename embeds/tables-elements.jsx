@@ -22,7 +22,7 @@ const TABLES_CSS = `
   :host{
     display:block;
     color:#111827;
-    font:14px/1.45 ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    font:14px/1.45 inherit;
   }
   *{box-sizing:border-box}
   .pt-shell{
