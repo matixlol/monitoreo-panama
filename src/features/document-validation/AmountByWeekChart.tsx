@@ -92,7 +92,7 @@ export function AmountByWeekChart({ ingressRows, egressRows }: Props) {
         ingress: 0,
         egress: 0,
         sortKey,
-        label: `${monthLabel} / Semana ${week}`,
+        label: `${monthLabel}/${week}`,
       };
       existing.ingress += row.total ?? 0;
       weekAmounts.set(key, existing);
@@ -109,7 +109,7 @@ export function AmountByWeekChart({ ingressRows, egressRows }: Props) {
         ingress: 0,
         egress: 0,
         sortKey,
-        label: `${monthLabel} / Semana ${week}`,
+        label: `${monthLabel}/${week}`,
       };
       existing.egress += row.totalDeGastosDePropagandaYCampania ?? 0;
       weekAmounts.set(key, existing);
