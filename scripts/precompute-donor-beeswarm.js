@@ -65,23 +65,36 @@ function roundPosition(value) {
 
 const ingresos = d3.csvParse(await readFile(ingresosPath, 'utf8'));
 const donorRows = buildDonorRows(ingresos);
-const layout = computeBeeSwarmLayout(donorRows, getBeeswarmLayoutOptions('aportante'));
+const layoutsByPosition = Object.fromEntries(
+  POS.map((position) => {
+    const rows = donorRows.filter((row) => row.position === position);
+    const positionsById = rows.length
+      ? Object.fromEntries(
+          computeBeeSwarmLayout(rows, getBeeswarmLayoutOptions('aportante')).nodes.map((node) => [
+            node.id,
+            {
+              x: roundPosition(node.x),
+              y: roundPosition(node.y),
+            },
+          ]),
+        )
+      : {};
 
-const positionsById = Object.fromEntries(
-  layout.nodes.map((node) => [
-    node.id,
-    {
-      x: roundPosition(node.x),
-      y: roundPosition(node.y),
-    },
-  ]),
+    return [
+      position,
+      {
+        count: rows.length,
+        signature: createDonorBeeswarmSignature(rows),
+        positionsById,
+      },
+    ];
+  }),
 );
 
 const output = {
   version: DONOR_BEESWARM_PRECOMPUTE_VERSION,
   count: donorRows.length,
-  signature: createDonorBeeswarmSignature(donorRows),
-  positionsById,
+  layoutsByPosition,
 };
 
 await writeFile(outputPath, `${JSON.stringify(output)}\n`);

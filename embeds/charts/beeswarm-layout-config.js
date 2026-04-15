@@ -11,14 +11,15 @@ export const getBeeswarmLayoutOptions = (kind, extra = {}) => {
 
   return {
     width: 1000,
-    height: isCandidate ? 400 : 600,
+    height: isCandidate ? 400 : 340,
     margin: isCandidate
       ? { left: 350, bottom: 50, top: 50, right: 100 }
-      : { left: 250, bottom: 50, top: 20, right: 40 },
+      : { left: 140, bottom: 50, top: 20, right: 40 },
     x: amountOf,
     r: amountOf,
     y: isCandidate ? candidateGroupOf : donorGroupOf,
     color: isCandidate ? candidateColorOf : donorColorOf,
+    showYAxis: isCandidate,
     yAxisTickPadding: isCandidate ? 20 : 100,
     alphaMin: isCandidate ? 0.004 : 0.0001,
     rRange: isCandidate ? [1, 50] : [1, 10],

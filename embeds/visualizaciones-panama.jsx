@@ -404,10 +404,11 @@ function renderFinancialMapChart(store, position = POS[0], metric = 'ingresoTota
   });
 }
 
-function renderDonorsChart(store) {
-  const rows = store.overview.donors;
+function renderDonorsChart(store, position = POS[0]) {
+  const rows = store.overview.donors.filter((row) => row.position === position);
+  const precomputedLayout = donorBeeswarmLayout.layoutsByPosition?.[position];
   const precomputedPositions =
-    donorBeeswarmLayout.signature === createDonorBeeswarmSignature(rows) ? donorBeeswarmLayout.positionsById : null;
+    precomputedLayout?.signature === createDonorBeeswarmSignature(rows) ? precomputedLayout.positionsById : null;
   return beeswarm(rows, 'aportante', { ...chartOpts, precomputedPositions });
 }
 
@@ -1111,8 +1112,19 @@ function defineChartElements() {
       ];
     },
   );
-  defineChartElement('panama-aportantes-chart', 'Aportantes', ['ingresos-url', 'egresos-url'], (_, store) =>
-    renderDonorsChart(store),
+  defineChartElement(
+    'panama-aportantes-chart',
+    'Aportantes',
+    ['position', 'ingresos-url', 'egresos-url'],
+    (el, store) => renderDonorsChart(store, attr(el, 'position', POS[0])),
+    (el) => [
+      {
+        attr: 'position',
+        label: 'Cargo',
+        value: attr(el, 'position', POS[0]),
+        options: POS.map((value) => ({ value, label: value })),
+      },
+    ],
   );
   defineContributorHistogramElement();
   defineChartElement(
