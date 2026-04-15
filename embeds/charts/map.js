@@ -52,7 +52,23 @@ function buildLegend({ scale, valueFormat, explicitScale, min, rawMax }) {
     display: 'grid',
     gap: '6px',
     width: '100%',
-    maxWidth: '320px',
+    maxWidth: '420px',
+  });
+
+  const topRow = document.createElement('div');
+  Object.assign(topRow.style, {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '10px',
+    width: '100%',
+  });
+
+  const scaleColumn = document.createElement('div');
+  Object.assign(scaleColumn.style, {
+    display: 'grid',
+    gap: '6px',
+    flex: '1 1 auto',
+    minWidth: '0',
   });
 
   const bar = document.createElement('div');
@@ -64,7 +80,6 @@ function buildLegend({ scale, valueFormat, explicitScale, min, rawMax }) {
     borderRadius: '999px',
     background: legendBackground(scale, values),
   });
-  scaleWrap.append(bar);
 
   const ticks = document.createElement('div');
   ticks.className = 'mf-legend-ticks';
@@ -101,15 +116,14 @@ function buildLegend({ scale, valueFormat, explicitScale, min, rawMax }) {
     ticks.append(tick);
   });
 
-  scaleWrap.append(ticks);
-  legend.append(scaleWrap);
-
   const note = document.createElement('div');
   note.className = 'mf-legend-note';
   Object.assign(note.style, {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
+    flex: '0 0 auto',
+    whiteSpace: 'nowrap',
   });
 
   const swatch = document.createElement('span');
@@ -126,7 +140,11 @@ function buildLegend({ scale, valueFormat, explicitScale, min, rawMax }) {
   const text = document.createElement('span');
   text.textContent = 'Sin datos';
   note.append(swatch, text);
-  legend.append(note);
+
+  scaleColumn.append(bar, ticks);
+  topRow.append(scaleColumn, note);
+  scaleWrap.append(topRow);
+  legend.append(scaleWrap);
 
   return legend;
 }
