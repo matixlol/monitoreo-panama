@@ -200,7 +200,9 @@ export const easyBeeSwarm = (data, options = {}) => {
   const container = d3
     .create('div')
     .style('position', 'relative')
-    .style('width', `${config.width}px`)
+    .style('width', '100%')
+    .style('max-width', `${config.width}px`)
+    .style('min-width', '0')
     .classed('beeswarm', true);
 
   // CSS local (no ensucia el notebook y sirve en embed)
@@ -213,9 +215,13 @@ export const easyBeeSwarm = (data, options = {}) => {
 
   const svg = container
     .append('svg')
+    .attr('viewBox', [0, 0, config.width, config.height])
     .attr('width', config.width)
     .attr('height', config.height)
-    .style('display', 'block');
+    .style('display', 'block')
+    .style('width', '100%')
+    .style('height', 'auto')
+    .style('max-width', '100%');
 
   const g = svg.append('g').attr('transform', `translate(${config.margin.left}, ${config.margin.top})`);
 
@@ -369,6 +375,17 @@ export const easyBeeSwarm = (data, options = {}) => {
 
     const [dx, dy] = config.tooltipOffset;
     const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+    const getTooltipFrame = () => {
+      const bounds = svg.node().getBoundingClientRect();
+      const scaleX = bounds.width ? bounds.width / config.width : 1;
+      const scaleY = bounds.height ? bounds.height / config.height : 1;
+      return {
+        height: bounds.height || config.height,
+        scaleX,
+        scaleY,
+        width: bounds.width || config.width,
+      };
+    };
 
     let lastIndex = 0;
     let activeEl = null;
@@ -405,15 +422,17 @@ export const easyBeeSwarm = (data, options = {}) => {
         activeEl = el;
       }
 
+      const frame = getTooltipFrame();
+
       // Posicionar tooltip: coords del plot + margin => coords del container
-      let left = config.margin.left + mx + dx;
-      let top = config.margin.top + my + dy;
+      let left = (config.margin.left + mx) * frame.scaleX + dx;
+      let top = (config.margin.top + my) * frame.scaleY + dy;
 
       if (config.tooltipClamp) {
         const tw = tip.node().offsetWidth || 0;
         const th = tip.node().offsetHeight || 0;
-        left = clamp(left, 0, config.width - tw);
-        top = clamp(top, 0, config.height - th);
+        left = clamp(left, 0, frame.width - tw);
+        top = clamp(top, 0, frame.height - th);
       }
 
       tip.style('left', `${left}px`).style('top', `${top}px`);
