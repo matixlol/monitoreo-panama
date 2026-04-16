@@ -67,6 +67,11 @@ export type CsvExportDocument = {
   candidateProvince?: string | null;
   candidateDistrict?: string | null;
   candidateGender?: string | null;
+  candidateId?: string | null;
+  postulationId?: string | null;
+  isSummary?: boolean | null;
+  month?: number | null;
+  year?: number | null;
 };
 
 type CsvRow = CsvIngressRow | CsvEgressRow;

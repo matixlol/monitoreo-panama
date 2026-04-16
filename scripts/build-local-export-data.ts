@@ -41,11 +41,26 @@ type LocalExportDocument = {
   candidateProvince?: string | null;
   candidateDistrict?: string | null;
   candidateGender?: string | null;
+  candidateId?: string | null;
+  postulationId?: string | null;
+  isSummary?: boolean | null;
+  month?: number | null;
+  year?: number | null;
 };
 
 type LocalCandidateMetadata = Pick<
   LocalExportDocument,
-  'candidateName' | 'candidatePosition' | 'candidateParty' | 'candidateProvince' | 'candidateDistrict' | 'candidateGender'
+  | 'candidateName'
+  | 'candidatePosition'
+  | 'candidateParty'
+  | 'candidateProvince'
+  | 'candidateDistrict'
+  | 'candidateGender'
+  | 'candidateId'
+  | 'postulationId'
+  | 'isSummary'
+  | 'month'
+  | 'year'
 >;
 
 function parseArgs(argv: string[]) {
@@ -150,6 +165,11 @@ function extractCandidateMetadata(detail: unknown): LocalCandidateMetadata {
     candidateProvince: cleanText(postulation?.Province?.name),
     candidateDistrict: cleanText(postulation?.District?.name),
     candidateGender,
+    candidateId: cleanText((detail as any).candidateId) ?? cleanText(candidate?.id),
+    postulationId: cleanText((detail as any).postulationId) ?? cleanText(postulation?.id),
+    isSummary: typeof (detail as any).isSummary === 'boolean' ? (detail as any).isSummary : null,
+    month: typeof (detail as any).month === 'number' ? (detail as any).month : null,
+    year: typeof (detail as any).year === 'number' ? (detail as any).year : null,
   };
 }
 
