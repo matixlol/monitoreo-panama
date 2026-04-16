@@ -35,12 +35,43 @@ const LOCAL_IDENTITY = JSON.stringify({
   name: 'Local Extraction Script',
 });
 
-function parseCli(argv: string[]): { documentIds: string[]; model?: ModelKey } {
+type CliOptions = {
+  documentIds: string[];
+  model?: ModelKey;
+  processing: boolean;
+  help: boolean;
+};
+
+function getUsage(): string {
+  return [
+    'Usage: bun run scripts/run-local-extraction.ts [documentId ...] [--model <model>]',
+    '       bun run scripts/run-local-extraction.ts --processing [--model <model>]',
+    '',
+    'Options:',
+    '  --processing   Process every document currently in Convex with status "processing".',
+    `  --model        Override the extraction model. One of: ${Object.keys(MODELS).join(', ')}`,
+    '  --help         Show this help message.',
+  ].join('\n');
+}
+
+function parseCli(argv: string[]): CliOptions {
   const documentIds: string[] = [];
   let model: ModelKey | undefined;
+  let processing = false;
+  let help = false;
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
+
+    if (arg === '--help') {
+      help = true;
+      continue;
+    }
+
+    if (arg === '--processing') {
+      processing = true;
+      continue;
+    }
 
     if (arg === '--model') {
       const value = argv[++i] as ModelKey | undefined;
@@ -58,7 +89,11 @@ function parseCli(argv: string[]): { documentIds: string[]; model?: ModelKey } {
     documentIds.push(arg);
   }
 
-  return { documentIds, model };
+  if (processing && documentIds.length > 0) {
+    throw new Error('Pass document IDs or --processing, not both.');
+  }
+
+  return { documentIds, model, processing, help };
 }
 
 async function sleep(ms: number): Promise<void> {
@@ -152,12 +187,33 @@ async function listProcessingDocumentIds(): Promise<string[]> {
     'documents',
   ]);
 
-  const documents = JSON.parse(stdout) as Array<{ _id: string; name: string; status?: string }>;
-  const processing = documents.filter((doc) => doc.status === 'processing');
+  const documents = JSON.parse(stdout) as Array<{
+    _id: string;
+    name: string;
+    status?: string;
+    structuredNotes?: {
+      flags?: {
+        archived?: boolean;
+      };
+    };
+  }>;
+  const processing = documents.filter(
+    (doc) => doc.status === 'processing' && !doc.structuredNotes?.flags?.archived,
+  );
+  const archivedProcessing = documents.filter(
+    (doc) => doc.status === 'processing' && doc.structuredNotes?.flags?.archived,
+  );
 
   if (processing.length > 0) {
     console.log('Documents currently in processing:');
     for (const doc of processing) {
+      console.log(`- ${doc._id}  ${doc.name}`);
+    }
+  }
+
+  if (archivedProcessing.length > 0) {
+    console.log('Skipping archived documents currently in processing:');
+    for (const doc of archivedProcessing) {
       console.log(`- ${doc._id}  ${doc.name}`);
     }
   }
@@ -320,12 +376,22 @@ async function processDocument(documentId: string, modelKey: ModelKey): Promise<
 }
 
 async function main(): Promise<void> {
-  const { documentIds: cliDocumentIds, model } = parseCli(Bun.argv.slice(2));
+  const { documentIds: cliDocumentIds, model, processing, help } = parseCli(Bun.argv.slice(2));
+
+  if (help) {
+    console.log(getUsage());
+    return;
+  }
+
+  if (!processing && cliDocumentIds.length === 0) {
+    throw new Error(`No target specified.\n\n${getUsage()}`);
+  }
+
   const modelKey = await getConfiguredModelKey(model);
 
   console.log('Targeting Convex production deployment.');
 
-  const documentIds = cliDocumentIds.length > 0 ? cliDocumentIds : await listProcessingDocumentIds();
+  const documentIds = processing ? await listProcessingDocumentIds() : cliDocumentIds;
 
   if (documentIds.length === 0) {
     console.log('No documents to process.');
