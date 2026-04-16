@@ -24,6 +24,7 @@ import {
   expenseTreemapBreakdown,
   incomeBreakdown,
   num,
+  parsePanamaDate,
   parseHashRoute,
   partyBreakdown,
   plural,
@@ -68,6 +69,17 @@ function csvCellValue(value) {
   return TEXT(value);
 }
 
+function sortRowsByDate(rows) {
+  return [...rows]
+    .map((row, index) => ({
+      row,
+      index,
+      time: parsePanamaDate(row.fecha)?.getTime() ?? Number.NEGATIVE_INFINITY,
+    }))
+    .sort((a, b) => d3.descending(a.time, b.time) || d3.ascending(a.index, b.index))
+    .map(({ row }) => row);
+}
+
 function downloadTableCsv({ filename, columns, rows }) {
   const csvText = d3.csvFormatRows([
     columns.map((column) => TEXT(column.header)),
@@ -109,7 +121,8 @@ function CsvDownloadButton({ columns, rows, filename, label }) {
 
 function CandidateModal({ entity }) {
   const [pos, setPos] = useState('total');
-  const expenseRows = byPos(entity.egresos, pos);
+  const incomeRows = sortRowsByDate(entity.ingresos);
+  const expenseRows = sortRowsByDate(byPos(entity.egresos, pos));
   const expenseTree = expenseTreemapBreakdown(expenseRows);
   const balanceStat = candidateBalanceStat(entity);
   const ingresoColumns = [
@@ -120,7 +133,7 @@ function CandidateModal({ entity }) {
     { header: 'Monto', key: 'monto' },
     { header: 'PDF original', key: 'pdf' },
   ];
-  const ingresoTableRows = entity.ingresos.map((row) => ({
+  const ingresoTableRows = incomeRows.map((row) => ({
     fecha: TEXT(row.fecha) || '—',
     aportante: TEXT(row.contribuyenteNombre) || 'Sin nombre',
     cedula: TEXT(row.cedulaRuc) || '—',
@@ -260,6 +273,7 @@ function CandidateModal({ entity }) {
 }
 
 function DonorModal({ entity }) {
+  const incomeRows = sortRowsByDate(entity.ingresos);
   const columns = [
     { header: 'Fecha', key: 'fecha' },
     { header: 'Candidatura', key: 'candidato', strong: true },
@@ -268,7 +282,7 @@ function DonorModal({ entity }) {
     { header: 'Monto', key: 'monto' },
     { header: 'PDF original', key: 'pdf' },
   ];
-  const tableRows = entity.ingresos.map((row) => ({
+  const tableRows = incomeRows.map((row) => ({
     fecha: TEXT(row.fecha) || '—',
     candidato: [TEXT(row.candidateName), TEXT(row.candidatePosition)].filter(Boolean).join(' · ') || 'Sin nombre',
     partido: TEXT(row.candidateParty) || 'Sin partido',
@@ -334,7 +348,7 @@ function DonorModal({ entity }) {
 
 function ProviderModal({ entity }) {
   const [pos, setPos] = useState('total');
-  const rows = byPos(entity.egresos, pos);
+  const rows = sortRowsByDate(byPos(entity.egresos, pos));
   const expenseTree = expenseTreemapBreakdown(rows);
   const columns = [
     { header: 'Fecha', key: 'fecha' },
