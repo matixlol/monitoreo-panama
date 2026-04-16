@@ -29,10 +29,21 @@ import {
   posOptions,
 } from './embed-shared.jsx';
 
+function candidateBalanceStat(entity) {
+  const difference = entity.ingresoTotal - entity.egresoTotal;
+  const sign = difference > 0 ? '+' : difference < 0 ? '-' : '';
+  const label = difference > 0 ? 'Saldo a favor' : difference < 0 ? 'Saldo en contra' : 'Sin diferencia';
+  return {
+    value: `${sign}${MONEY(Math.abs(difference))}`,
+    label,
+  };
+}
+
 function CandidateModal({ entity }) {
   const [pos, setPos] = useState('total');
   const expenseRows = byPos(entity.egresos, pos);
   const expenseTree = expenseTreemapBreakdown(expenseRows);
+  const balanceStat = candidateBalanceStat(entity);
   return (
     <div>
       <Meta
@@ -48,6 +59,7 @@ function CandidateModal({ entity }) {
           { value: INT(entity.contributorCount), label: plural(entity.contributorCount, 'Aportante', 'Aportantes') },
           { value: MONEY(entity.ingresoTotal), label: 'Ingresos totales' },
           { value: MONEY(entity.egresoTotal), label: 'Gastos totales' },
+          balanceStat,
         ]}
       />
       <Section title="Financiación por tipo">
