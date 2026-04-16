@@ -49,13 +49,25 @@ function PdfLinkCell({ url }) {
   );
 }
 
+function modalKindLabel(kind) {
+  if (kind === 'candidato') return 'Candidato';
+  if (kind === 'aportante') return 'Aportante';
+  if (kind === 'proveedor') return 'Proveedor';
+  return 'Ficha';
+}
+
+function modalHeading(route, entity) {
+  const type = modalKindLabel(route.kind);
+  return entity?.name ? `${type}: ${entity.name}` : type;
+}
+
 function CandidateModal({ entity }) {
   const [pos, setPos] = useState('total');
   const expenseRows = byPos(entity.egresos, pos);
   const expenseTree = expenseTreemapBreakdown(expenseRows);
   const balanceStat = candidateBalanceStat(entity);
   return (
-    <div>
+    <div className="mf-modal-stack">
       <Meta
         items={[
           { label: 'Nombre', values: [entity.name] },
@@ -168,7 +180,7 @@ function CandidateModal({ entity }) {
 
 function DonorModal({ entity }) {
   return (
-    <div>
+    <div className="mf-modal-stack">
       <Meta
         items={[
           { label: 'Aportante', values: [entity.name] },
@@ -202,7 +214,8 @@ function DonorModal({ entity }) {
           ]}
           rows={entity.ingresos.map((row) => ({
             fecha: TEXT(row.fecha) || '—',
-            candidato: [TEXT(row.candidateName), TEXT(row.candidatePosition)].filter(Boolean).join(' · ') || 'Sin nombre',
+            candidato:
+              [TEXT(row.candidateName), TEXT(row.candidatePosition)].filter(Boolean).join(' · ') || 'Sin nombre',
             partido: TEXT(row.candidateParty) || 'Sin partido',
             tipo: contributionLabel(row),
             monto: MONEY(num(row.total)),
@@ -226,7 +239,7 @@ function ProviderModal({ entity }) {
   const rows = byPos(entity.egresos, pos);
   const expenseTree = expenseTreemapBreakdown(rows);
   return (
-    <div>
+    <div className="mf-modal-stack">
       <Meta
         items={[
           { label: 'Proveedor', values: [entity.name] },
@@ -272,7 +285,8 @@ function ProviderModal({ entity }) {
           ]}
           rows={rows.map((row) => ({
             fecha: TEXT(row.fecha) || '—',
-            candidato: [TEXT(row.candidateName), TEXT(row.candidatePosition)].filter(Boolean).join(' · ') || 'Sin nombre',
+            candidato:
+              [TEXT(row.candidateName), TEXT(row.candidatePosition)].filter(Boolean).join(' · ') || 'Sin nombre',
             partido: TEXT(row.candidateParty) || 'Sin partido',
             categoria: TEXT(row.GastoCategoria) || TEXT(row.detalleGastoResumido) || 'Sin categoría',
             monto: MONEY(expenseAmount(row)),
@@ -311,6 +325,8 @@ export function ModalRouter({ store, emptyHash }) {
 
   if (route.kind === 'none') return null;
   const entity = entityFor(store, route);
+  const title = modalHeading(route, entity);
+  const titleId = 'mf-modal-title';
   const close = () => {
     window.location.hash = emptyHash;
   };
@@ -324,15 +340,24 @@ export function ModalRouter({ store, emptyHash }) {
   }
 
   return (
-    <div className="mf-overlay" onClick={(event) => event.target === event.currentTarget && close()}>
-      <div className="mf-modal">
-        <div className="mf-modal-body">
-          <div className="mf-close-row">
-            <button className="mf-close" type="button" onClick={close}>
-              ×
+    <div
+      className="modal fade show d-block mf-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      onClick={(event) => event.target === event.currentTarget && close()}
+    >
+      <div className="modal-dialog modal-xl mf-modal" role="document">
+        <div className="modal-content mf-modal-content" onClick={(event) => event.stopPropagation()}>
+          <div className="modal-header mf-modal-header">
+            <h1 className="modal-title mf-modal-title" id={titleId}>
+              {title}
+            </h1>
+            <button className="close mf-modal-close" type="button" aria-label="Cerrar" onClick={close}>
+              <span aria-hidden="true">&times;</span>
             </button>
           </div>
-          {body}
+          <div className="modal-body mf-modal-body">{body}</div>
         </div>
       </div>
     </div>

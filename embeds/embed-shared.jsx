@@ -137,7 +137,8 @@ export function expenseTreemapBreakdown(rows) {
     const value = expenseAmount(row);
     if (!(value > 0)) return [];
 
-    const category = TEXT(row.GastoCategoria) || TEXT(row.detalleGastoResumido) || TEXT(row.detalleGasto) || 'Sin categoría';
+    const category =
+      TEXT(row.GastoCategoria) || TEXT(row.detalleGastoResumido) || TEXT(row.detalleGasto) || 'Sin categoría';
     const detail = TEXT(row.detalleGastoResumido) || TEXT(row.detalleGasto) || category;
 
     return [{ category, detail, value }];
@@ -295,9 +296,14 @@ export function PlotFigure({ renderNode, deps = [] }) {
 
 export function Toggle({ value, options, onChange, format = (d) => d }) {
   return (
-    <div className="mf-toggle">
+    <div className="btn-group btn-group-sm mf-toggle" role="group" aria-label="Filtros del gráfico">
       {options.map((option) => (
-        <button className={option === value ? 'on' : ''} type="button" key={option} onClick={() => onChange(option)}>
+        <button
+          className={`btn ${option === value ? 'btn-primary on' : 'btn-outline-secondary'}`}
+          type="button"
+          key={option}
+          onClick={() => onChange(option)}
+        >
           {format(option)}
         </button>
       ))}
@@ -307,7 +313,7 @@ export function Toggle({ value, options, onChange, format = (d) => d }) {
 
 export function Section({ title, note, controls, children }) {
   return (
-    <section className="mf-card">
+    <section className="card mf-card">
       <div className="mf-head">
         <div>
           <h2>{title}</h2>
@@ -326,7 +332,7 @@ export function Stats({ items }) {
   return (
     <div className="mf-stats">
       {items.map((item) => (
-        <div className="mf-stat" key={item.label}>
+        <div className="card mf-stat" key={item.label}>
           <b>{item.value}</b>
           <span>{item.label}</span>
         </div>
@@ -339,7 +345,7 @@ export function Meta({ items }) {
   return (
     <div className="mf-meta">
       {items.map((item) => (
-        <div key={item.label}>
+        <div className="card mf-meta-item" key={item.label}>
           <strong>{item.label}</strong>
           <p>{item.values?.filter(Boolean).join(' · ') || '—'}</p>
         </div>
@@ -355,8 +361,8 @@ export function Empty({ text }) {
 export function Table({ columns, rows, emptyText }) {
   if (!rows.length) return <Empty text={emptyText} />;
   return (
-    <div className="mf-table-wrap">
-      <table className="mf-table">
+    <div className="table-responsive mf-table-wrap">
+      <table className="table table-sm mb-0 mf-table">
         <thead>
           <tr>
             {columns.map((column) => (
