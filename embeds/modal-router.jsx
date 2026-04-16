@@ -39,6 +39,16 @@ function candidateBalanceStat(entity) {
   };
 }
 
+function PdfLinkCell({ url }) {
+  const href = TEXT(url);
+  if (!href) return '—';
+  return (
+    <a href={href} target="_blank" rel="noreferrer">
+      Ver PDF
+    </a>
+  );
+}
+
 function CandidateModal({ entity }) {
   const [pos, setPos] = useState('total');
   const expenseRows = byPos(entity.egresos, pos);
@@ -81,6 +91,7 @@ function CandidateModal({ entity }) {
             { header: 'Cédula / RUC', key: 'cedula' },
             { header: 'Tipo', key: 'tipo' },
             { header: 'Monto', key: 'monto' },
+            { header: 'PDF original', key: 'pdf' },
           ]}
           rows={entity.ingresos.map((row) => ({
             fecha: TEXT(row.fecha) || '—',
@@ -88,6 +99,7 @@ function CandidateModal({ entity }) {
             cedula: TEXT(row.cedulaRuc) || '—',
             tipo: contributionLabel(row),
             monto: MONEY(num(row.total)),
+            pdf: <PdfLinkCell url={row.pdfUrl} />,
           }))}
         />
       </Section>
@@ -138,6 +150,7 @@ function CandidateModal({ entity }) {
             { header: 'Detalle', key: 'detalle' },
             { header: 'Categoría', key: 'categoria' },
             { header: 'Monto', key: 'monto' },
+            { header: 'PDF original', key: 'pdf' },
           ]}
           rows={expenseRows.map((row) => ({
             fecha: TEXT(row.fecha) || '—',
@@ -145,6 +158,7 @@ function CandidateModal({ entity }) {
             detalle: TEXT(row.detalleGastoResumido) || TEXT(row.detalleGasto) || '—',
             categoria: TEXT(row.GastoCategoria) || 'Sin categoría',
             monto: MONEY(expenseAmount(row)),
+            pdf: <PdfLinkCell url={row.pdfUrl} />,
           }))}
         />
       </Section>
@@ -184,6 +198,7 @@ function DonorModal({ entity }) {
             { header: 'Partido', key: 'partido' },
             { header: 'Tipo', key: 'tipo' },
             { header: 'Monto', key: 'monto' },
+            { header: 'PDF original', key: 'pdf' },
           ]}
           rows={entity.ingresos.map((row) => ({
             fecha: TEXT(row.fecha) || '—',
@@ -191,6 +206,7 @@ function DonorModal({ entity }) {
             partido: TEXT(row.candidateParty) || 'Sin partido',
             tipo: contributionLabel(row),
             monto: MONEY(num(row.total)),
+            pdf: <PdfLinkCell url={row.pdfUrl} />,
           }))}
         />
       </Section>
@@ -252,6 +268,7 @@ function ProviderModal({ entity }) {
             { header: 'Partido', key: 'partido' },
             { header: 'Categoría', key: 'categoria' },
             { header: 'Monto', key: 'monto' },
+            { header: 'PDF original', key: 'pdf' },
           ]}
           rows={rows.map((row) => ({
             fecha: TEXT(row.fecha) || '—',
@@ -259,6 +276,7 @@ function ProviderModal({ entity }) {
             partido: TEXT(row.candidateParty) || 'Sin partido',
             categoria: TEXT(row.GastoCategoria) || TEXT(row.detalleGastoResumido) || 'Sin categoría',
             monto: MONEY(expenseAmount(row)),
+            pdf: <PdfLinkCell url={row.pdfUrl} />,
           }))}
         />
       </Section>

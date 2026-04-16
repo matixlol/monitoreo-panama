@@ -54,6 +54,7 @@ export type CsvExportDocument = {
   pageCount: number;
   status: string;
   errorMessage?: string;
+  pdfUrl?: string | null;
   // 'official-json' is used for locally-imported export augmentation data.
   source: 'validated' | 'gemini-3' | 'none' | 'official-json';
   sourceModel: string | null;
@@ -77,6 +78,7 @@ const BASE_CSV_COLUMNS = [
   'documentPageCount',
   'documentCreatedAt',
   'documentErrorMessage',
+  'pdfUrl',
   'candidateName',
   'candidatePosition',
   'candidateParty',
@@ -161,6 +163,8 @@ const getCsvValue = (column: string, doc: CsvExportDocument, row: CsvIngressRow 
       return doc._creationTime;
     case 'documentErrorMessage':
       return doc.errorMessage ?? null;
+    case 'pdfUrl':
+      return doc.pdfUrl ?? null;
     case 'candidateName':
       return doc.candidateName ?? null;
     case 'candidatePosition':
