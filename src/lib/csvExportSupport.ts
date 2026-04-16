@@ -109,6 +109,7 @@ export function enrichCsvExportData(exportData: CsvExportDocument[]): CsvExportD
       const candidate = findCandidateByFilename(doc.name);
       return {
         ...doc,
+        pdfUrl: candidate?.pdfUrl ?? doc.pdfUrl ?? null,
         candidateName: candidate?.candidateName ?? doc.candidateName ?? null,
         candidatePosition: candidate?.position ?? doc.candidatePosition ?? null,
         candidateParty: candidate?.party ?? doc.candidateParty ?? null,
