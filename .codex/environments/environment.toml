@@ -7,3 +7,8 @@ script = '''
 mise trust
 pnpm install
 '''
+
+[[actions]]
+name = "Run embeds"
+icon = "tool"
+command = "bun dev:embeds"
