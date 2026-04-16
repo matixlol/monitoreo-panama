@@ -21,6 +21,8 @@ type CandidateMetadata = {
   pdfUrl: string | null;
 };
 
+const GENERATED_SPLIT_PDF_SUFFIX_PATTERN = /-split-\d+(?=\.pdf$)/i;
+
 function isCsvExportDocument(value: unknown): value is CsvExportDocument {
   return Boolean(value) && typeof value === 'object' && typeof (value as { name?: unknown }).name === 'string';
 }
@@ -35,8 +37,12 @@ export function normalizeForComparison(value: string): string {
     .trim();
 }
 
+function normalizeFilenameForCandidateLookup(value: string): string {
+  return normalizeForComparison(value).replace(GENERATED_SPLIT_PDF_SUFFIX_PATTERN, '');
+}
+
 export function findCandidateByFilename(filename: string): CandidateMetadata | null {
-  const normalizedFilename = normalizeForComparison(filename);
+  const normalizedFilename = normalizeFilenameForCandidateLookup(filename);
 
   for (const candidate of documentsIndex as CandidateMetadata[]) {
     if (!candidate.pdfUrl) continue;
@@ -52,7 +58,7 @@ export function findCandidateByFilename(filename: string): CandidateMetadata | n
       }
     }
 
-    if (normalizeForComparison(pdfFilename) === normalizedFilename) {
+    if (normalizeFilenameForCandidateLookup(pdfFilename) === normalizedFilename) {
       return candidate;
     }
   }

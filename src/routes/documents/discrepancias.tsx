@@ -3,58 +3,7 @@ import { useQuery } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatPanamaCurrency } from '@/lib/currency';
-import documentsIndex from '../../data/documents-index.json';
-
-type CandidateMetadata = {
-  id: string;
-  candidateName: string;
-  documentId: string;
-  position: string;
-  party: string;
-  province: string | null;
-  district: string | null;
-  township: string | null;
-  status: string;
-  isProclaimed: boolean;
-  dateSent: string | null;
-  totalIngress: number;
-  totalEgress: number;
-  pdfUrl: string | null;
-};
-
-function normalizeForComparison(str: string): string {
-  return str
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[ÃÂ]/g, '')
-    .toLowerCase()
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function findCandidateByFilename(filename: string): CandidateMetadata | null {
-  const normalizedFilename = normalizeForComparison(filename);
-
-  for (const candidate of documentsIndex as CandidateMetadata[]) {
-    if (!candidate.pdfUrl) continue;
-
-    let pdfFilename = candidate.pdfUrl.split('/').pop() || '';
-    try {
-      pdfFilename = decodeURIComponent(decodeURIComponent(pdfFilename));
-    } catch {
-      try {
-        pdfFilename = decodeURIComponent(pdfFilename);
-      } catch {
-        // Use as-is if decoding fails
-      }
-    }
-
-    if (normalizeForComparison(pdfFilename) === normalizedFilename) {
-      return candidate;
-    }
-  }
-  return null;
-}
+import { findCandidateByFilename } from '../../lib/csvExportSupport';
 
 function DiscrepancyWarning({ note }: { note: string | null }) {
   return (
