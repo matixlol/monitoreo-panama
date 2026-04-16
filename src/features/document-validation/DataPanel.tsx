@@ -8,6 +8,7 @@ import { AmountByWeekChart } from './AmountByWeekChart';
 import { RowCountByPageChart } from './RowCountByPageChart';
 import { DiscrepanciesSummaryTable } from './DiscrepanciesSummaryTable';
 import type { EgressRow, IngressRow } from './types';
+import { sortRowsByDateDesc } from './utils';
 
 type Props = {
   currentPage: number;
@@ -103,6 +104,17 @@ export function DataPanel({
     if (!hasProposals) return null;
     return sortedProposals.find((p) => p.key === activeProposalTab) ?? sortedProposals[0] ?? null;
   }, [activeProposalTab, hasProposals, sortedProposals]);
+
+  const sortedIngressRows = useMemo(() => sortRowsByDateDesc(ingressRows), [ingressRows]);
+  const sortedEgressRows = useMemo(() => sortRowsByDateDesc(egressRows), [egressRows]);
+  const sortedProposalIngressRows = useMemo(
+    () => (activeProposal ? sortRowsByDateDesc(activeProposal.ingress) : []),
+    [activeProposal],
+  );
+  const sortedProposalEgressRows = useMemo(
+    () => (activeProposal ? sortRowsByDateDesc(activeProposal.egress) : []),
+    [activeProposal],
+  );
 
   const proposalTabsValue = activeProposal?.key ?? '';
 
@@ -294,7 +306,7 @@ export function DataPanel({
                                       </span>
                                     </div>
                                     <IngressTable
-                                      rows={activeProposal.ingress}
+                                      rows={sortedProposalIngressRows}
                                       allRows={activeProposal.ingress}
                                       onEdit={() => {}}
                                       onMove={() => {}}
@@ -313,7 +325,7 @@ export function DataPanel({
                                       </span>
                                     </div>
                                     <EgressTable
-                                      rows={activeProposal.egress}
+                                      rows={sortedProposalEgressRows}
                                       allRows={activeProposal.egress}
                                       onEdit={() => {}}
                                       onMove={() => {}}
@@ -361,7 +373,7 @@ export function DataPanel({
                     </div>
                   )}
                   <IngressTable
-                    rows={ingressRows}
+                    rows={sortedIngressRows}
                     allRows={allIngressRows}
                     onEdit={onEditIngress}
                     onMove={onMoveIngress}
@@ -379,7 +391,7 @@ export function DataPanel({
                     </div>
                   )}
                   <EgressTable
-                    rows={egressRows}
+                    rows={sortedEgressRows}
                     allRows={allEgressRows}
                     onEdit={onEditEgress}
                     onMove={onMoveEgress}

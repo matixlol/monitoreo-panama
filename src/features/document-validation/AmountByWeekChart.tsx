@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import * as d3 from 'd3';
 import { formatPanamaCurrency } from '@/lib/currency';
 import type { EgressRow, IngressRow } from './types';
+import { parseDocumentDate } from './utils';
 
 type Props = {
   ingressRows: IngressRow[];
@@ -16,12 +17,6 @@ type WeekData = {
   sortKey: number;
 };
 
-type ParsedDate = {
-  year: number;
-  month: number;
-  day: number;
-};
-
 const monthFormatter = new Intl.DateTimeFormat('es-PA', {
   month: 'short',
   timeZone: 'UTC',
@@ -29,45 +24,6 @@ const monthFormatter = new Intl.DateTimeFormat('es-PA', {
 
 function formatCurrencyFull(value: number): string {
   return formatPanamaCurrency(value, 0);
-}
-
-function parseDocumentDate(value: string | null | undefined): ParsedDate | null {
-  if (!value) return null;
-  const normalized = value.trim().replace(/\./g, '/').replace(/-/g, '/');
-  if (!normalized) return null;
-
-  let parts: ParsedDate | null = null;
-
-  const isoMatch = normalized.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
-  if (isoMatch) {
-    parts = {
-      year: Number(isoMatch[1]),
-      month: Number(isoMatch[2]),
-      day: Number(isoMatch[3]),
-    };
-  }
-
-  const dmyMatch = normalized.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (!parts && dmyMatch) {
-    parts = {
-      year: Number(dmyMatch[3]),
-      month: Number(dmyMatch[2]),
-      day: Number(dmyMatch[1]),
-    };
-  }
-
-  if (!parts) return null;
-
-  const date = new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
-  if (
-    date.getUTCFullYear() !== parts.year ||
-    date.getUTCMonth() !== parts.month - 1 ||
-    date.getUTCDate() !== parts.day
-  ) {
-    return null;
-  }
-
-  return parts;
 }
 
 function weekOfMonth(day: number): number {
