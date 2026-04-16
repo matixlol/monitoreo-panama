@@ -13,6 +13,7 @@ import { mapChart } from './charts/map.js';
 import { PANAMA_PROVINCE_NAMES } from './charts/panama-map.js';
 import { treemap } from './charts/treemap.js';
 import { ModalRouter } from './modal-router.jsx';
+import { GeneralSearchElementApp } from './general-search-element.jsx';
 import { CandidatesTableElementApp, TransactionsTableElementApp } from './tables-elements.jsx';
 import {
   ALL,
@@ -873,7 +874,8 @@ function defineContributorHistogramElement() {
   customElements.define('panama-histograma-aportantes-chart', PanamaContributorHistogramElement);
 }
 
-function defineReactElement(name, observedAttributes, renderApp) {
+function defineReactElement(name, observedAttributes, renderApp, options = {}) {
+  const { shadow = true } = options;
   if (typeof window === 'undefined' || customElements.get(name)) return;
   class PanamaReactElement extends HTMLElement {
     static get observedAttributes() {
@@ -908,8 +910,9 @@ function defineReactElement(name, observedAttributes, renderApp) {
     async render() {
       const token = (this._token || 0) + 1;
       this._token = token;
-      const shadowRoot = this.shadowRoot || this.attachShadow({ mode: 'open' });
-      this._root ||= createRoot(shadowRoot);
+      const target = shadow ? this.shadowRoot || this.attachShadow({ mode: 'open' }) : this;
+      if (!shadow) this.style.display = 'block';
+      this._root ||= createRoot(target);
       if (this._store) {
         this._root.render(renderApp({ element: this, store: this._store, loading: false, error: null }));
         return;
@@ -1138,6 +1141,14 @@ function defineChartElements() {
     'Tipo de gastos de campaña',
     ['ingresos-url', 'egresos-url'],
     (_, store) => renderHomeExpenseTreemapChart(store),
+  );
+  defineReactElement(
+    'panama-buscador-general',
+    ['search', 'ingresos-url', 'egresos-url'],
+    ({ element, store, loading, error }) => (
+      <GeneralSearchElementApp element={element} store={store} loading={loading} error={error} />
+    ),
+    { shadow: false },
   );
   defineReactElement(
     'panama-candidatos-table',
