@@ -5,21 +5,7 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
 const targetDir = path.join(repoRoot, 'embeds/data');
-
-function getBaseUrl() {
-  const arg = process.argv.find((value) => value.startsWith('--base-url='));
-  const raw =
-    (arg ? arg.slice('--base-url='.length) : null) ??
-    process.env.CSV_EXPORT_BASE_URL ??
-    process.env.VITE_CONVEX_URL ??
-    process.env.CONVEX_SITE_URL;
-
-  if (!raw) {
-    throw new Error('Missing base URL. Set CSV_EXPORT_BASE_URL, VITE_CONVEX_URL, CONVEX_SITE_URL, or pass --base-url=');
-  }
-
-  return raw.replace(/\/+$/, '');
-}
+const baseUrl = 'https://shiny-lynx-407.convex.site';
 
 async function downloadCsv(baseUrl, fileName) {
   const url = `${baseUrl}/csv/${fileName}`;
@@ -35,7 +21,5 @@ async function downloadCsv(baseUrl, fileName) {
 }
 
 await mkdir(targetDir, { recursive: true });
-
-const baseUrl = getBaseUrl();
 await downloadCsv(baseUrl, 'documentos-ingresos.csv');
 await downloadCsv(baseUrl, 'documentos-egresos.csv');
