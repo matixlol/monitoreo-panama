@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import * as d3 from 'd3';
 import { bars } from './charts/bars.js';
 import { incomeBreakdownChart } from './charts/income-breakdown.js';
 import { line } from './charts/line.js';
@@ -27,6 +28,7 @@ import {
   partyBreakdown,
   plural,
   posOptions,
+  slugify,
 } from './embed-shared.jsx';
 
 function candidateBalanceStat(entity) {
@@ -61,11 +63,88 @@ function modalHeading(route, entity) {
   return entity?.name ? `${type}: ${entity.name}` : type;
 }
 
+function csvCellValue(value) {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : '';
+  return TEXT(value);
+}
+
+function downloadTableCsv({ filename, columns, rows }) {
+  const csvText = d3.csvFormatRows([
+    columns.map((column) => TEXT(column.header)),
+    ...rows.map((row) => columns.map((column) => csvCellValue(row[column.key]))),
+  ]);
+  const blob = new Blob([`\uFEFF${csvText}`], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+function CsvDownloadButton({ columns, rows, filename, label }) {
+  return (
+    <button
+      className="mf-icon-button"
+      type="button"
+      aria-label={label}
+      title={label}
+      onClick={() => downloadTableCsv({ filename, columns, rows })}
+    >
+      <svg viewBox="0 0 20 20" aria-hidden="true">
+        <path
+          d="M10 3.75v8.5m0 0 3-3m-3 3-3-3M4.75 13.75v1.5c0 .55.45 1 1 1h8.5c.55 0 1-.45 1-1v-1.5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </button>
+  );
+}
+
 function CandidateModal({ entity }) {
   const [pos, setPos] = useState('total');
   const expenseRows = byPos(entity.egresos, pos);
   const expenseTree = expenseTreemapBreakdown(expenseRows);
   const balanceStat = candidateBalanceStat(entity);
+  const ingresoColumns = [
+    { header: 'Fecha', key: 'fecha' },
+    { header: 'Aportante', key: 'aportante', strong: true },
+    { header: 'Cédula / RUC', key: 'cedula' },
+    { header: 'Tipo', key: 'tipo' },
+    { header: 'Monto', key: 'monto' },
+    { header: 'PDF original', key: 'pdf' },
+  ];
+  const ingresoTableRows = entity.ingresos.map((row) => ({
+    fecha: TEXT(row.fecha) || '—',
+    aportante: TEXT(row.contribuyenteNombre) || 'Sin nombre',
+    cedula: TEXT(row.cedulaRuc) || '—',
+    tipo: contributionLabel(row),
+    monto: MONEY(num(row.total)),
+    pdf: TEXT(row.pdfUrl),
+  }));
+  const gastoColumns = [
+    { header: 'Fecha', key: 'fecha' },
+    { header: 'Proveedor', key: 'proveedor', strong: true },
+    { header: 'Detalle', key: 'detalle' },
+    { header: 'Categoría', key: 'categoria' },
+    { header: 'Monto', key: 'monto' },
+    { header: 'PDF original', key: 'pdf' },
+  ];
+  const gastoTableRows = expenseRows.map((row) => ({
+    fecha: TEXT(row.fecha) || '—',
+    proveedor: TEXT(row.proveedorNombre) || 'Sin nombre',
+    detalle: TEXT(row.detalleGastoResumido) || TEXT(row.detalleGasto) || '—',
+    categoria: TEXT(row.GastoCategoria) || 'Sin categoría',
+    monto: MONEY(expenseAmount(row)),
+    pdf: TEXT(row.pdfUrl),
+  }));
+  const entitySlug = slugify(entity.name) || 'candidato';
   return (
     <div className="mf-modal-stack">
       <Meta
@@ -94,24 +173,25 @@ function CandidateModal({ entity }) {
           <Empty text="No hay ingresos clasificados." />
         )}
       </Section>
-      <Section title="Tabla de aportantes">
+      <Section
+        title="Tabla de aportantes"
+        controls={
+          ingresoTableRows.length ? (
+            <CsvDownloadButton
+              columns={ingresoColumns}
+              rows={ingresoTableRows}
+              filename={`${entitySlug}-ingresos.csv`}
+              label="Descargar tabla de ingresos en CSV"
+            />
+          ) : null
+        }
+      >
         <Table
           emptyText="Esta candidatura no tiene aportes cargados."
-          columns={[
-            { header: 'Fecha', key: 'fecha' },
-            { header: 'Aportante', key: 'aportante', strong: true },
-            { header: 'Cédula / RUC', key: 'cedula' },
-            { header: 'Tipo', key: 'tipo' },
-            { header: 'Monto', key: 'monto' },
-            { header: 'PDF original', key: 'pdf' },
-          ]}
-          rows={entity.ingresos.map((row) => ({
-            fecha: TEXT(row.fecha) || '—',
-            aportante: TEXT(row.contribuyenteNombre) || 'Sin nombre',
-            cedula: TEXT(row.cedulaRuc) || '—',
-            tipo: contributionLabel(row),
-            monto: MONEY(num(row.total)),
-            pdf: <PdfLinkCell url={row.pdfUrl} />,
+          columns={ingresoColumns}
+          rows={ingresoTableRows.map((row) => ({
+            ...row,
+            pdf: <PdfLinkCell url={row.pdf} />,
           }))}
         />
       </Section>
@@ -153,24 +233,25 @@ function CandidateModal({ entity }) {
           <Empty text="No hay fechas válidas suficientes." />
         )}
       </Section>
-      <Section title="Tabla de gastos">
+      <Section
+        title="Tabla de gastos"
+        controls={
+          gastoTableRows.length ? (
+            <CsvDownloadButton
+              columns={gastoColumns}
+              rows={gastoTableRows}
+              filename={`${entitySlug}-egresos.csv`}
+              label="Descargar tabla de egresos en CSV"
+            />
+          ) : null
+        }
+      >
         <Table
           emptyText="Esta candidatura no tiene gastos cargados."
-          columns={[
-            { header: 'Fecha', key: 'fecha' },
-            { header: 'Proveedor', key: 'proveedor', strong: true },
-            { header: 'Detalle', key: 'detalle' },
-            { header: 'Categoría', key: 'categoria' },
-            { header: 'Monto', key: 'monto' },
-            { header: 'PDF original', key: 'pdf' },
-          ]}
-          rows={expenseRows.map((row) => ({
-            fecha: TEXT(row.fecha) || '—',
-            proveedor: TEXT(row.proveedorNombre) || 'Sin nombre',
-            detalle: TEXT(row.detalleGastoResumido) || TEXT(row.detalleGasto) || '—',
-            categoria: TEXT(row.GastoCategoria) || 'Sin categoría',
-            monto: MONEY(expenseAmount(row)),
-            pdf: <PdfLinkCell url={row.pdfUrl} />,
+          columns={gastoColumns}
+          rows={gastoTableRows.map((row) => ({
+            ...row,
+            pdf: <PdfLinkCell url={row.pdf} />,
           }))}
         />
       </Section>
@@ -179,6 +260,23 @@ function CandidateModal({ entity }) {
 }
 
 function DonorModal({ entity }) {
+  const columns = [
+    { header: 'Fecha', key: 'fecha' },
+    { header: 'Candidatura', key: 'candidato', strong: true },
+    { header: 'Partido', key: 'partido' },
+    { header: 'Tipo', key: 'tipo' },
+    { header: 'Monto', key: 'monto' },
+    { header: 'PDF original', key: 'pdf' },
+  ];
+  const tableRows = entity.ingresos.map((row) => ({
+    fecha: TEXT(row.fecha) || '—',
+    candidato: [TEXT(row.candidateName), TEXT(row.candidatePosition)].filter(Boolean).join(' · ') || 'Sin nombre',
+    partido: TEXT(row.candidateParty) || 'Sin partido',
+    tipo: contributionLabel(row),
+    monto: MONEY(num(row.total)),
+    pdf: TEXT(row.pdfUrl),
+  }));
+  const entitySlug = slugify(entity.name) || 'aportante';
   return (
     <div className="mf-modal-stack">
       <Meta
@@ -201,25 +299,25 @@ function DonorModal({ entity }) {
           <Empty text="Este aportante no tiene aportes clasificados." />
         )}
       </Section>
-      <Section title="Tabla de aportes">
+      <Section
+        title="Tabla de aportes"
+        controls={
+          tableRows.length ? (
+            <CsvDownloadButton
+              columns={columns}
+              rows={tableRows}
+              filename={`${entitySlug}-ingresos.csv`}
+              label="Descargar tabla de ingresos en CSV"
+            />
+          ) : null
+        }
+      >
         <Table
           emptyText="Este aportante no tiene registros cargados."
-          columns={[
-            { header: 'Fecha', key: 'fecha' },
-            { header: 'Candidatura', key: 'candidato', strong: true },
-            { header: 'Partido', key: 'partido' },
-            { header: 'Tipo', key: 'tipo' },
-            { header: 'Monto', key: 'monto' },
-            { header: 'PDF original', key: 'pdf' },
-          ]}
-          rows={entity.ingresos.map((row) => ({
-            fecha: TEXT(row.fecha) || '—',
-            candidato:
-              [TEXT(row.candidateName), TEXT(row.candidatePosition)].filter(Boolean).join(' · ') || 'Sin nombre',
-            partido: TEXT(row.candidateParty) || 'Sin partido',
-            tipo: contributionLabel(row),
-            monto: MONEY(num(row.total)),
-            pdf: <PdfLinkCell url={row.pdfUrl} />,
+          columns={columns}
+          rows={tableRows.map((row) => ({
+            ...row,
+            pdf: <PdfLinkCell url={row.pdf} />,
           }))}
         />
       </Section>
@@ -238,6 +336,23 @@ function ProviderModal({ entity }) {
   const [pos, setPos] = useState('total');
   const rows = byPos(entity.egresos, pos);
   const expenseTree = expenseTreemapBreakdown(rows);
+  const columns = [
+    { header: 'Fecha', key: 'fecha' },
+    { header: 'Candidatura', key: 'candidato', strong: true },
+    { header: 'Partido', key: 'partido' },
+    { header: 'Categoría', key: 'categoria' },
+    { header: 'Monto', key: 'monto' },
+    { header: 'PDF original', key: 'pdf' },
+  ];
+  const tableRows = rows.map((row) => ({
+    fecha: TEXT(row.fecha) || '—',
+    candidato: [TEXT(row.candidateName), TEXT(row.candidatePosition)].filter(Boolean).join(' · ') || 'Sin nombre',
+    partido: TEXT(row.candidateParty) || 'Sin partido',
+    categoria: TEXT(row.GastoCategoria) || TEXT(row.detalleGastoResumido) || 'Sin categoría',
+    monto: MONEY(expenseAmount(row)),
+    pdf: TEXT(row.pdfUrl),
+  }));
+  const entitySlug = slugify(entity.name) || 'proveedor';
   return (
     <div className="mf-modal-stack">
       <Meta
@@ -272,25 +387,25 @@ function ProviderModal({ entity }) {
           <Empty text="No hay gastos clasificados para esta selección." />
         )}
       </Section>
-      <Section title="Tabla de gastos">
+      <Section
+        title="Tabla de gastos"
+        controls={
+          tableRows.length ? (
+            <CsvDownloadButton
+              columns={columns}
+              rows={tableRows}
+              filename={`${entitySlug}-egresos.csv`}
+              label="Descargar tabla de egresos en CSV"
+            />
+          ) : null
+        }
+      >
         <Table
           emptyText="Este proveedor no tiene gastos cargados."
-          columns={[
-            { header: 'Fecha', key: 'fecha' },
-            { header: 'Candidatura', key: 'candidato', strong: true },
-            { header: 'Partido', key: 'partido' },
-            { header: 'Categoría', key: 'categoria' },
-            { header: 'Monto', key: 'monto' },
-            { header: 'PDF original', key: 'pdf' },
-          ]}
-          rows={rows.map((row) => ({
-            fecha: TEXT(row.fecha) || '—',
-            candidato:
-              [TEXT(row.candidateName), TEXT(row.candidatePosition)].filter(Boolean).join(' · ') || 'Sin nombre',
-            partido: TEXT(row.candidateParty) || 'Sin partido',
-            categoria: TEXT(row.GastoCategoria) || TEXT(row.detalleGastoResumido) || 'Sin categoría',
-            monto: MONEY(expenseAmount(row)),
-            pdf: <PdfLinkCell url={row.pdfUrl} />,
+          columns={columns}
+          rows={tableRows.map((row) => ({
+            ...row,
+            pdf: <PdfLinkCell url={row.pdf} />,
           }))}
         />
       </Section>
