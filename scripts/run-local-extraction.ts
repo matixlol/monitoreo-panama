@@ -39,6 +39,7 @@ type CliOptions = {
   documentIds: string[];
   model?: ModelKey;
   processing: boolean;
+  summaryOnly: boolean;
   help: boolean;
 };
 
@@ -46,9 +47,11 @@ function getUsage(): string {
   return [
     'Usage: bun run scripts/run-local-extraction.ts [documentId ...] [--model <model>]',
     '       bun run scripts/run-local-extraction.ts --processing [--model <model>]',
+    '       bun run scripts/run-local-extraction.ts --summary-only <documentId ...>',
     '',
     'Options:',
     '  --processing   Process every document currently in Convex with status "processing".',
+    '  --summary-only Re-run only summary extraction for the passed document IDs.',
     `  --model        Override the extraction model. One of: ${Object.keys(MODELS).join(', ')}`,
     '  --help         Show this help message.',
   ].join('\n');
@@ -58,6 +61,7 @@ function parseCli(argv: string[]): CliOptions {
   const documentIds: string[] = [];
   let model: ModelKey | undefined;
   let processing = false;
+  let summaryOnly = false;
   let help = false;
 
   for (let i = 0; i < argv.length; i++) {
@@ -70,6 +74,11 @@ function parseCli(argv: string[]): CliOptions {
 
     if (arg === '--processing') {
       processing = true;
+      continue;
+    }
+
+    if (arg === '--summary-only') {
+      summaryOnly = true;
       continue;
     }
 
@@ -93,7 +102,19 @@ function parseCli(argv: string[]): CliOptions {
     throw new Error('Pass document IDs or --processing, not both.');
   }
 
-  return { documentIds, model, processing, help };
+  if (processing && summaryOnly) {
+    throw new Error('Pass --processing or --summary-only, not both.');
+  }
+
+  if (summaryOnly && documentIds.length === 0) {
+    throw new Error('--summary-only requires one or more document IDs.');
+  }
+
+  if (summaryOnly && model) {
+    throw new Error('--model cannot be used with --summary-only.');
+  }
+
+  return { documentIds, model, processing, summaryOnly, help };
 }
 
 async function sleep(ms: number): Promise<void> {
@@ -375,19 +396,32 @@ async function processDocument(documentId: string, modelKey: ModelKey): Promise<
   console.log(`[${doc._id}] Done.`);
 }
 
+async function rerunSummaryForDocument(documentId: string): Promise<void> {
+  const doc = await getDocument(documentId);
+
+  if (!doc) {
+    throw new Error(`Document not found: ${documentId}`);
+  }
+
+  console.log(`\n=== Re-running summary for ${doc._id} ===`);
+  console.log(doc.name);
+
+  await runSummaryExtraction(documentId);
+
+  console.log(`[${doc._id}] Summary extraction re-run complete.`);
+}
+
 async function main(): Promise<void> {
-  const { documentIds: cliDocumentIds, model, processing, help } = parseCli(Bun.argv.slice(2));
+  const { documentIds: cliDocumentIds, model, processing, summaryOnly, help } = parseCli(Bun.argv.slice(2));
 
   if (help) {
     console.log(getUsage());
     return;
   }
 
-  if (!processing && cliDocumentIds.length === 0) {
+  if (!processing && !summaryOnly && cliDocumentIds.length === 0) {
     throw new Error(`No target specified.\n\n${getUsage()}`);
   }
-
-  const modelKey = await getConfiguredModelKey(model);
 
   console.log('Targeting Convex production deployment.');
 
@@ -398,6 +432,32 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (summaryOnly) {
+    const failures: Array<{ documentId: string; error: string }> = [];
+
+    for (const documentId of documentIds) {
+      try {
+        await rerunSummaryForDocument(documentId);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        failures.push({ documentId, error: message });
+        console.error(`\n[${documentId}] Failed: ${message}`);
+      }
+    }
+
+    if (failures.length > 0) {
+      console.error('\nCompleted with failures:');
+      for (const failure of failures) {
+        console.error(`- ${failure.documentId}: ${failure.error}`);
+      }
+      process.exit(1);
+    }
+
+    console.log('\nAll requested summaries completed successfully.');
+    return;
+  }
+
+  const modelKey = await getConfiguredModelKey(model);
   const failures: Array<{ documentId: string; error: string }> = [];
 
   for (const documentId of documentIds) {
