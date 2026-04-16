@@ -265,28 +265,14 @@ if (existsSync(join(DATA_DIR, "all_entries.json"))) {
 }
 
 const entries = allEntries.filter((entry) => {
-  const proclaimed = entry.isProclaimed;
   const position = entry.Postulation?.Position?.name.toLowerCase();
 
-  if (entry.Postulation.Event.EventCategory.name !== "Elección General")
-    return false;
   if (entry.Postulation.Event.Period.startYear !== 2022) return false;
   if (entry.Postulation.Event.Period.endYear !== 2024) return false;
 
-  // Include: 71 elected deputies, 81 elected mayors, 8 presidential candidates
-  if (position === "presidente") {
-    // All presidential candidates (including the president)
-    return true;
-  }
-  if (position === "diputado(a)" && proclaimed) {
-    // 71 elected deputies
-    return true;
-  }
-  if (position === "alcalde" && proclaimed) {
-    // 81 elected mayors
-    return true;
-  }
-  return false;
+  // Scrape every presidential affidavit entry across the whole cycle:
+  // Primarias, recolección de firmas, informes mensuales, fondo público, etc.
+  return position === "presidente";
 });
 
 console.log(
