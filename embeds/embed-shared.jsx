@@ -4,12 +4,60 @@ import * as d3 from 'd3';
 export const COLORS = ['#2f80ed', '#7db3f3', '#9ac7ff', '#b9d5fa', '#dceafd', '#9bc493', '#c8b0a3', '#e29196'];
 export const POS = ['Presidente', 'Diputado(a)', 'Alcalde'];
 export const ALL = 'Todas';
-export const MONEY = (v) =>
-  `B/.${new Intl.NumberFormat('de-DE', { maximumFractionDigits: Math.abs((+v || 0) % 1) > 0.001 ? 2 : 0, minimumFractionDigits: Math.abs((+v || 0) % 1) > 0.001 ? 2 : 0 }).format(+v || 0)}`;
-export const INT = (v) => new Intl.NumberFormat('de-DE', { maximumFractionDigits: 0 }).format(+v || 0);
+
+const embedCurrencyFormatters = {
+  whole: new Intl.NumberFormat('es-PA', {
+    style: 'currency',
+    currency: 'PAB',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }),
+  cents: new Intl.NumberFormat('es-PA', {
+    style: 'currency',
+    currency: 'PAB',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }),
+} as const;
+
+const embedNumberFormatters = {
+  whole: new Intl.NumberFormat('es-PA', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }),
+  cents: new Intl.NumberFormat('es-PA', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }),
+} as const;
+
+function normalizeCurrencySpacing(value) {
+  return value.replace(/\u00A0/g, ' ');
+}
+
+function hasCents(value) {
+  return Math.abs(value % 1) > 0.001;
+}
+
+export function formatEmbedCurrency(value, fractionDigits = 2) {
+  const formatter = fractionDigits === 0 ? embedCurrencyFormatters.whole : embedCurrencyFormatters.cents;
+  return normalizeCurrencySpacing(formatter.format(+value || 0));
+}
+
+export function formatEmbedCurrencyAuto(value) {
+  return formatEmbedCurrency(value, hasCents(+value || 0) ? 2 : 0);
+}
+
+export function formatEmbedNumber(value, fractionDigits = 2) {
+  const formatter = fractionDigits === 0 ? embedNumberFormatters.whole : embedNumberFormatters.cents;
+  return formatter.format(+value || 0);
+}
+
+export const MONEY = (v) => formatEmbedCurrencyAuto(v);
+export const INT = (v) => formatEmbedNumber(v, 0);
 export const SHORT = (v) => {
   const n = +v || 0;
-  return `B/.${Math.abs(n) >= 1e6 ? d3.format('.2s')(n) : d3.format(',.0f')(n)}`;
+  return Math.abs(n) >= 1e6 ? `B/. ${d3.format('.2s')(n)}` : formatEmbedCurrency(n, 0);
 };
 export const TEXT = (v) => (typeof v === 'string' ? v.trim() : v == null ? '' : `${v}`.trim());
 export const NORM = (v) =>
