@@ -1,0 +1,96 @@
+@import "tailwindcss";
+
+:root {
+  --background: oklch(0.98 0.005 85);
+  --foreground: oklch(0.24 0.015 70);
+  --card: oklch(0.995 0.003 85);
+  --card-foreground: oklch(0.24 0.015 70);
+  --primary: oklch(0.36 0.045 135);
+  --primary-foreground: oklch(0.98 0.004 90);
+  --secondary: oklch(0.94 0.008 80);
+  --secondary-foreground: oklch(0.3 0.014 70);
+  --muted: oklch(0.95 0.004 85);
+  --muted-foreground: oklch(0.5 0.012 70);
+  --accent: oklch(0.93 0.011 145);
+  --accent-foreground: oklch(0.28 0.022 140);
+  --border: oklch(0.89 0.01 75);
+  --input: oklch(0.89 0.01 75);
+  --ring: oklch(0.44 0.05 135);
+  --destructive: oklch(0.62 0.18 25);
+  --radius: 0.625rem;
+  --shadow-soft: 0 8px 24px rgba(57, 48, 33, 0.06);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply min-h-screen bg-background text-foreground antialiased;
+    background-image:
+      linear-gradient(to bottom, rgba(244, 241, 234, 0.92), rgba(244, 241, 234, 0.98)),
+      radial-gradient(circle at top left, rgba(167, 201, 163, 0.18), transparent 28%);
+    font-family: "IBM Plex Sans", "Helvetica Neue", sans-serif;
+  }
+
+  button,
+  input,
+  select {
+    font: inherit;
+  }
+}
+
+@layer utilities {
+  .page-shell {
+    @apply mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8;
+  }
+
+  .panel {
+    @apply rounded-lg border bg-card text-card-foreground;
+    box-shadow: var(--shadow-soft);
+  }
+
+  .data-table {
+    @apply w-full min-w-max border-separate border-spacing-0 text-sm;
+  }
+
+  .data-table thead th {
+    @apply sticky top-0 border-b bg-card px-3 py-2 text-left font-medium text-muted-foreground;
+  }
+
+  .data-table tbody td {
+    @apply border-b px-3 py-2 align-top;
+  }
+
+  .data-table tbody tr:last-child td {
+    @apply border-b-0;
+  }
+}
