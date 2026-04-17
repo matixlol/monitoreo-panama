@@ -428,7 +428,7 @@ function renderExpenseTreemapChart(store) {
 }
 
 function renderHomeExpenseTreemapChart(store) {
-  return wrapMobileScrollableChart(treemap(expenseTreemapBreakdown(store.egresos), chartOpts), 'treemap');
+  return treemap(expenseTreemapBreakdown(store.egresos), chartOpts);
 }
 
 const CONTRIBUTOR_HISTOGRAM_TABS = [

@@ -120,6 +120,9 @@ const STYLE = `
 .tm-tooltip-title{font-weight:700;margin-bottom:4px}
 .tm-tooltip-row{font-size:12px;line-height:1.35}
 .tm-tooltip-hint{margin-top:6px;font-size:12px;opacity:.75}
+@media (max-width:720px){
+  .tm-canvas{aspect-ratio:1000 / 620}
+}
 `;
 
 export const treemap = (data, { colors = [], money, int }) => {
