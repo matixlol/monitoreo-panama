@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { INT, MONEY, NORM, TEXT, buildHashRoute } from './embed-shared.jsx';
+import { INT, MONEY, NORM, TEXT, buildHashRoute, candidateDisplayName, candidateFullName } from './embed-shared.jsx';
 
 const SECTION_RESULT_LIMIT = 20;
 const EMPTY_FILTERED_SECTIONS = [
@@ -102,42 +102,49 @@ function renderHighlightedText(text, query) {
 }
 
 function buildCandidateSearchRow(candidate) {
+  const displayName = candidateDisplayName(candidate);
+  const fullName = candidateFullName(candidate);
+  const metaValues = [
+    fullName !== displayName ? fullName : '',
+    joinValues(candidate.positions.filter(Boolean)),
+    joinValues(candidate.parties.filter(Boolean)),
+    joinValues(candidate.provinces.filter(Boolean)),
+    joinValues(candidate.districts.filter(Boolean)),
+  ].filter(Boolean);
   return {
     id: candidate.id,
     href: buildHashRoute('candidato', candidate.id),
-    name: TEXT(candidate.name) || 'Sin nombre',
-    meta: [
-      joinValues(candidate.positions.filter(Boolean)),
-      joinValues(candidate.parties.filter(Boolean)),
-      joinValues(candidate.provinces.filter(Boolean)),
-      joinValues(candidate.districts.filter(Boolean)),
-    ]
-      .filter(Boolean)
-      .join(' · '),
+    name: displayName,
+    meta: metaValues.join(' · '),
+    searchText: NORM([displayName, fullName, ...metaValues].join(' ')),
     summary: `${MONEY(candidate.ingresoTotal)} ingresos · ${MONEY(candidate.egresoTotal)} gastos`,
   };
 }
 
 function buildDonorSearchRow(donor) {
+  const meta = [joinValues(donor.positions.filter(Boolean)), joinValues(donor.parties.filter(Boolean))]
+    .filter(Boolean)
+    .join(' · ');
   return {
     id: donor.id,
     href: buildHashRoute('aportante', donor.id),
     name: TEXT(donor.name) || 'Sin nombre',
-    meta: [joinValues(donor.positions.filter(Boolean)), joinValues(donor.parties.filter(Boolean))]
-      .filter(Boolean)
-      .join(' · '),
+    meta,
+    searchText: NORM([TEXT(donor.name), meta].join(' ')),
     summary: `${MONEY(donor.total)} aportados · ${INT(donor.candidateCount)} candidaturas`,
   };
 }
 
 function buildProviderSearchRow(provider) {
+  const meta = [joinValues(provider.positions.filter(Boolean)), joinValues(provider.parties.filter(Boolean))]
+    .filter(Boolean)
+    .join(' · ');
   return {
     id: provider.id,
     href: buildHashRoute('proveedor', provider.id),
     name: TEXT(provider.name) || 'Sin nombre',
-    meta: [joinValues(provider.positions.filter(Boolean)), joinValues(provider.parties.filter(Boolean))]
-      .filter(Boolean)
-      .join(' · '),
+    meta,
+    searchText: NORM([TEXT(provider.name), meta].join(' ')),
     summary: `${MONEY(provider.total)} facturados · ${INT(provider.candidateCount)} candidaturas`,
   };
 }
@@ -148,9 +155,7 @@ function filterSearchRows(rows, buildRow, tokens) {
 
   for (const item of rows) {
     const row = buildRow(item);
-    const searchName = NORM(row.name);
-    const searchMeta = NORM(row.meta);
-    const searchAll = searchMeta ? `${searchName} ${searchMeta}` : searchName;
+    const searchAll = row.searchText || NORM([row.name, row.meta].filter(Boolean).join(' '));
 
     if (!tokens.every((token) => searchAll.includes(token))) continue;
 

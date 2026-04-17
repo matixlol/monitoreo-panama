@@ -74,12 +74,16 @@ export const candidateIdFromRow = (row) => {
   const position = TEXT(row?.candidatePosition);
   return slugify([name, position].filter(Boolean).join(' | ')) || slugify(name);
 };
-export const candidateLabel = (candidate) => {
+export const candidateDisplayName = (candidate) =>
+  TEXT(candidate?.commonName || candidate?.displayName || candidate?.name || candidate?.candidateName) || 'Sin nombre';
+export const candidateFullName = (candidate) =>
+  TEXT(candidate?.fullName || candidate?.name || candidate?.candidateName) || 'Sin nombre';
+export const candidateLabel = (candidate, { preferFullName = false } = {}) => {
   const singleValue = (value) => {
     const values = uniq((Array.isArray(value) ? value : [value]).map(TEXT).filter(Boolean));
     return values.length === 1 ? values[0] : '';
   };
-  const name = TEXT(candidate?.name || candidate?.candidateName) || 'Sin nombre';
+  const name = preferFullName ? candidateFullName(candidate) : candidateDisplayName(candidate);
   const position = singleValue(candidate?.position || candidate?.candidatePosition || candidate?.positions);
   const province = singleValue(candidate?.province || candidate?.candidateProvince || candidate?.provinces);
   const district = singleValue(candidate?.district || candidate?.candidateDistrict || candidate?.districts);

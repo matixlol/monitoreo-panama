@@ -7,6 +7,8 @@ import {
   NORM,
   TEXT,
   buildHashRoute,
+  candidateDisplayName,
+  candidateFullName,
   candidateIdFromRow,
   candidateLabel,
   contributionLabel,
@@ -459,29 +461,35 @@ function VirtualizedRowsView({ table, emptyText, gridTemplateColumns, minWidth =
 
 function buildCandidateRows(store) {
   return store.candidates
-    .map((candidate) => ({
-      id: candidate.id,
-      name: TEXT(candidate.name) || 'Sin nombre',
-      parties: candidate.parties.filter(Boolean),
-      partiesLabel: joinValues(candidate.parties.filter(Boolean)),
-      positions: candidate.positions.filter(Boolean),
-      positionsLabel: joinValues(candidate.positions.filter(Boolean)),
-      provinces: candidate.provinces.filter(Boolean),
-      provincesLabel: joinValues(candidate.provinces.filter(Boolean)),
-      districts: candidate.districts.filter(Boolean),
-      districtsLabel: joinValues(candidate.districts.filter(Boolean)),
-      ingresoTotal: candidate.ingresoTotal,
-      egresoTotal: candidate.egresoTotal,
-      searchText: NORM(
-        [
-          candidate.name,
-          ...candidate.parties,
-          ...candidate.positions,
-          ...candidate.provinces,
-          ...candidate.districts,
-        ].join(' '),
-      ),
-    }))
+    .map((candidate) => {
+      const name = candidateDisplayName(candidate);
+      const fullName = candidateFullName(candidate);
+      return {
+        id: candidate.id,
+        name,
+        fullName,
+        parties: candidate.parties.filter(Boolean),
+        partiesLabel: joinValues(candidate.parties.filter(Boolean)),
+        positions: candidate.positions.filter(Boolean),
+        positionsLabel: joinValues(candidate.positions.filter(Boolean)),
+        provinces: candidate.provinces.filter(Boolean),
+        provincesLabel: joinValues(candidate.provinces.filter(Boolean)),
+        districts: candidate.districts.filter(Boolean),
+        districtsLabel: joinValues(candidate.districts.filter(Boolean)),
+        ingresoTotal: candidate.ingresoTotal,
+        egresoTotal: candidate.egresoTotal,
+        searchText: NORM(
+          [
+            name,
+            fullName,
+            ...candidate.parties,
+            ...candidate.positions,
+            ...candidate.provinces,
+            ...candidate.districts,
+          ].join(' '),
+        ),
+      };
+    })
     .sort((a, b) => localeAsc(a.name, b.name));
 }
 
@@ -489,6 +497,9 @@ function buildTransactionRows(store) {
   const ingresos = store.ingresos.map((row, index) => {
     const candidateName = TEXT(row.candidateName) || 'Sin nombre';
     const candidateId = candidateIdFromRow(row);
+    const candidate = store.candidateById.get(candidateId);
+    const candidateDisplay = candidateDisplayName(candidate || { candidateName });
+    const candidateFull = candidateFullName(candidate || { candidateName });
     const amount = num(row.total);
     const parsedDate = parsePanamaDate(row.fecha);
     const counterparty = TEXT(row.contribuyenteNombre) || 'Sin nombre';
@@ -499,6 +510,8 @@ function buildTransactionRows(store) {
       kindLabel: 'Ingreso',
       candidateId,
       candidateName,
+      candidateDisplayName: candidateDisplay,
+      candidateFullName: candidateFull,
       position: TEXT(row.candidatePosition),
       party: TEXT(row.candidateParty),
       province: TEXT(row.candidateProvince),
@@ -513,6 +526,8 @@ function buildTransactionRows(store) {
       amountText: `+${MONEY(amount)}`,
       searchText: NORM(
         [
+          candidateDisplay,
+          candidateFull,
           candidateName,
           row.candidatePosition,
           row.candidateParty,
@@ -530,6 +545,9 @@ function buildTransactionRows(store) {
   const egresos = store.egresos.map((row, index) => {
     const candidateName = TEXT(row.candidateName) || 'Sin nombre';
     const candidateId = candidateIdFromRow(row);
+    const candidate = store.candidateById.get(candidateId);
+    const candidateDisplay = candidateDisplayName(candidate || { candidateName });
+    const candidateFull = candidateFullName(candidate || { candidateName });
     const amount = expenseAmount(row);
     const parsedDate = parsePanamaDate(row.fecha);
     const counterparty = TEXT(row.proveedorNombre) || 'Sin nombre';
@@ -541,6 +559,8 @@ function buildTransactionRows(store) {
       kindLabel: 'Egreso',
       candidateId,
       candidateName,
+      candidateDisplayName: candidateDisplay,
+      candidateFullName: candidateFull,
       position: TEXT(row.candidatePosition),
       party: TEXT(row.candidateParty),
       province: TEXT(row.candidateProvince),
@@ -555,6 +575,8 @@ function buildTransactionRows(store) {
       amountText: `−${MONEY(amount)}`,
       searchText: NORM(
         [
+          candidateDisplay,
+          candidateFull,
           candidateName,
           row.candidatePosition,
           row.candidateParty,
@@ -584,6 +606,8 @@ function resolveCandidateId(store, element) {
   if (bySlug && store.candidateById.has(bySlug)) return bySlug;
   const byLabel = store.candidates.find((candidate) => NORM(candidateFilterLabel(candidate)) === NORM(rawName));
   if (byLabel) return byLabel.id;
+  const byDisplayName = store.candidates.filter((candidate) => NORM(candidateDisplayName(candidate)) === NORM(rawName));
+  if (byDisplayName.length === 1) return byDisplayName[0].id;
   const byName = store.candidates.filter((candidate) => NORM(candidate.name) === NORM(rawName));
   return byName.length === 1 ? byName[0].id : byName[0]?.id || '';
 }
@@ -647,6 +671,7 @@ function CandidatesTable({ element, store }) {
             <a className="pt-link" href={buildHashRoute('candidato', row.original.id)}>
               {row.original.name}
             </a>
+            {row.original.fullName !== row.original.name ? <div className="pt-subline">{row.original.fullName}</div> : null}
             <div className="pt-subline">
               {MONEY(row.original.ingresoTotal)} ingresos · {MONEY(row.original.egresoTotal)} gastos
             </div>
@@ -825,13 +850,16 @@ function TransactionsTable({ element, store }) {
       : [
           {
             id: 'candidateName',
-            accessorKey: 'candidateName',
+            accessorKey: 'candidateDisplayName',
             header: 'Candidatura',
             cell: ({ row }) => (
               <>
                 <a className="pt-link" href={buildHashRoute('candidato', row.original.candidateId)}>
-                  {row.original.candidateName}
+                  {row.original.candidateDisplayName}
                 </a>
+                {row.original.candidateFullName !== row.original.candidateDisplayName ? (
+                  <div className="pt-subline">{row.original.candidateFullName}</div>
+                ) : null}
                 <div className="pt-subline">
                   {[row.original.party, row.original.position].filter(Boolean).join(' · ') || '—'}
                 </div>
