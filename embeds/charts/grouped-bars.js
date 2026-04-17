@@ -61,7 +61,7 @@ export function groupedBarsChart(items, { int, compact = false } = {}) {
 
   const plot = Plot.plot({
     ...plotBase,
-    width: compact ? 176 : 210,
+    width: compact ? 212 : 210,
     height: compact ? 170 : 260,
     marginLeft: compact ? 38 : 46,
     marginRight: 12,
