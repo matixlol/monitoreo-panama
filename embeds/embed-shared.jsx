@@ -18,7 +18,7 @@ const embedCurrencyFormatters = {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }),
-} as const;
+};
 
 const embedNumberFormatters = {
   whole: new Intl.NumberFormat('es-PA', {
@@ -29,7 +29,7 @@ const embedNumberFormatters = {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }),
-} as const;
+};
 
 function normalizeCurrencySpacing(value) {
   return value.replace(/\u00A0/g, ' ');
