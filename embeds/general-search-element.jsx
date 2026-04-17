@@ -1,4 +1,4 @@
-import { useDeferredValue, useMemo } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { INT, MONEY, NORM, TEXT, buildHashRoute } from './embed-shared.jsx';
 
 const SECTION_RESULT_LIMIT = 20;
@@ -265,27 +265,33 @@ function filterGeneralSearchSections(sections, query) {
 
 function SearchResultSection({ title, rows, totalMatches, emptyText, query }) {
   return (
-    <section className="card mb-3">
-      <div className="card-header d-flex justify-content-between align-items-center">
-        <span className="small font-weight-bold text-uppercase">{title}</span>
-        <span className="badge badge-pill badge-secondary">{INT(totalMatches)}</span>
+    <section className="card mb-2">
+      <div className="card-header d-flex justify-content-between align-items-center py-2 px-3">
+        <span className="small font-weight-bold">{title}</span>
+        <span className="badge badge-secondary">{INT(totalMatches)}</span>
       </div>
       {rows.length ? (
         <>
           {totalMatches > rows.length ? (
-            <div className="card-body border-bottom py-2 small text-muted">
+            <div className="card-body border-bottom py-2 px-3 small text-muted">
               Mostrando {INT(rows.length)} resultados más relevantes de {INT(totalMatches)}.
             </div>
           ) : null}
           <div className="list-group list-group-flush">
             {rows.map((row) => (
-              <a className="list-group-item list-group-item-action" href={row.href} key={row.id}>
+              <a className="list-group-item list-group-item-action py-2 px-3" href={row.href} key={row.id}>
                 <div className="d-flex w-100 justify-content-between align-items-start">
-                  <div className="pr-3">
-                    <div className="font-weight-bold">{renderHighlightedText(row.name, query)}</div>
-                    <div className="small text-muted">{renderHighlightedText(row.meta, query)}</div>
+                  <div className="pr-2">
+                    <div className="font-weight-bold mb-1" style={{ lineHeight: 1.2 }}>
+                      {renderHighlightedText(row.name, query)}
+                    </div>
+                    <div className="small text-muted mb-0" style={{ lineHeight: 1.2 }}>
+                      {renderHighlightedText(row.meta, query)}
+                    </div>
                   </div>
-                  <div className="small text-muted text-right">{row.summary}</div>
+                  <div className="small text-muted text-right pl-2" style={{ lineHeight: 1.2, whiteSpace: 'nowrap' }}>
+                    {row.summary}
+                  </div>
                 </div>
               </a>
             ))}
@@ -300,6 +306,7 @@ function SearchResultSection({ title, rows, totalMatches, emptyText, query }) {
 
 function GeneralSearch({ element, store }) {
   const query = attr(element, 'search', '');
+  const [draftQuery, setDraftQuery] = useState(query);
   const deferredQuery = useDeferredValue(query);
   const sections = useMemo(() => buildGeneralSearchSections(store), [store]);
   const filteredSections = useMemo(
@@ -309,30 +316,56 @@ function GeneralSearch({ element, store }) {
   const totalResults = filteredSections.reduce((count, section) => count + section.rows.length, 0);
   const hasPendingResults = query.trim() !== deferredQuery.trim();
 
+  useEffect(() => {
+    setDraftQuery(query);
+  }, [query]);
+
+  function handleSubmit(event) {
+    event.preventDefault();
+    element.applyAttrs({ search: draftQuery });
+  }
+
   return (
     <>
-      <div className="form-group mb-4">
+      <form className="form-group mb-3" onSubmit={handleSubmit}>
         <label className="font-weight-bold d-block mb-2">
           Buscar
-          <input
-            className="form-control mt-2"
-            type="search"
-            placeholder="Buscar candidaturas, donantes o proveedores"
-            value={query}
-            onInput={(event) => element.applyAttrs({ search: event.currentTarget.value })}
-          />
+          <div className="input-group mt-2">
+            <input
+              className="form-control"
+              type="search"
+              placeholder="Buscar candidaturas, donantes o proveedores"
+              value={draftQuery}
+              onChange={(event) => setDraftQuery(event.currentTarget.value)}
+            />
+            <div className="input-group-append">
+              <button className="btn btn-outline-secondary" type="submit">
+                Buscar
+              </button>
+            </div>
+          </div>
         </label>
         <small className="form-text text-muted">
-          {query.trim()
+          {draftQuery.trim() !== query.trim()
+            ? 'Presioná Enter o hacé clic en Buscar para actualizar los resultados.'
+            : query.trim()
             ? hasPendingResults
               ? `Buscando “${query.trim()}”…`
               : `${INT(totalResults)} resultados visibles para “${query.trim()}”.`
             : 'Escribí una palabra y te muestro coincidencias en candidaturas, donantes y proveedores.'}
         </small>
-      </div>
+      </form>
 
       {query.trim() ? (
-        <div style={{ maxHeight: '40vh', overflowY: 'auto' }}>
+        <div
+          style={{
+            maxHeight: '40vh',
+            overflowY: 'auto',
+            padding: '0.5rem',
+            background: '#f6f8fa',
+            border: '1px solid #dee2e6',
+          }}
+        >
           {filteredSections.map((section) => (
             <SearchResultSection
               title={section.title}
