@@ -16,6 +16,17 @@
       rel="stylesheet"
       href="https://www.libertadciudadana.org/wp-content/cache/wpo-minify/1773896283/assets/wpo-minify-header-twentyseventeen-style1774410060.min.css"
     />
+    <style>
+      .mf-details {
+        margin-top: 2rem;
+      }
+
+      .mf-details summary {
+        cursor: pointer;
+        font-weight: 600;
+        margin-bottom: 1rem;
+      }
+    </style>
   </head>
   <body>
     <div class="mf-root">
@@ -133,26 +144,6 @@
         <section class="mf-card">
           <div class="mf-head">
             <div>
-              <h2>Mapa financiero</h2>
-              <p class="mf-note">Mapa con selector de cargo, métrica y filtro.</p>
-            </div>
-          </div>
-          <div class="mf-section-body">
-            <aside class="mf-code">
-              <pre>
-&lt;script type="module" src="https://fichas.panama.datos.party/visualizaciones-panama.js"&gt;&lt;/script&gt;
-&lt;panama-mapa-financiero-chart&gt;&lt;/panama-mapa-financiero-chart&gt;</pre
-              >
-            </aside>
-            <div class="mf-section-main">
-              <panama-mapa-financiero-chart></panama-mapa-financiero-chart>
-            </div>
-          </div>
-        </section>
-
-        <section class="mf-card">
-          <div class="mf-head">
-            <div>
               <h2>Aportantes</h2>
               <p class="mf-note">Bubble chart de aportantes con apertura directa de ficha.</p>
             </div>
@@ -166,26 +157,6 @@
             </aside>
             <div class="mf-section-main">
               <panama-aportantes-chart></panama-aportantes-chart>
-            </div>
-          </div>
-        </section>
-
-        <section class="mf-card">
-          <div class="mf-head">
-            <div>
-              <h2>Histograma de aportantes</h2>
-              <p class="mf-note">Distribución facetada por cargo, con modos por cantidad, suma total y fecha.</p>
-            </div>
-          </div>
-          <div class="mf-section-body">
-            <aside class="mf-code">
-              <pre>
-&lt;script type="module" src="https://fichas.panama.datos.party/visualizaciones-panama.js"&gt;&lt;/script&gt;
-&lt;panama-histograma-aportantes-chart&gt;&lt;/panama-histograma-aportantes-chart&gt;</pre
-              >
-            </aside>
-            <div class="mf-section-main">
-              <panama-histograma-aportantes-chart></panama-histograma-aportantes-chart>
             </div>
           </div>
         </section>
@@ -230,48 +201,94 @@
           </div>
         </section>
 
-        <section class="mf-card">
-          <div class="mf-head">
-            <div>
-              <h2>Listado de candidaturas</h2>
-              <p class="mf-note">
-                Tabla con búsqueda, filtros por partido, provincia y cargo, y apertura directa de ficha.
-              </p>
+      </div>
+
+      <details class="mf-details">
+        <summary>Visualizaciones y tablas avanzadas</summary>
+        <div class="mf-grid">
+          <section class="mf-card">
+            <div class="mf-head">
+              <div>
+                <h2>Mapa financiero</h2>
+                <p class="mf-note">Mapa con selector de cargo, métrica y filtro.</p>
+              </div>
             </div>
-          </div>
-          <div class="mf-section-body">
-            <aside class="mf-code">
-              <pre>
+            <div class="mf-section-body">
+              <aside class="mf-code">
+                <pre>
+&lt;script type="module" src="https://fichas.panama.datos.party/visualizaciones-panama.js"&gt;&lt;/script&gt;
+&lt;panama-mapa-financiero-chart&gt;&lt;/panama-mapa-financiero-chart&gt;</pre
+                >
+              </aside>
+              <div class="mf-section-main">
+                <panama-mapa-financiero-chart></panama-mapa-financiero-chart>
+              </div>
+            </div>
+          </section>
+
+          <section class="mf-card">
+            <div class="mf-head">
+              <div>
+                <h2>Histograma de aportantes</h2>
+                <p class="mf-note">Distribución facetada por cargo, con modos por cantidad, suma total y fecha.</p>
+              </div>
+            </div>
+            <div class="mf-section-body">
+              <aside class="mf-code">
+                <pre>
+&lt;script type="module" src="https://fichas.panama.datos.party/visualizaciones-panama.js"&gt;&lt;/script&gt;
+&lt;panama-histograma-aportantes-chart&gt;&lt;/panama-histograma-aportantes-chart&gt;</pre
+                >
+              </aside>
+              <div class="mf-section-main">
+                <panama-histograma-aportantes-chart></panama-histograma-aportantes-chart>
+              </div>
+            </div>
+          </section>
+
+          <section class="mf-card">
+            <div class="mf-head">
+              <div>
+                <h2>Listado de candidaturas</h2>
+                <p class="mf-note">
+                  Tabla con búsqueda, filtros por partido, provincia y cargo, y apertura directa de ficha.
+                </p>
+              </div>
+            </div>
+            <div class="mf-section-body">
+              <aside class="mf-code">
+                <pre>
 &lt;script type="module" src="https://fichas.panama.datos.party/visualizaciones-panama.js"&gt;&lt;/script&gt;
 &lt;panama-candidatos-table&gt;&lt;/panama-candidatos-table&gt;</pre
-              >
-            </aside>
-            <div class="mf-section-main">
-              <panama-candidatos-table></panama-candidatos-table>
+                >
+              </aside>
+              <div class="mf-section-main">
+                <panama-candidatos-table></panama-candidatos-table>
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        <section class="mf-card">
-          <div class="mf-head">
-            <div>
-              <h2>Transacciones por candidatura</h2>
-              <p class="mf-note">Tabla de ingresos y egresos con filtro por candidatura, tipo de movimiento y cargo.</p>
+          <section class="mf-card">
+            <div class="mf-head">
+              <div>
+                <h2>Transacciones por candidatura</h2>
+                <p class="mf-note">Tabla de ingresos y egresos con filtro por candidatura, tipo de movimiento y cargo.</p>
+              </div>
             </div>
-          </div>
-          <div class="mf-section-body">
-            <aside class="mf-code">
-              <pre>
+            <div class="mf-section-body">
+              <aside class="mf-code">
+                <pre>
 &lt;script type="module" src="https://fichas.panama.datos.party/visualizaciones-panama.js"&gt;&lt;/script&gt;
 &lt;panama-transacciones-table candidate-id="francisco-javier-agapi-chami"&gt;&lt;/panama-transacciones-table&gt;</pre
-              >
-            </aside>
-            <div class="mf-section-main">
-              <panama-transacciones-table candidate-id="francisco-javier-agapi-chami"></panama-transacciones-table>
+                >
+              </aside>
+              <div class="mf-section-main">
+                <panama-transacciones-table candidate-id="francisco-javier-agapi-chami"></panama-transacciones-table>
+              </div>
             </div>
-          </div>
-        </section>
-      </div>
+          </section>
+        </div>
+      </details>
 
       <panama-fichas-router empty-hash="#/"></panama-fichas-router>
     </div>
