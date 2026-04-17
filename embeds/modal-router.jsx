@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import * as d3 from 'd3';
 import { bars } from './charts/bars.js';
-import { incomeBreakdownChart } from './charts/income-breakdown.js';
 import { line } from './charts/line.js';
 import { treemap } from './charts/treemap.js';
+import { FinanciacionChartStyles, IncomeBreakdownChart } from './financiacion-chart-element.jsx';
 import {
   Empty,
   INT,
@@ -179,10 +179,10 @@ function CandidateModal({ entity }) {
       />
       <Section title="Financiación por tipo">
         {incomeBreakdown(entity.ingresos).length ? (
-          <PlotFigure
-            renderNode={() => incomeBreakdownChart(incomeBreakdown(entity.ingresos), chartOpts)}
-            deps={[entity.ingresos]}
-          />
+          <>
+            <FinanciacionChartStyles />
+            <IncomeBreakdownChart items={incomeBreakdown(entity.ingresos)} />
+          </>
         ) : (
           <Empty text="No hay ingresos clasificados." />
         )}
