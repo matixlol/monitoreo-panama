@@ -727,6 +727,7 @@ function wrapMobileScrollableChart(node, variant) {
     if (!stage) return node;
     const scroll = document.createElement('div');
     scroll.className = 'wc-mobile-scroll wc-mobile-scroll--map';
+    scroll.dataset.scrollKey = variant;
     const inner = document.createElement('div');
     inner.className = 'wc-mobile-scroll__inner';
     inner.append(stage);
@@ -738,6 +739,7 @@ function wrapMobileScrollableChart(node, variant) {
   }
   const wrap = document.createElement('div');
   wrap.className = `wc-mobile-scroll wc-mobile-scroll--${variant}`;
+  wrap.dataset.scrollKey = variant;
   const inner = document.createElement('div');
   inner.className = 'wc-mobile-scroll__inner';
   inner.append(node);
@@ -799,8 +801,11 @@ function defineChartElement(name, title, observedAttributes, renderChart, getCon
       const token = (this._token || 0) + 1;
       this._token = token;
       const bare = this.hasAttribute('bare');
-      const previousMapScroll = root.querySelector('.wc-mobile-scroll--map');
-      if (previousMapScroll) this._mapScrollLeft = previousMapScroll.scrollLeft;
+      this._mobileScrollPositions = Object.fromEntries(
+        Array.from(root.querySelectorAll('.wc-mobile-scroll'))
+          .map((node) => [node.dataset.scrollKey || node.className, node.scrollLeft])
+          .filter(([, scrollLeft]) => Number.isFinite(scrollLeft)),
+      );
       root.innerHTML = `<style>${chartElementCss}</style>`;
       if (bare) {
         root.append(Object.assign(document.createElement('div'), { className: 'loading', textContent: 'Cargando…' }));
@@ -850,10 +855,14 @@ function defineChartElement(name, title, observedAttributes, renderChart, getCon
         } else {
           root.append(panel.panel);
         }
-        const nextMapScroll = root.querySelector('.wc-mobile-scroll--map');
-        if (nextMapScroll && Number.isFinite(this._mapScrollLeft)) {
+        const nextScrollableNodes = Array.from(root.querySelectorAll('.wc-mobile-scroll'));
+        if (nextScrollableNodes.length && this._mobileScrollPositions) {
           requestAnimationFrame(() => {
-            nextMapScroll.scrollLeft = this._mapScrollLeft;
+            nextScrollableNodes.forEach((scrollNode) => {
+              const key = scrollNode.dataset.scrollKey || scrollNode.className;
+              const scrollLeft = this._mobileScrollPositions[key];
+              if (Number.isFinite(scrollLeft)) scrollNode.scrollLeft = scrollLeft;
+            });
           });
         }
       } catch (error) {

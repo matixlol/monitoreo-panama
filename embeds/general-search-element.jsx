@@ -313,6 +313,7 @@ function GeneralSearch({ element, store }) {
     () => filterGeneralSearchSections(sections, deferredQuery),
     [sections, deferredQuery],
   );
+  const isMobile = typeof window !== 'undefined' && window.matchMedia?.('(max-width: 720px)').matches;
   const totalResults = filteredSections.reduce((count, section) => count + section.rows.length, 0);
   const hasPendingResults = query.trim() !== deferredQuery.trim();
 
@@ -359,7 +360,7 @@ function GeneralSearch({ element, store }) {
       {query.trim() ? (
         <div
           style={{
-            maxHeight: '40vh',
+            maxHeight: isMobile ? '60vh' : '40vh',
             overflowY: 'auto',
             padding: '0.5rem',
             background: '#f6f8fa',
