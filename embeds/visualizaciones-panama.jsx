@@ -15,6 +15,7 @@ import { FinanciacionChartElementApp } from './financiacion-chart-element.jsx';
 import { ModalRouter } from './modal-router.jsx';
 import { GeneralSearchElementApp } from './general-search-element.jsx';
 import { CandidatesTableElementApp, TransactionsTableElementApp } from './tables-elements.jsx';
+import { resolveCandidateNames } from './candidate-common-names.js';
 import {
   ALL,
   COLORS,
@@ -355,10 +356,12 @@ function buildStore({ ingresos = [], egresos = [] }) {
 
   const candidates = [...candidateBuckets]
     .map(([id, bucket]) => {
+      const { fullName, commonName } = resolveCandidateNames(modeFromCounts(bucket.nameCounts, id) || id);
       return {
         kind: 'candidato',
         id,
-        name: modeFromCounts(bucket.nameCounts, id) || id,
+        name: fullName || id,
+        commonName: commonName || fullName || id,
         parties: rememberedValues(bucket.parties),
         positions: rememberedValues(bucket.positions).sort(sortPos),
         provinces: rememberedValues(bucket.provinces),
@@ -401,6 +404,8 @@ function buildStore({ ingresos = [], egresos = [] }) {
 
   const overviewCandidates = candidates.map((d) => ({
     ...d,
+    fullName: d.name,
+    name: d.commonName || d.name,
     position: d.positions[0] || '',
     party: d.parties[0] || 'Sin partido',
     province: d.provinces[0] || '',

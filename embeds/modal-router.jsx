@@ -16,6 +16,8 @@ import {
   Table,
   Toggle,
   byPos,
+  candidateDisplayName,
+  candidateFullName,
   chartOpts,
   contributionLabel,
   entityFor,
@@ -61,6 +63,8 @@ function modalKindLabel(kind) {
 
 function modalHeading(route, entity) {
   const type = modalKindLabel(route.kind);
+  if (!entity) return type;
+  if (route.kind === 'candidato') return `${type}: ${candidateFullName(entity)}`;
   return entity?.name ? `${type}: ${entity.name}` : type;
 }
 
@@ -122,6 +126,8 @@ function CsvDownloadButton({ columns, rows, filename, label }) {
 
 function CandidateModal({ entity }) {
   const [pos, setPos] = useState('total');
+  const displayName = candidateDisplayName(entity);
+  const fullName = candidateFullName(entity);
   const incomeRows = sortRowsByDate(entity.ingresos);
   const expenseRows = sortRowsByDate(byPos(entity.egresos, pos));
   const expenseTree = expenseTreemapBreakdown(expenseRows);
@@ -163,7 +169,8 @@ function CandidateModal({ entity }) {
     <div className="mf-modal-stack">
       <Meta
         items={[
-          { label: 'Nombre', values: [entity.name] },
+          { label: 'Nombre', values: [displayName] },
+          ...(fullName !== displayName ? [{ label: 'Nombre completo', values: [fullName] }] : []),
           { label: plural(entity.parties.length, 'Partido', 'Partidos'), values: entity.parties },
           { label: plural(entity.positions.length, 'Cargo', 'Cargos'), values: entity.positions },
           { label: 'Ubicación', values: [entity.provinces[0], entity.districts[0]].filter(Boolean) },
