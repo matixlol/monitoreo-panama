@@ -14,7 +14,7 @@
     "build:embeds": "vite build --config embeds/vite.config.ts",
     "start": "vite start",
     "format": "prettier --write .",
-    "sync:embeds-data": "node scripts/sync-embeds-data.js",
+    "sync:embeds-data": "node scripts/sync-embeds-data.js && bun run precompute:donor-beeswarm",
     "precompute:donor-beeswarm": "node scripts/precompute-donor-beeswarm.js",
     "scrape": "bun run scraper.ts"
   },
