@@ -355,7 +355,7 @@ function renderIncomeChart(store, position = ALL) {
 }
 
 function renderExpenseTimelineChart(store, position = ALL, grain = 'mes') {
-  return line(expenseTimeline(getExpenseRows(store, position), grain), chartOpts);
+  return wrapMobileScrollableChart(line(expenseTimeline(getExpenseRows(store, position), grain), chartOpts), 'plot');
 }
 
 function renderParityChart(store, position = POS[0]) {
@@ -365,25 +365,33 @@ function renderParityChart(store, position = POS[0]) {
   const mapWrap = document.createElement('div');
   mapWrap.className = 'mf-parity-layout__map';
   mapWrap.append(
-    mapChart({
-      rows: getParityRows(store, position),
-      valueKey: 'paridad',
-      domain: [0, 1],
-      valueFormat: (v) => d3.format('.0%')(v),
-      colorScale: d3
-        .scaleLinear()
-        .domain([0, 0.5, 1])
-        .range([PARITY_MAP_COLORS.male, PARITY_MAP_COLORS.midpoint, PARITY_MAP_COLORS.female])
-        .interpolate(d3.interpolateRgb),
-      tooltip: (row, value) =>
-        `${row.provincia}\n${d3.format('.0%')(value)} mujeres\nMujeres: ${row.mujeres}\nHombres: ${row.hombres}\nTotal: ${row.totalCandidaturas}`,
-    }),
+    wrapMobileScrollableChart(
+      mapChart({
+        rows: getParityRows(store, position),
+        valueKey: 'paridad',
+        domain: [0, 1],
+        valueFormat: (v) => d3.format('.0%')(v),
+        colorScale: d3
+          .scaleLinear()
+          .domain([0, 0.5, 1])
+          .range([PARITY_MAP_COLORS.male, PARITY_MAP_COLORS.midpoint, PARITY_MAP_COLORS.female])
+          .interpolate(d3.interpolateRgb),
+        tooltip: (row, value) =>
+          `${row.provincia}\n${d3.format('.0%')(value)} mujeres\nMujeres: ${row.mujeres}\nHombres: ${row.hombres}\nTotal: ${row.totalCandidaturas}`,
+      }),
+      'map',
+    ),
   );
 
   const breakdownWrap = document.createElement('div');
   breakdownWrap.className = 'mf-parity-layout__breakdown';
+  const parityBreakdown = groupedBarsChart(getParitySummaryRows(store), {
+    ...chartOpts,
+    compact: isNarrowMobileViewport(),
+  });
+  if (parityBreakdown) parityBreakdown.classList.add('mf-parity-breakdown-chart');
   breakdownWrap.append(
-    groupedBarsChart(getParitySummaryRows(store), chartOpts) ||
+    parityBreakdown ||
       Object.assign(document.createElement('div'), {
         className: 'empty',
         textContent: 'Sin datos.',
@@ -395,13 +403,16 @@ function renderParityChart(store, position = POS[0]) {
 }
 
 function renderFinancialMapChart(store, position = POS[0], metric = 'ingresoTotal', filter = 'all') {
-  return mapChart({
-    rows: getFinancialRows(store, position, filter),
-    valueKey: metric,
-    valueFormat: SHORT,
-    tooltip: (row, value) =>
-      `${row.provincia}\n${metric === 'ingresoTotal' ? 'Ingresos' : 'Gastos'}: ${MONEY(value)}\n${row.cantidadCandidaturas} candidaturas`,
-  });
+  return wrapMobileScrollableChart(
+    mapChart({
+      rows: getFinancialRows(store, position, filter),
+      valueKey: metric,
+      valueFormat: SHORT,
+      tooltip: (row, value) =>
+        `${row.provincia}\n${metric === 'ingresoTotal' ? 'Ingresos' : 'Gastos'}: ${MONEY(value)}\n${row.cantidadCandidaturas} candidaturas`,
+    }),
+    'map',
+  );
 }
 
 function renderDonorsChart(store, position = POS[0]) {
@@ -409,7 +420,7 @@ function renderDonorsChart(store, position = POS[0]) {
   const precomputedLayout = donorBeeswarmLayout.layoutsByPosition?.[position];
   const precomputedPositions =
     precomputedLayout?.signature === createDonorBeeswarmSignature(rows) ? precomputedLayout.positionsById : null;
-  return beeswarm(rows, 'aportante', { ...chartOpts, precomputedPositions });
+  return wrapMobileScrollableChart(beeswarm(rows, 'aportante', { ...chartOpts, precomputedPositions }), 'beeswarm');
 }
 
 function renderExpenseTreemapChart(store) {
@@ -417,7 +428,7 @@ function renderExpenseTreemapChart(store) {
 }
 
 function renderHomeExpenseTreemapChart(store) {
-  return treemap(expenseTreemapBreakdown(store.egresos), chartOpts);
+  return wrapMobileScrollableChart(treemap(expenseTreemapBreakdown(store.egresos), chartOpts), 'treemap');
 }
 
 const CONTRIBUTOR_HISTOGRAM_TABS = [
@@ -619,9 +630,9 @@ function summaryCardsMarkup(items) {
 }
 
 const summaryCardsElementCss = `:host{display:block;min-width:0;color:#111827}${SUMMARY_CARDS_CSS}.loading,.error{padding:14px 0;color:#667085}`;
-const bootstrapTabsCss = `.wc-tabs-wrap,.wc-tabs,.wc-tab-item,.wc-tab-link{box-sizing:border-box}.wc-tabs-wrap{margin:0 0 16px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans","Liberation Sans",sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";font-size:1rem;font-weight:400;line-height:1.5;color:#212529;-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}.wc-tabs{display:flex;flex-wrap:wrap;margin-top:0;margin-bottom:0;padding-left:0;list-style:none;border-bottom:1px solid #dee2e6}.wc-tab-item{margin-bottom:-1px;flex:none;list-style:none}.wc-tab-link{display:block;padding:.5rem 1rem;background-color:transparent;color:inherit;font:inherit;line-height:1.5;text-decoration:none;white-space:nowrap}.wc-tabs .wc-tab-link{border:1px solid transparent;border-top-left-radius:.25rem;border-top-right-radius:.25rem}.wc-tabs .wc-tab-link:hover,.wc-tabs .wc-tab-link:focus{text-decoration:none;border-color:#e9ecef #e9ecef #dee2e6}.wc-tab-link:focus-visible{outline:2px solid rgba(0,123,255,.35);outline-offset:2px}.wc-tabs .wc-tab-link.active,.wc-tabs .wc-tab-item.show .wc-tab-link{color:#495057;background-color:#fff;border-color:#dee2e6 #dee2e6 #fff}@media (max-width:720px){.wc-tabs-wrap{margin-bottom:14px}.wc-tab-link{padding:.5rem .875rem;font-size:.95rem}}`;
+const bootstrapTabsCss = `.wc-tabs-wrap,.wc-tabs,.wc-tab-item,.wc-tab-link{box-sizing:border-box}.wc-tabs-wrap{margin:0 0 16px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans","Liberation Sans",sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";font-size:1rem;font-weight:400;line-height:1.5;color:#212529;-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}.wc-tabs{display:flex;flex-wrap:wrap;margin-top:0;margin-bottom:0;padding-left:0;list-style:none;border-bottom:1px solid #dee2e6}.wc-tab-item{margin-bottom:-1px;flex:none;list-style:none}.wc-tab-link{display:block;padding:.5rem 1rem;background-color:transparent;color:inherit;font:inherit;line-height:1.5;text-decoration:none;white-space:nowrap}.wc-tabs .wc-tab-link{border:1px solid transparent;border-top-left-radius:.25rem;border-top-right-radius:.25rem}.wc-tabs .wc-tab-link:hover,.wc-tabs .wc-tab-link:focus{text-decoration:none;border-color:#e9ecef #e9ecef #dee2e6}.wc-tab-link:focus-visible{outline:2px solid rgba(0,123,255,.35);outline-offset:2px}.wc-tabs .wc-tab-link.active,.wc-tabs .wc-tab-item.show .wc-tab-link{color:#495057;background-color:#fff;border-color:#dee2e6 #dee2e6 #fff}@media (max-width:720px){.wc-tabs-wrap{margin-bottom:14px}.wc-tab-link{padding:.45rem .625rem;font-size:.84rem;line-height:1.35}}`;
 const chartPanelCss = `:host{display:block;min-width:0;color:#111827;}.wc-panel{display:grid;gap:16px;padding:16px;background:#f8f8f8;border-radius:12px}.wc-title{margin:0;font:inherit;font-size:clamp(1.95rem,4vw,2.5rem);font-weight:500;line-height:1.05;letter-spacing:-.04em;overflow-wrap:anywhere}.wc-body,.wh-chart{min-width:0}.wc-body--bare{display:grid;gap:12px;min-width:0}.loading,.error,.empty{padding:14px 0;color:#667085}@media (max-width:720px){.wc-panel{gap:14px;padding:14px}.wc-title{font-size:clamp(1.5rem,8vw,2rem)}}`;
-const chartElementCss = `${chartPanelCss}.wc-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin:0 0 12px}.wc-field{display:grid;gap:4px;min-width:180px;color:#344054;}.wc-field select{padding:8px 12px;border:1px solid #e4e7ec;border-radius:999px;background:#fff;color:#344054;}${bootstrapTabsCss}.mf-map{overflow-x:auto;overflow-y:hidden}.mf-map svg{display:block;width:100%;height:auto;max-width:960px;margin:auto}.legend{display:flex;align-items:center;gap:10px;margin-top:10px;color:#667085;}.mf-grad{height:12px;flex:1;max-width:300px;border-radius:999px;background:linear-gradient(90deg,#eff6ff,#1d4ed8)}.mf-parity-layout{display:grid;gap:24px;align-items:start;grid-template-columns:minmax(0,1.7fr) minmax(210px,.65fr)}.mf-parity-layout__map,.mf-parity-layout__breakdown{min-width:0}.mf-parity-layout__breakdown{display:grid;align-content:start}@media (max-width:1040px){.mf-parity-layout{grid-template-columns:1fr}}${incomeBreakdownChartCss}${groupedBarsChartCss}`;
+const chartElementCss = `${chartPanelCss}.wc-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin:0 0 12px}.wc-field{display:grid;gap:4px;min-width:180px;color:#344054;}.wc-field select{padding:8px 12px;border:1px solid #e4e7ec;border-radius:999px;background:#fff;color:#344054;}${bootstrapTabsCss}.mf-map{overflow-x:auto;overflow-y:hidden}.mf-map svg{display:block;width:100%;height:auto;max-width:960px;margin:auto}.legend{display:flex;align-items:center;gap:10px;margin-top:10px;color:#667085;}.mf-grad{height:12px;flex:1;max-width:300px;border-radius:999px;background:linear-gradient(90deg,#eff6ff,#1d4ed8)}.mf-parity-layout{display:grid;gap:24px;align-items:start;grid-template-columns:minmax(0,1.7fr) minmax(210px,.65fr)}.mf-parity-layout__map,.mf-parity-layout__breakdown{min-width:0}.mf-parity-layout__breakdown{display:grid;align-content:start}.wc-mobile-scroll{min-width:0}@media (max-width:1040px){.mf-parity-layout{grid-template-columns:1fr}}@media (max-width:720px){.wc-mobile-scroll{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;padding:8px 0 8px 8px;border:1px solid #e4e7ec;background:#f8fafc}.wc-mobile-scroll__inner{width:min(200vw,1000px);min-width:720px;background:linear-gradient(180deg,#fbfdff 0%,#f3f6fa 100%)}.wc-mobile-scroll--plot>.wc-mobile-scroll__inner>svg{display:block;width:100%!important;height:auto}.mf-map.wc-mobile-map-shell{display:grid;gap:8px;overflow:visible}.wc-mobile-scroll--map .wc-mobile-scroll__inner>div{width:88%!important;max-width:840px!important;margin:0!important}.wc-mobile-scroll--map svg{display:block;width:100%!important;max-width:none!important;height:auto;margin:0!important}.mf-map.wc-mobile-map-shell>.legend{font-size:11px;gap:8px;margin-top:0}.mf-map.wc-mobile-map-shell>.legend .mf-legend-scale{max-width:320px}.mf-map.wc-mobile-map-shell>.legend .mf-legend-bar{height:10px}.mf-map.wc-mobile-map-shell>.legend .mf-legend-note{gap:6px}.wc-mobile-scroll--beeswarm .beeswarm{width:100%!important;max-width:none!important}.wc-mobile-scroll--beeswarm .beeswarm svg{display:block;width:100%!important;max-width:none!important;height:auto}.wc-mobile-scroll--treemap .tm-root,.wc-mobile-scroll--treemap .tm-stage,.wc-mobile-scroll--treemap .tm-canvas{width:100%}.wc-mobile-scroll--treemap .tm-canvas svg{display:block;width:100%!important;height:100%!important;max-width:none!important}.mf-parity-breakdown-chart{justify-items:center;gap:12px}.mf-parity-breakdown-chart .mf-grouped-bars__legend{gap:14px}.mf-parity-breakdown-chart .mf-grouped-bars__legend-item{font-size:13px}.mf-parity-breakdown-chart .mf-grouped-bars__legend-dot{width:11px;height:11px}}${incomeBreakdownChartCss}${groupedBarsChartCss}`;
 const contributorHistogramElementCss = `${chartPanelCss}${bootstrapTabsCss}`;
 
 function attr(el, name, fallback) {
@@ -705,6 +716,35 @@ function createBareChartBody() {
   return body;
 }
 
+function isNarrowMobileViewport() {
+  return typeof window !== 'undefined' && window.matchMedia('(max-width: 720px)').matches;
+}
+
+function wrapMobileScrollableChart(node, variant) {
+  if (!node || !isNarrowMobileViewport()) return node;
+  if (variant === 'map' && node.classList?.contains('mf-map')) {
+    const [stage, legend] = Array.from(node.children);
+    if (!stage) return node;
+    const scroll = document.createElement('div');
+    scroll.className = 'wc-mobile-scroll wc-mobile-scroll--map';
+    const inner = document.createElement('div');
+    inner.className = 'wc-mobile-scroll__inner';
+    inner.append(stage);
+    scroll.append(inner);
+    node.classList.add('wc-mobile-map-shell');
+    node.prepend(scroll);
+    if (legend) node.append(legend);
+    return node;
+  }
+  const wrap = document.createElement('div');
+  wrap.className = `wc-mobile-scroll wc-mobile-scroll--${variant}`;
+  const inner = document.createElement('div');
+  inner.className = 'wc-mobile-scroll__inner';
+  inner.append(node);
+  wrap.append(inner);
+  return wrap;
+}
+
 function defineSummaryCardsElement() {
   if (typeof window === 'undefined' || customElements.get('panama-resumen-cards')) return;
   class PanamaSummaryCardsElement extends HTMLElement {
@@ -759,6 +799,8 @@ function defineChartElement(name, title, observedAttributes, renderChart, getCon
       const token = (this._token || 0) + 1;
       this._token = token;
       const bare = this.hasAttribute('bare');
+      const previousMapScroll = root.querySelector('.wc-mobile-scroll--map');
+      if (previousMapScroll) this._mapScrollLeft = previousMapScroll.scrollLeft;
       root.innerHTML = `<style>${chartElementCss}</style>`;
       if (bare) {
         root.append(Object.assign(document.createElement('div'), { className: 'loading', textContent: 'Cargando…' }));
@@ -807,6 +849,12 @@ function defineChartElement(name, title, observedAttributes, renderChart, getCon
           root.append(body);
         } else {
           root.append(panel.panel);
+        }
+        const nextMapScroll = root.querySelector('.wc-mobile-scroll--map');
+        if (nextMapScroll && Number.isFinite(this._mapScrollLeft)) {
+          requestAnimationFrame(() => {
+            nextMapScroll.scrollLeft = this._mapScrollLeft;
+          });
         }
       } catch (error) {
         if (token !== this._token) return;

@@ -25,7 +25,7 @@ function compactTick(value) {
 
 export const groupedBarsChartCss = `.mf-grouped-bars{display:grid;gap:18px;min-width:0}.mf-grouped-bars__legend{display:flex;flex-wrap:wrap;justify-content:center;gap:24px;color:#344054}.mf-grouped-bars__legend-item{display:inline-flex;align-items:center;gap:10px;font-size:15px;font-weight:600;line-height:1.2}.mf-grouped-bars__legend-dot{width:14px;height:14px;border-radius:999px;flex:none}.mf-grouped-bars__figure{min-width:0}.mf-grouped-bars__figure svg{display:block;width:100%;height:auto;overflow:visible}.mf-grouped-bars [aria-label='y-grid'] line{stroke:#dbe4ef;stroke-dasharray:6 8}.mf-grouped-bars [aria-label='x-axis'] text,.mf-grouped-bars [aria-label='y-axis'] text{fill:#344054;font-size:14px}.mf-grouped-bars [aria-label='x-axis'] path,.mf-grouped-bars [aria-label='y-axis'] path,.mf-grouped-bars [aria-label='y-axis'] line{stroke:#d0d7de}.mf-grouped-bars [aria-label='x-axis'] line{stroke:transparent}`;
 
-export function groupedBarsChart(items, { int } = {}) {
+export function groupedBarsChart(items, { int, compact = false } = {}) {
   if (!items.length) return null;
 
   const groups = [...new Map(items.map((item) => [item.group, item.groupLabel])).entries()];
@@ -61,9 +61,9 @@ export function groupedBarsChart(items, { int } = {}) {
 
   const plot = Plot.plot({
     ...plotBase,
-    width: 210,
-    height: 260,
-    marginLeft: 46,
+    width: compact ? 176 : 210,
+    height: compact ? 170 : 260,
+    marginLeft: compact ? 38 : 46,
     marginRight: 12,
     x: {
       label: null,
@@ -77,7 +77,7 @@ export function groupedBarsChart(items, { int } = {}) {
       domain: [0, maxValue || 1],
       nice: true,
       grid: true,
-      tickFormat: compactTick,
+      tickFormat: compact ? d3.format('~s') : compactTick,
     },
     marks: [
       Plot.ruleY([0], { stroke: '#d0d7de' }),
