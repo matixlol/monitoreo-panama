@@ -44,6 +44,11 @@ import {
 
 const ROOTS = new WeakMap();
 const STORE_CACHE = new Map();
+const NORMALIZED_TEXT_CACHE = new Map();
+const SLUG_CACHE = new Map();
+const PANAMA_DATE_CACHE = new Map();
+const CANDIDATE_ID_CACHE = new Map();
+const PROVINCE_CACHE = new Map();
 const resolveModuleAssetUrl = (assetUrl) => new URL(assetUrl, import.meta.url).href;
 const DEFAULT_INGRESOS_URL = resolveModuleAssetUrl(ingresosDatasetUrl);
 const DEFAULT_EGRESOS_URL = resolveModuleAssetUrl(egresosDatasetUrl);
@@ -85,6 +90,40 @@ let cssDone = false;
 
 function province(v) {
   return PROVINCE_ALIASES.get(NORM(v)) ?? TEXT(v);
+}
+
+function normCached(value) {
+  const text = TEXT(value);
+  if (!NORMALIZED_TEXT_CACHE.has(text)) NORMALIZED_TEXT_CACHE.set(text, NORM(text));
+  return NORMALIZED_TEXT_CACHE.get(text);
+}
+
+function slugifyCached(value) {
+  const text = TEXT(value);
+  if (!SLUG_CACHE.has(text)) SLUG_CACHE.set(text, slugify(text));
+  return SLUG_CACHE.get(text);
+}
+
+function parsePanamaDateCached(value) {
+  const text = TEXT(value);
+  if (!PANAMA_DATE_CACHE.has(text)) PANAMA_DATE_CACHE.set(text, parsePanamaDate(text));
+  return PANAMA_DATE_CACHE.get(text);
+}
+
+function candidateIdFromRowCached(row) {
+  const name = TEXT(row?.candidateName);
+  const position = TEXT(row?.candidatePosition);
+  const key = `${name}\u0000${position}`;
+  if (!CANDIDATE_ID_CACHE.has(key)) {
+    CANDIDATE_ID_CACHE.set(key, slugify([name, position].filter(Boolean).join(' | ')) || slugify(name));
+  }
+  return CANDIDATE_ID_CACHE.get(key);
+}
+
+function provinceCached(value) {
+  const text = TEXT(value);
+  if (!PROVINCE_CACHE.has(text)) PROVINCE_CACHE.set(text, PROVINCE_ALIASES.get(normCached(text)) ?? text);
+  return PROVINCE_CACHE.get(text);
 }
 
 function inject() {
@@ -145,6 +184,119 @@ function topPartyRows(rows, n = 4) {
     .sort((a, b) => (a.group === 'Otros') - (b.group === 'Otros') || d3.ascending(a.group, b.group));
 }
 
+const INGRESO_ROW_CACHE = Symbol('ingresoRowCache');
+const EGRESO_ROW_CACHE = Symbol('egresoRowCache');
+
+function rememberValue(map, value) {
+  const text = TEXT(value);
+  const key = normCached(text);
+  if (!key) return;
+  map.set(key, text);
+}
+
+function incrementCount(map, value) {
+  const text = TEXT(value);
+  if (!text) return;
+  map.set(text, (map.get(text) || 0) + 1);
+}
+
+function modeFromCounts(map, fallback = null) {
+  let bestValue = fallback;
+  let bestCount = -1;
+
+  for (const [value, count] of map) {
+    if (count > bestCount) {
+      bestValue = value;
+      bestCount = count;
+    }
+  }
+
+  return bestValue;
+}
+
+function rememberedValues(map) {
+  return [...map.values()];
+}
+
+function createCandidateBucket() {
+  return {
+    ingresos: [],
+    egresos: [],
+    nameCounts: new Map(),
+    parties: new Map(),
+    positions: new Map(),
+    provinces: new Map(),
+    districts: new Map(),
+    genders: new Map(),
+    contributorNames: new Set(),
+    providerNames: new Set(),
+  };
+}
+
+function createDonorBucket() {
+  return {
+    ingresos: [],
+    nameCounts: new Map(),
+    parties: new Map(),
+    positions: new Map(),
+    candidateIds: new Set(),
+  };
+}
+
+function createProviderBucket() {
+  return {
+    egresos: [],
+    nameCounts: new Map(),
+    parties: new Map(),
+    positions: new Map(),
+    candidateIds: new Set(),
+  };
+}
+
+function getIngresoRowCache(row) {
+  if (row[INGRESO_ROW_CACHE]) return row[INGRESO_ROW_CACHE];
+
+  const parsedDate = parsePanamaDateCached(row.fecha);
+  return (row[INGRESO_ROW_CACHE] = {
+    candidateId: candidateIdFromRowCached(row),
+    donorId: slugifyCached(row.contribuyenteNombre),
+    candidateName: TEXT(row.candidateName),
+    candidateParty: TEXT(row.candidateParty),
+    candidatePosition: TEXT(row.candidatePosition),
+    candidateProvince: provinceCached(row.candidateProvince),
+    candidateDistrict: TEXT(row.candidateDistrict),
+    candidateGender: TEXT(row.candidateGender),
+    contributorName: TEXT(row.contribuyenteNombre),
+    contributorNameNorm: normCached(row.contribuyenteNombre),
+    sortDate: parsedDate,
+    total: num(row.total),
+  });
+}
+
+function getEgresoRowCache(row) {
+  if (row[EGRESO_ROW_CACHE]) return row[EGRESO_ROW_CACHE];
+
+  const parsedDate = parsePanamaDateCached(row.fecha);
+  return (row[EGRESO_ROW_CACHE] = {
+    candidateId: candidateIdFromRowCached(row),
+    providerId: slugifyCached(row.proveedorNombre),
+    candidateName: TEXT(row.candidateName),
+    candidateParty: TEXT(row.candidateParty),
+    candidatePosition: TEXT(row.candidatePosition),
+    candidateProvince: provinceCached(row.candidateProvince),
+    candidateDistrict: TEXT(row.candidateDistrict),
+    candidateGender: TEXT(row.candidateGender),
+    providerName: TEXT(row.proveedorNombre),
+    providerNameNorm: normCached(row.proveedorNombre),
+    sortDate: parsedDate,
+    total: expenseAmount(row),
+  });
+}
+
+function sortRowsByCachedTime(rows, cacheSymbol) {
+  return rows.sort((a, b) => d3.descending(a[cacheSymbol].sortDate, b[cacheSymbol].sortDate));
+}
+
 function buildStore({ ingresos = [], egresos = [] }) {
   const candidateBuckets = new Map();
   const donorBuckets = new Map();
@@ -152,36 +304,71 @@ function buildStore({ ingresos = [], egresos = [] }) {
   const put = (map, key, make) => map.get(key) || (map.set(key, make()), map.get(key));
 
   for (const row of ingresos) {
-    const candidateId = candidateIdFromRow(row);
-    const donorId = slugify(row.contribuyenteNombre);
-    if (candidateId) put(candidateBuckets, candidateId, () => ({ ingresos: [], egresos: [] })).ingresos.push(row);
-    if (donorId) put(donorBuckets, donorId, () => ({ ingresos: [] })).ingresos.push(row);
+    const cached = getIngresoRowCache(row);
+
+    if (cached.candidateId) {
+      const bucket = put(candidateBuckets, cached.candidateId, createCandidateBucket);
+      bucket.ingresos.push(row);
+      incrementCount(bucket.nameCounts, cached.candidateName);
+      incrementCount(bucket.genders, cached.candidateGender);
+      rememberValue(bucket.parties, cached.candidateParty);
+      rememberValue(bucket.positions, cached.candidatePosition);
+      rememberValue(bucket.provinces, cached.candidateProvince);
+      rememberValue(bucket.districts, cached.candidateDistrict);
+      if (cached.contributorNameNorm) bucket.contributorNames.add(cached.contributorNameNorm);
+    }
+
+    if (cached.donorId) {
+      const bucket = put(donorBuckets, cached.donorId, createDonorBucket);
+      bucket.ingresos.push(row);
+      incrementCount(bucket.nameCounts, cached.contributorName);
+      rememberValue(bucket.parties, cached.candidateParty);
+      rememberValue(bucket.positions, cached.candidatePosition);
+      if (cached.candidateId) bucket.candidateIds.add(cached.candidateId);
+    }
   }
 
   for (const row of egresos) {
-    const candidateId = candidateIdFromRow(row);
-    const providerId = slugify(row.proveedorNombre);
-    if (candidateId) put(candidateBuckets, candidateId, () => ({ ingresos: [], egresos: [] })).egresos.push(row);
-    if (providerId) put(providerBuckets, providerId, () => ({ egresos: [] })).egresos.push(row);
+    const cached = getEgresoRowCache(row);
+
+    if (cached.candidateId) {
+      const bucket = put(candidateBuckets, cached.candidateId, createCandidateBucket);
+      bucket.egresos.push(row);
+      incrementCount(bucket.nameCounts, cached.candidateName);
+      incrementCount(bucket.genders, cached.candidateGender);
+      rememberValue(bucket.parties, cached.candidateParty);
+      rememberValue(bucket.positions, cached.candidatePosition);
+      rememberValue(bucket.provinces, cached.candidateProvince);
+      rememberValue(bucket.districts, cached.candidateDistrict);
+      if (cached.providerNameNorm) bucket.providerNames.add(cached.providerNameNorm);
+    }
+
+    if (cached.providerId) {
+      const bucket = put(providerBuckets, cached.providerId, createProviderBucket);
+      bucket.egresos.push(row);
+      incrementCount(bucket.nameCounts, cached.providerName);
+      rememberValue(bucket.parties, cached.candidateParty);
+      rememberValue(bucket.positions, cached.candidatePosition);
+      if (cached.candidateId) bucket.candidateIds.add(cached.candidateId);
+    }
   }
 
   const candidates = [...candidateBuckets]
     .map(([id, bucket]) => {
-      const rows = [...bucket.ingresos, ...bucket.egresos];
       return {
         kind: 'candidato',
         id,
-        name: d3.mode(rows.map((r) => TEXT(r.candidateName)).filter(Boolean)) || id,
-        parties: uniq(rows.map((r) => r.candidateParty)),
-        positions: uniq(rows.map((r) => r.candidatePosition)).sort(sortPos),
-        provinces: uniq(rows.map((r) => province(r.candidateProvince))),
-        districts: uniq(rows.map((r) => r.candidateDistrict)),
-        ingresos: bucket.ingresos.sort((a, b) => d3.descending(parsePanamaDate(a.fecha), parsePanamaDate(b.fecha))),
-        egresos: bucket.egresos.sort((a, b) => d3.descending(parsePanamaDate(a.fecha), parsePanamaDate(b.fecha))),
-        ingresoTotal: sum(bucket.ingresos, (r) => num(r.total)),
-        egresoTotal: sum(bucket.egresos, (r) => expenseAmount(r)),
-        contributorCount: new Set(bucket.ingresos.map((r) => NORM(r.contribuyenteNombre)).filter(Boolean)).size,
-        providerCount: new Set(bucket.egresos.map((r) => NORM(r.proveedorNombre)).filter(Boolean)).size,
+        name: modeFromCounts(bucket.nameCounts, id) || id,
+        parties: rememberedValues(bucket.parties),
+        positions: rememberedValues(bucket.positions).sort(sortPos),
+        provinces: rememberedValues(bucket.provinces),
+        districts: rememberedValues(bucket.districts),
+        ingresos: sortRowsByCachedTime(bucket.ingresos, INGRESO_ROW_CACHE),
+        egresos: sortRowsByCachedTime(bucket.egresos, EGRESO_ROW_CACHE),
+        ingresoTotal: sum(bucket.ingresos, (row) => row[INGRESO_ROW_CACHE].total),
+        egresoTotal: sum(bucket.egresos, (row) => row[EGRESO_ROW_CACHE].total),
+        contributorCount: bucket.contributorNames.size,
+        providerCount: bucket.providerNames.size,
       };
     })
     .sort((a, b) => d3.descending(a.ingresoTotal + a.egresoTotal, b.ingresoTotal + b.egresoTotal));
@@ -190,12 +377,12 @@ function buildStore({ ingresos = [], egresos = [] }) {
     .map(([id, bucket]) => ({
       kind: 'aportante',
       id,
-      name: d3.mode(bucket.ingresos.map((r) => TEXT(r.contribuyenteNombre)).filter(Boolean)) || id,
-      parties: uniq(bucket.ingresos.map((r) => r.candidateParty)),
-      positions: uniq(bucket.ingresos.map((r) => r.candidatePosition)).sort(sortPos),
-      ingresos: bucket.ingresos.sort((a, b) => d3.descending(parsePanamaDate(a.fecha), parsePanamaDate(b.fecha))),
-      total: sum(bucket.ingresos, (r) => num(r.total)),
-      candidateCount: new Set(bucket.ingresos.map((r) => candidateIdFromRow(r)).filter(Boolean)).size,
+      name: modeFromCounts(bucket.nameCounts, id) || id,
+      parties: rememberedValues(bucket.parties),
+      positions: rememberedValues(bucket.positions).sort(sortPos),
+      ingresos: sortRowsByCachedTime(bucket.ingresos, INGRESO_ROW_CACHE),
+      total: sum(bucket.ingresos, (row) => row[INGRESO_ROW_CACHE].total),
+      candidateCount: bucket.candidateIds.size,
     }))
     .sort((a, b) => d3.descending(a.total, b.total));
 
@@ -203,12 +390,12 @@ function buildStore({ ingresos = [], egresos = [] }) {
     .map(([id, bucket]) => ({
       kind: 'proveedor',
       id,
-      name: d3.mode(bucket.egresos.map((r) => TEXT(r.proveedorNombre)).filter(Boolean)) || id,
-      parties: uniq(bucket.egresos.map((r) => r.candidateParty)),
-      positions: uniq(bucket.egresos.map((r) => r.candidatePosition)).sort(sortPos),
-      egresos: bucket.egresos.sort((a, b) => d3.descending(parsePanamaDate(a.fecha), parsePanamaDate(b.fecha))),
-      total: sum(bucket.egresos, (r) => expenseAmount(r)),
-      candidateCount: new Set(bucket.egresos.map((r) => candidateIdFromRow(r)).filter(Boolean)).size,
+      name: modeFromCounts(bucket.nameCounts, id) || id,
+      parties: rememberedValues(bucket.parties),
+      positions: rememberedValues(bucket.positions).sort(sortPos),
+      egresos: sortRowsByCachedTime(bucket.egresos, EGRESO_ROW_CACHE),
+      total: sum(bucket.egresos, (row) => row[EGRESO_ROW_CACHE].total),
+      candidateCount: bucket.candidateIds.size,
     }))
     .sort((a, b) => d3.descending(a.total, b.total));
 
@@ -217,7 +404,7 @@ function buildStore({ ingresos = [], egresos = [] }) {
     position: d.positions[0] || '',
     party: d.parties[0] || 'Sin partido',
     province: d.provinces[0] || '',
-    gender: d3.mode([...d.ingresos, ...d.egresos].map((r) => TEXT(r.candidateGender)).filter(Boolean)) || null,
+    gender: modeFromCounts(candidateBuckets.get(d.id)?.genders || new Map(), null) || null,
   }));
 
   const donorDots = donors.map((d) => ({
