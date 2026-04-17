@@ -1,15 +1,16 @@
-import { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { INT, MONEY, NORM, TEXT, buildHashRoute } from './embed-shared.jsx';
 
 const SECTION_RESULT_LIMIT = 20;
+const EMPTY_FILTERED_SECTIONS = [
+  { key: 'candidaturas', title: 'Candidaturas', rows: [], totalMatches: 0 },
+  { key: 'donantes', title: 'Donantes', rows: [], totalMatches: 0 },
+  { key: 'proveedores', title: 'Proveedores', rows: [], totalMatches: 0 },
+];
 
 function attr(element, name, fallback = '') {
   const value = element?.getAttribute(name);
   return value == null ? fallback : value;
-}
-
-function localeAsc(a, b) {
-  return TEXT(a).localeCompare(TEXT(b), 'es', { sensitivity: 'base' });
 }
 
 function joinValues(values, fallback = '—') {
@@ -100,167 +101,92 @@ function renderHighlightedText(text, query) {
   return parts;
 }
 
-function buildGeneralSearchSections(store) {
-  return [
-    {
-      key: 'candidaturas',
-      title: 'Candidaturas',
-      rows: store.candidates
-        .map((candidate) => {
-          const searchName = NORM(candidate.name);
-          const searchMeta = NORM(
-            [...candidate.parties, ...candidate.positions, ...candidate.provinces, ...candidate.districts].join(' '),
-          );
-          const searchRelated = NORM(
-            [
-              ...candidate.ingresos.map((row) => row.contribuyenteNombre),
-              ...candidate.egresos.map((row) => row.proveedorNombre),
-            ].join(' '),
-          );
-
-          return {
-            id: candidate.id,
-            href: buildHashRoute('candidato', candidate.id),
-            name: TEXT(candidate.name) || 'Sin nombre',
-            metaParts: [
-              joinValues(candidate.positions.filter(Boolean)),
-              joinValues(candidate.parties.filter(Boolean)),
-              joinValues(candidate.provinces.filter(Boolean)),
-              joinValues(candidate.districts.filter(Boolean)),
-            ].filter(Boolean),
-            summary: `${MONEY(candidate.ingresoTotal)} ingresos · ${MONEY(candidate.egresoTotal)} gastos`,
-            prominence: candidate.ingresoTotal + candidate.egresoTotal,
-            searchName,
-            searchMeta,
-            searchRelated,
-            searchAll: `${searchName} ${searchMeta} ${searchRelated}`.trim(),
-          };
-        })
-        .sort((a, b) => localeAsc(a.name, b.name)),
-    },
-    {
-      key: 'donantes',
-      title: 'Donantes',
-      rows: store.donors
-        .map((donor) => {
-          const searchName = NORM(donor.name);
-          const searchMeta = NORM([...donor.parties, ...donor.positions].join(' '));
-          const searchRelated = NORM(
-            [
-              ...donor.ingresos.map((row) => row.candidateName),
-              ...donor.ingresos.map((row) => row.candidateProvince),
-              ...donor.ingresos.map((row) => row.candidateDistrict),
-              ...donor.ingresos.map((row) => row.cedulaRuc),
-            ].join(' '),
-          );
-
-          return {
-            id: donor.id,
-            href: buildHashRoute('aportante', donor.id),
-            name: TEXT(donor.name) || 'Sin nombre',
-            metaParts: [joinValues(donor.positions.filter(Boolean)), joinValues(donor.parties.filter(Boolean))].filter(
-              Boolean,
-            ),
-            summary: `${MONEY(donor.total)} aportados · ${INT(donor.candidateCount)} candidaturas`,
-            prominence: donor.total,
-            searchName,
-            searchMeta,
-            searchRelated,
-            searchAll: `${searchName} ${searchMeta} ${searchRelated}`.trim(),
-          };
-        })
-        .sort((a, b) => localeAsc(a.name, b.name)),
-    },
-    {
-      key: 'proveedores',
-      title: 'Proveedores',
-      rows: store.providers
-        .map((provider) => {
-          const searchName = NORM(provider.name);
-          const searchMeta = NORM([...provider.parties, ...provider.positions].join(' '));
-          const searchRelated = NORM(
-            [
-              ...provider.egresos.map((row) => row.candidateName),
-              ...provider.egresos.map((row) => row.candidateProvince),
-              ...provider.egresos.map((row) => row.candidateDistrict),
-              ...provider.egresos.map((row) => row.cedulaRuc),
-              ...provider.egresos.map((row) => row.GastoCategoria),
-              ...provider.egresos.map((row) => row.detalleGastoResumido),
-              ...provider.egresos.map((row) => row.detalleGasto),
-            ].join(' '),
-          );
-
-          return {
-            id: provider.id,
-            href: buildHashRoute('proveedor', provider.id),
-            name: TEXT(provider.name) || 'Sin nombre',
-            metaParts: [
-              joinValues(provider.positions.filter(Boolean)),
-              joinValues(provider.parties.filter(Boolean)),
-            ].filter(Boolean),
-            summary: `${MONEY(provider.total)} facturados · ${INT(provider.candidateCount)} candidaturas`,
-            prominence: provider.total,
-            searchName,
-            searchMeta,
-            searchRelated,
-            searchAll: `${searchName} ${searchMeta} ${searchRelated}`.trim(),
-          };
-        })
-        .sort((a, b) => localeAsc(a.name, b.name)),
-    },
-  ];
+function buildCandidateSearchRow(candidate) {
+  return {
+    id: candidate.id,
+    href: buildHashRoute('candidato', candidate.id),
+    name: TEXT(candidate.name) || 'Sin nombre',
+    meta: [
+      joinValues(candidate.positions.filter(Boolean)),
+      joinValues(candidate.parties.filter(Boolean)),
+      joinValues(candidate.provinces.filter(Boolean)),
+      joinValues(candidate.districts.filter(Boolean)),
+    ]
+      .filter(Boolean)
+      .join(' · '),
+    summary: `${MONEY(candidate.ingresoTotal)} ingresos · ${MONEY(candidate.egresoTotal)} gastos`,
+  };
 }
 
-function scoreSearchRow(row, normalizedQuery, tokens) {
-  if (!tokens.every((token) => row.searchAll.includes(token))) return null;
+function buildDonorSearchRow(donor) {
+  return {
+    id: donor.id,
+    href: buildHashRoute('aportante', donor.id),
+    name: TEXT(donor.name) || 'Sin nombre',
+    meta: [joinValues(donor.positions.filter(Boolean)), joinValues(donor.parties.filter(Boolean))]
+      .filter(Boolean)
+      .join(' · '),
+    summary: `${MONEY(donor.total)} aportados · ${INT(donor.candidateCount)} candidaturas`,
+  };
+}
 
-  let score = 0;
+function buildProviderSearchRow(provider) {
+  return {
+    id: provider.id,
+    href: buildHashRoute('proveedor', provider.id),
+    name: TEXT(provider.name) || 'Sin nombre',
+    meta: [joinValues(provider.positions.filter(Boolean)), joinValues(provider.parties.filter(Boolean))]
+      .filter(Boolean)
+      .join(' · '),
+    summary: `${MONEY(provider.total)} facturados · ${INT(provider.candidateCount)} candidaturas`,
+  };
+}
 
-  if (row.searchName === normalizedQuery) score += 12000;
-  else if (row.searchName.startsWith(normalizedQuery)) score += 8000;
-  else if (row.searchName.includes(normalizedQuery)) score += 4500;
+function filterSearchRows(rows, buildRow, tokens) {
+  const matches = [];
+  let totalMatches = 0;
 
-  if (row.searchMeta.includes(normalizedQuery)) score += 1200;
-  if (row.searchRelated.includes(normalizedQuery)) score += 300;
+  for (const item of rows) {
+    const row = buildRow(item);
+    const searchName = NORM(row.name);
+    const searchMeta = NORM(row.meta);
+    const searchAll = searchMeta ? `${searchName} ${searchMeta}` : searchName;
 
-  for (const token of tokens) {
-    if (row.searchName.includes(token)) score += 400;
-    else if (row.searchMeta.includes(token)) score += 140;
-    else if (row.searchRelated.includes(token)) score += 40;
+    if (!tokens.every((token) => searchAll.includes(token))) continue;
+
+    totalMatches += 1;
+    if (matches.length < SECTION_RESULT_LIMIT) matches.push(row);
   }
 
-  score += Math.log10((row.prominence || 0) + 1) * 10;
-  return score;
+  return { rows: matches, totalMatches };
 }
 
-function filterGeneralSearchSections(sections, query) {
+function filterGeneralSearchSections(store, query) {
   const normalizedQuery = NORM(query);
   const tokens = normalizedQuery
     .split(' ')
     .map((token) => token.trim())
     .filter(Boolean);
 
-  if (!tokens.length) return sections.map((section) => ({ ...section, rows: [], totalMatches: 0 }));
+  if (!tokens.length) return EMPTY_FILTERED_SECTIONS;
 
-  return sections.map((section) => ({
-    ...section,
-    ...(() => {
-      const matches = [];
-
-      for (const row of section.rows) {
-        const score = scoreSearchRow(row, normalizedQuery, tokens);
-        if (score == null) continue;
-        matches.push({ ...row, score, meta: joinValues(row.metaParts) });
-      }
-
-      matches.sort((a, b) => b.score - a.score || b.prominence - a.prominence || localeAsc(a.name, b.name));
-
-      return {
-        totalMatches: matches.length,
-        rows: matches.slice(0, SECTION_RESULT_LIMIT),
-      };
-    })(),
-  }));
+  return [
+    {
+      key: 'candidaturas',
+      title: 'Candidaturas',
+      ...filterSearchRows(store.candidates, buildCandidateSearchRow, tokens),
+    },
+    {
+      key: 'donantes',
+      title: 'Donantes',
+      ...filterSearchRows(store.donors, buildDonorSearchRow, tokens),
+    },
+    {
+      key: 'proveedores',
+      title: 'Proveedores',
+      ...filterSearchRows(store.providers, buildProviderSearchRow, tokens),
+    },
+  ];
 }
 
 function SearchResultSection({ title, rows, totalMatches, emptyText, query }) {
@@ -274,7 +200,7 @@ function SearchResultSection({ title, rows, totalMatches, emptyText, query }) {
         <>
           {totalMatches > rows.length ? (
             <div className="card-body border-bottom py-2 px-3 small text-muted">
-              Mostrando {INT(rows.length)} resultados más relevantes de {INT(totalMatches)}.
+              Mostrando {INT(rows.length)} primeros resultados de {INT(totalMatches)}.
             </div>
           ) : null}
           <div className="list-group list-group-flush">
@@ -307,14 +233,12 @@ function SearchResultSection({ title, rows, totalMatches, emptyText, query }) {
 function GeneralSearch({ element, store }) {
   const query = attr(element, 'search', '');
   const [draftQuery, setDraftQuery] = useState(query);
-  const deferredQuery = useDeferredValue(query);
-  const sections = useMemo(() => buildGeneralSearchSections(store), [store]);
+  const trimmedQuery = query.trim();
   const filteredSections = useMemo(
-    () => filterGeneralSearchSections(sections, deferredQuery),
-    [sections, deferredQuery],
+    () => (trimmedQuery ? filterGeneralSearchSections(store, trimmedQuery) : EMPTY_FILTERED_SECTIONS),
+    [store, trimmedQuery],
   );
   const totalResults = filteredSections.reduce((count, section) => count + section.rows.length, 0);
-  const hasPendingResults = query.trim() !== deferredQuery.trim();
 
   useEffect(() => {
     setDraftQuery(query);
@@ -349,10 +273,8 @@ function GeneralSearch({ element, store }) {
           {draftQuery.trim() !== query.trim()
             ? 'Presioná Enter o hacé clic en Buscar para actualizar los resultados.'
             : query.trim()
-            ? hasPendingResults
-              ? `Buscando “${query.trim()}”…`
-              : `${INT(totalResults)} resultados visibles para “${query.trim()}”.`
-            : 'Escribí una palabra y te muestro coincidencias en candidaturas, donantes y proveedores.'}
+              ? `${INT(totalResults)} resultados visibles para “${query.trim()}”.`
+              : 'Escribí una palabra y te muestro coincidencias en candidaturas, donantes y proveedores.'}
         </small>
       </form>
 
@@ -371,7 +293,7 @@ function GeneralSearch({ element, store }) {
               title={section.title}
               rows={section.rows}
               totalMatches={section.totalMatches}
-              query={deferredQuery}
+              query={query}
               emptyText={`No encontré ${section.key} para esa búsqueda.`}
               key={section.key}
             />
