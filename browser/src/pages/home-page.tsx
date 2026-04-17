@@ -221,204 +221,204 @@ export function HomePage() {
     deferredCandidateQuery.length >= 2 ? candidateSuggestionsQuery.data ?? [] : [];
 
   return (
-    <div className="page-shell space-y-6">
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-          Informes de ingresos y gastos
-        </h1>
-        <p className="max-w-3xl text-sm text-muted-foreground sm:text-base">
-          Consulta pública de informes, PDFs y registros JSON de ingresos y gastos de campaña.
-        </p>
-      </header>
+    <div className="space-y-6 pb-6">
+      <div className="page-shell space-y-6">
+        <header className="space-y-2">
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+            Informes de ingresos y gastos
+          </h1>
+          <p className="max-w-3xl text-sm text-muted-foreground sm:text-base">
+            Consulta pública de informes, PDFs y registros JSON de ingresos y gastos de campaña.
+          </p>
+        </header>
 
-      <section className="panel overflow-hidden">
-        <form onSubmit={submitSearch}>
-          <div className="flex flex-col gap-4 border-b p-4">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
-              <label className="flex-1 space-y-2 text-sm">
-                <span className="text-muted-foreground">Candidato o cédula</span>
-                <div className="relative">
-                  <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={formState.q}
-                    onChange={(event) => handleFieldChange('q', event.target.value)}
-                    placeholder="Nombre o número de cédula"
-                    className="pl-9"
-                  />
-                </div>
-                {candidateSuggestions.length ? (
-                  <div className="rounded-md border bg-card shadow-xs">
-                    {candidateSuggestions.map((option) => (
-                      <button
-                        key={option.value}
-                        type="button"
-                        className="flex w-full items-start justify-between gap-3 border-b px-3 py-2 text-left text-sm last:border-b-0 hover:bg-muted/60"
-                        onMouseDown={(event) => {
-                          event.preventDefault();
-                          handleFieldChange('q', option.value);
-                        }}
-                      >
-                        <span className="font-medium">{option.label}</span>
-                        <span className="shrink-0 text-xs text-muted-foreground">
-                          usar
-                        </span>
-                      </button>
-                    ))}
+        <section className="panel overflow-hidden">
+          <form onSubmit={submitSearch}>
+            <div className="flex flex-col gap-4 border-b p-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+                <label className="flex-1 space-y-2 text-sm">
+                  <span className="text-muted-foreground">Candidato o cédula</span>
+                  <div className="relative">
+                    <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={formState.q}
+                      onChange={(event) => handleFieldChange('q', event.target.value)}
+                      placeholder="Nombre o número de cédula"
+                      className="pl-9"
+                    />
                   </div>
-                ) : null}
-              </label>
+                  {candidateSuggestions.length ? (
+                    <div className="rounded-md border bg-card shadow-xs">
+                      {candidateSuggestions.map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          className="flex w-full items-start justify-between gap-3 border-b px-3 py-2 text-left text-sm last:border-b-0 hover:bg-muted/60"
+                          onMouseDown={(event) => {
+                            event.preventDefault();
+                            handleFieldChange('q', option.value);
+                          }}
+                        >
+                          <span className="font-medium">{option.label}</span>
+                          <span className="shrink-0 text-xs text-muted-foreground">usar</span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </label>
 
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsFiltersOpen((current) => !current)}
-                >
-                  <Filter className="size-4" />
-                  {isFiltersOpen ? 'Ocultar filtros' : 'Mostrar filtros'}
-                </Button>
-                <Button type="submit">Buscar</Button>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsFiltersOpen((current) => !current)}
+                  >
+                    <Filter className="size-4" />
+                    {isFiltersOpen ? 'Ocultar filtros' : 'Mostrar filtros'}
+                  </Button>
+                  <Button type="submit">Buscar</Button>
+                </div>
               </div>
+
+              <p className="text-xs text-muted-foreground">
+                La búsqueda consulta nombre y cédula. Las sugerencias se piden bajo demanda, sin
+                precargar todo el padrón.
+              </p>
             </div>
 
-            <p className="text-xs text-muted-foreground">
-              La búsqueda consulta nombre y cédula. Las sugerencias se piden bajo demanda, sin
-              precargar todo el padrón.
-            </p>
-          </div>
+            <div
+              className="grid transition-[grid-template-rows] duration-200 ease-out"
+              style={{ gridTemplateRows: isFiltersOpen ? '1fr' : '0fr' }}
+            >
+              <div className="overflow-hidden">
+                <div className="grid gap-4 border-b p-4 sm:grid-cols-2 xl:grid-cols-4">
+                  <label className="space-y-2 text-sm">
+                    <span className="text-muted-foreground">Estatus</span>
+                    <Select
+                      value={formState.status}
+                      onChange={(event) => handleFieldChange('status', event.target.value)}
+                      options={[
+                        { label: 'Evaluado', value: 'audited' },
+                        { label: 'En evaluación', value: 'inAudit' },
+                        { label: 'Extemporáneo', value: 'extemporary' },
+                        { label: 'Pendiente', value: 'pending' },
+                        { label: 'Presentado', value: 'sent' },
+                        { label: 'Presentado sin sustento', value: 'sentUnsubstantiated' },
+                      ]}
+                    />
+                  </label>
 
-          <div
-            className="grid transition-[grid-template-rows] duration-200 ease-out"
-            style={{ gridTemplateRows: isFiltersOpen ? '1fr' : '0fr' }}
-          >
-            <div className="overflow-hidden">
-              <div className="grid gap-4 border-b p-4 sm:grid-cols-2 xl:grid-cols-4">
-                <label className="space-y-2 text-sm">
-                  <span className="text-muted-foreground">Estatus</span>
-                  <Select
-                    value={formState.status}
-                    onChange={(event) => handleFieldChange('status', event.target.value)}
-                    options={[
-                      { label: 'Evaluado', value: 'audited' },
-                      { label: 'En evaluación', value: 'inAudit' },
-                      { label: 'Extemporáneo', value: 'extemporary' },
-                      { label: 'Pendiente', value: 'pending' },
-                      { label: 'Presentado', value: 'sent' },
-                      { label: 'Presentado sin sustento', value: 'sentUnsubstantiated' },
-                    ]}
-                  />
-                </label>
+                  <label className="space-y-2 text-sm">
+                    <span className="text-muted-foreground">Evento</span>
+                    <Select
+                      value={formState.eventId}
+                      onChange={(event) => handleFieldChange('eventId', event.target.value)}
+                      options={filterCatalog.events}
+                      placeholder="Opciones visibles"
+                    />
+                  </label>
 
-                <label className="space-y-2 text-sm">
-                  <span className="text-muted-foreground">Evento</span>
-                  <Select
-                    value={formState.eventId}
-                    onChange={(event) => handleFieldChange('eventId', event.target.value)}
-                    options={filterCatalog.events}
-                    placeholder="Opciones visibles"
-                  />
-                </label>
+                  <label className="space-y-2 text-sm">
+                    <span className="text-muted-foreground">Cargo</span>
+                    <Select
+                      value={formState.positionId}
+                      onChange={(event) => handleFieldChange('positionId', event.target.value)}
+                      options={filterCatalog.positions}
+                      placeholder="Opciones visibles"
+                    />
+                  </label>
 
-                <label className="space-y-2 text-sm">
-                  <span className="text-muted-foreground">Cargo</span>
-                  <Select
-                    value={formState.positionId}
-                    onChange={(event) => handleFieldChange('positionId', event.target.value)}
-                    options={filterCatalog.positions}
-                    placeholder="Opciones visibles"
-                  />
-                </label>
+                  <label className="space-y-2 text-sm">
+                    <span className="text-muted-foreground">Partido / libre postulación</span>
+                    <Select
+                      value={formState.partyId}
+                      onChange={(event) => handleFieldChange('partyId', event.target.value)}
+                      options={filterCatalog.parties}
+                      placeholder="Opciones visibles"
+                    />
+                  </label>
 
-                <label className="space-y-2 text-sm">
-                  <span className="text-muted-foreground">Partido / libre postulación</span>
-                  <Select
-                    value={formState.partyId}
-                    onChange={(event) => handleFieldChange('partyId', event.target.value)}
-                    options={filterCatalog.parties}
-                    placeholder="Opciones visibles"
-                  />
-                </label>
+                  <label className="space-y-2 text-sm">
+                    <span className="text-muted-foreground">Mes</span>
+                    <Select
+                      value={formState.month}
+                      onChange={(event) => handleFieldChange('month', event.target.value)}
+                      options={filterCatalog.months}
+                    />
+                  </label>
 
-                <label className="space-y-2 text-sm">
-                  <span className="text-muted-foreground">Mes</span>
-                  <Select
-                    value={formState.month}
-                    onChange={(event) => handleFieldChange('month', event.target.value)}
-                    options={filterCatalog.months}
-                  />
-                </label>
+                  <label className="space-y-2 text-sm">
+                    <span className="text-muted-foreground">Provincia</span>
+                    <Select
+                      value={formState.provinceId}
+                      onChange={(event) => handleFieldChange('provinceId', event.target.value)}
+                      options={filterCatalog.provinces}
+                      placeholder="Opciones visibles"
+                    />
+                  </label>
 
-                <label className="space-y-2 text-sm">
-                  <span className="text-muted-foreground">Provincia</span>
-                  <Select
-                    value={formState.provinceId}
-                    onChange={(event) => handleFieldChange('provinceId', event.target.value)}
-                    options={filterCatalog.provinces}
-                    placeholder="Opciones visibles"
-                  />
-                </label>
+                  <label className="space-y-2 text-sm">
+                    <span className="text-muted-foreground">Distrito</span>
+                    <Select
+                      value={formState.districtId}
+                      onChange={(event) => handleFieldChange('districtId', event.target.value)}
+                      options={filterCatalog.districts}
+                      placeholder="Opciones visibles"
+                    />
+                  </label>
 
-                <label className="space-y-2 text-sm">
-                  <span className="text-muted-foreground">Distrito</span>
-                  <Select
-                    value={formState.districtId}
-                    onChange={(event) => handleFieldChange('districtId', event.target.value)}
-                    options={filterCatalog.districts}
-                    placeholder="Opciones visibles"
-                  />
-                </label>
+                  <label className="space-y-2 text-sm">
+                    <span className="text-muted-foreground">Corregimiento</span>
+                    <Select
+                      value={formState.townshipId}
+                      onChange={(event) => handleFieldChange('townshipId', event.target.value)}
+                      options={filterCatalog.townships}
+                      placeholder="Opciones visibles"
+                    />
+                  </label>
 
-                <label className="space-y-2 text-sm">
-                  <span className="text-muted-foreground">Corregimiento</span>
-                  <Select
-                    value={formState.townshipId}
-                    onChange={(event) => handleFieldChange('townshipId', event.target.value)}
-                    options={filterCatalog.townships}
-                    placeholder="Opciones visibles"
-                  />
-                </label>
+                  <label className="space-y-2 text-sm">
+                    <span className="text-muted-foreground">Circuito</span>
+                    <Select
+                      value={formState.circuitId}
+                      onChange={(event) => handleFieldChange('circuitId', event.target.value)}
+                      options={filterCatalog.circuits}
+                      placeholder="Opciones visibles"
+                    />
+                  </label>
 
-                <label className="space-y-2 text-sm">
-                  <span className="text-muted-foreground">Circuito</span>
-                  <Select
-                    value={formState.circuitId}
-                    onChange={(event) => handleFieldChange('circuitId', event.target.value)}
-                    options={filterCatalog.circuits}
-                    placeholder="Opciones visibles"
-                  />
-                </label>
+                  <label className="space-y-2 text-sm">
+                    <span className="text-muted-foreground">Proclamado</span>
+                    <Select
+                      value={formState.isProclaimed}
+                      onChange={(event) => handleFieldChange('isProclaimed', event.target.value)}
+                      options={[
+                        { label: 'Sí', value: 'true' },
+                        { label: 'No', value: 'false' },
+                      ]}
+                    />
+                  </label>
+                </div>
 
-                <label className="space-y-2 text-sm">
-                  <span className="text-muted-foreground">Proclamado</span>
-                  <Select
-                    value={formState.isProclaimed}
-                    onChange={(event) => handleFieldChange('isProclaimed', event.target.value)}
-                    options={[
-                      { label: 'Sí', value: 'true' },
-                      { label: 'No', value: 'false' },
-                    ]}
-                  />
-                </label>
-              </div>
-
-              <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs text-muted-foreground">
-                  Los combos se llenan con los resultados cargados para evitar consultas masivas a
-                  la API pública.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <Button type="submit">Aplicar filtros</Button>
-                  <Button type="button" variant="outline" onClick={clearFilters}>
-                    Limpiar filtros
-                  </Button>
+                <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-xs text-muted-foreground">
+                    Los combos se llenan con los resultados cargados para evitar consultas masivas a
+                    la API pública.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="submit">Aplicar filtros</Button>
+                    <Button type="button" variant="outline" onClick={clearFilters}>
+                      Limpiar filtros
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </form>
-      </section>
+          </form>
+        </section>
+      </div>
 
-      <section className="space-y-4">
+      <section className="space-y-4 px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-lg font-semibold">Resultados</h2>
