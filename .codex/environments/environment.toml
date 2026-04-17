@@ -5,10 +5,11 @@ name = "monitoreo-panama"
 [setup]
 script = '''
 mise trust
-pnpm install
+bun i
+
 '''
 
 [[actions]]
 name = "Run embeds"
-icon = "tool"
+icon = "run"
 command = "bun dev:embeds"

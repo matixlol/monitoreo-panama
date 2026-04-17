@@ -17,6 +17,17 @@
       href="https://www.libertadciudadana.org/wp-content/cache/wpo-minify/1773896283/assets/wpo-minify-header-twentyseventeen-style1774410060.min.css"
     />
     <style>
+      .mf-grid > .mf-card {
+        background: transparent;
+        border: 0;
+        box-shadow: none;
+        padding: 0;
+      }
+
+      .mf-grid > .mf-card .mf-head {
+        margin-bottom: 12px;
+      }
+
       .mf-details {
         margin-top: 2rem;
       }
@@ -293,6 +304,22 @@
       <panama-fichas-router empty-hash="#/"></panama-fichas-router>
     </div>
 
+    <script>
+      document
+        .querySelectorAll(
+          [
+            'panama-candidaturas-chart',
+            'panama-financiacion-chart',
+            'panama-gastos-tiempo-chart',
+            'panama-paridad-chart',
+            'panama-aportantes-chart',
+            'panama-home-gastos-treemap-chart',
+            'panama-mapa-financiero-chart',
+            'panama-histograma-aportantes-chart',
+          ].join(','),
+        )
+        .forEach((element) => element.setAttribute('bare', ''));
+    </script>
     <script type="module" src="./visualizaciones-panama.jsx"></script>
   </body>
 </html>

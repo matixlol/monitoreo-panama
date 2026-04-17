@@ -620,7 +620,7 @@ function summaryCardsMarkup(items) {
 
 const summaryCardsElementCss = `:host{display:block;min-width:0;color:#111827}${SUMMARY_CARDS_CSS}.loading,.error{padding:14px 0;color:#667085}`;
 const bootstrapTabsCss = `.wc-tabs-wrap,.wc-tabs,.wc-tab-item,.wc-tab-link{box-sizing:border-box}.wc-tabs-wrap{margin:0 0 16px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans","Liberation Sans",sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";font-size:1rem;font-weight:400;line-height:1.5;color:#212529;-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}.wc-tabs{display:flex;flex-wrap:wrap;margin-top:0;margin-bottom:0;padding-left:0;list-style:none;border-bottom:1px solid #dee2e6}.wc-tab-item{margin-bottom:-1px;flex:none;list-style:none}.wc-tab-link{display:block;padding:.5rem 1rem;background-color:transparent;color:inherit;font:inherit;line-height:1.5;text-decoration:none;white-space:nowrap}.wc-tabs .wc-tab-link{border:1px solid transparent;border-top-left-radius:.25rem;border-top-right-radius:.25rem}.wc-tabs .wc-tab-link:hover,.wc-tabs .wc-tab-link:focus{text-decoration:none;border-color:#e9ecef #e9ecef #dee2e6}.wc-tab-link:focus-visible{outline:2px solid rgba(0,123,255,.35);outline-offset:2px}.wc-tabs .wc-tab-link.active,.wc-tabs .wc-tab-item.show .wc-tab-link{color:#495057;background-color:#fff;border-color:#dee2e6 #dee2e6 #fff}@media (max-width:720px){.wc-tabs-wrap{margin-bottom:14px}.wc-tab-link{padding:.5rem .875rem;font-size:.95rem}}`;
-const chartPanelCss = `:host{display:block;min-width:0;color:#111827;}.wc-panel{display:grid;gap:16px;padding:16px;background:#f8f8f8;border-radius:12px}.wc-title{margin:0;font:inherit;font-size:clamp(1.95rem,4vw,2.5rem);font-weight:500;line-height:1.05;letter-spacing:-.04em;overflow-wrap:anywhere}.wc-body,.wh-chart{min-width:0}.loading,.error,.empty{padding:14px 0;color:#667085}@media (max-width:720px){.wc-panel{gap:14px;padding:14px}.wc-title{font-size:clamp(1.5rem,8vw,2rem)}}`;
+const chartPanelCss = `:host{display:block;min-width:0;color:#111827;}.wc-panel{display:grid;gap:16px;padding:16px;background:#f8f8f8;border-radius:12px}.wc-title{margin:0;font:inherit;font-size:clamp(1.95rem,4vw,2.5rem);font-weight:500;line-height:1.05;letter-spacing:-.04em;overflow-wrap:anywhere}.wc-body,.wh-chart{min-width:0}.wc-body--bare{display:grid;gap:12px;min-width:0}.loading,.error,.empty{padding:14px 0;color:#667085}@media (max-width:720px){.wc-panel{gap:14px;padding:14px}.wc-title{font-size:clamp(1.5rem,8vw,2rem)}}`;
 const chartElementCss = `${chartPanelCss}.wc-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin:0 0 12px}.wc-field{display:grid;gap:4px;min-width:180px;color:#344054;}.wc-field select{padding:8px 12px;border:1px solid #e4e7ec;border-radius:999px;background:#fff;color:#344054;}${bootstrapTabsCss}.mf-map{overflow-x:auto;overflow-y:hidden}.mf-map svg{display:block;width:100%;height:auto;max-width:960px;margin:auto}.legend{display:flex;align-items:center;gap:10px;margin-top:10px;color:#667085;}.mf-grad{height:12px;flex:1;max-width:300px;border-radius:999px;background:linear-gradient(90deg,#eff6ff,#1d4ed8)}.mf-parity-layout{display:grid;gap:24px;align-items:start;grid-template-columns:minmax(0,1.7fr) minmax(210px,.65fr)}.mf-parity-layout__map,.mf-parity-layout__breakdown{min-width:0}.mf-parity-layout__breakdown{display:grid;align-content:start}@media (max-width:1040px){.mf-parity-layout{grid-template-columns:1fr}}${incomeBreakdownChartCss}${groupedBarsChartCss}`;
 const contributorHistogramElementCss = `${chartPanelCss}${bootstrapTabsCss}`;
 
@@ -699,6 +699,12 @@ function createChartPanel(title) {
   return { panel, body };
 }
 
+function createBareChartBody() {
+  const body = document.createElement('div');
+  body.className = 'wc-body wc-body--bare';
+  return body;
+}
+
 function defineSummaryCardsElement() {
   if (typeof window === 'undefined' || customElements.get('panama-resumen-cards')) return;
   class PanamaSummaryCardsElement extends HTMLElement {
@@ -752,21 +758,27 @@ function defineChartElement(name, title, observedAttributes, renderChart, getCon
       const root = this.shadowRoot || this.attachShadow({ mode: 'open' });
       const token = (this._token || 0) + 1;
       this._token = token;
+      const bare = this.hasAttribute('bare');
       root.innerHTML = `<style>${chartElementCss}</style>`;
-      const loadingPanel = createChartPanel(title);
-      loadingPanel.body.append(
-        Object.assign(document.createElement('div'), { className: 'loading', textContent: 'Cargando…' }),
-      );
-      root.append(loadingPanel.panel);
+      if (bare) {
+        root.append(Object.assign(document.createElement('div'), { className: 'loading', textContent: 'Cargando…' }));
+      } else {
+        const loadingPanel = createChartPanel(title);
+        loadingPanel.body.append(
+          Object.assign(document.createElement('div'), { className: 'loading', textContent: 'Cargando…' }),
+        );
+        root.append(loadingPanel.panel);
+      }
       try {
         const store = await resolveStoreForElement(this);
         if (token !== this._token) return;
         const controls = getControls(this, store);
         const node = renderChart(this, store);
         root.innerHTML = `<style>${chartElementCss}</style>`;
-        const panel = createChartPanel(title);
+        const panel = bare ? null : createChartPanel(title);
+        const body = bare ? createBareChartBody() : panel.body;
         if (controls.length === 1) {
-          panel.body.append(createTabsControl(controls[0], (value) => this.setAttribute(controls[0].attr, value)));
+          body.append(createTabsControl(controls[0], (value) => this.setAttribute(controls[0].attr, value)));
         } else if (controls.length) {
           const wrap = document.createElement('div');
           wrap.className = 'wc-controls';
@@ -786,23 +798,30 @@ function defineChartElement(name, title, observedAttributes, renderChart, getCon
             label.append(select);
             wrap.append(label);
           });
-          panel.body.append(wrap);
+          body.append(wrap);
         }
-        panel.body.append(
+        body.append(
           node || Object.assign(document.createElement('div'), { className: 'empty', textContent: 'Sin datos.' }),
         );
-        root.append(panel.panel);
+        if (bare) {
+          root.append(body);
+        } else {
+          root.append(panel.panel);
+        }
       } catch (error) {
         if (token !== this._token) return;
         root.innerHTML = `<style>${chartElementCss}</style>`;
-        const errorPanel = createChartPanel(title);
-        errorPanel.body.append(
-          Object.assign(document.createElement('div'), {
-            className: 'error',
-            textContent: String(error?.message || error),
-          }),
-        );
-        root.append(errorPanel.panel);
+        const errorNode = Object.assign(document.createElement('div'), {
+          className: 'error',
+          textContent: String(error?.message || error),
+        });
+        if (bare) {
+          root.append(errorNode);
+        } else {
+          const errorPanel = createChartPanel(title);
+          errorPanel.body.append(errorNode);
+          root.append(errorPanel.panel);
+        }
       }
     }
   }
@@ -831,41 +850,54 @@ function defineContributorHistogramElement() {
       const token = (this._token || 0) + 1;
       this._token = token;
       const mode = contributorHistogramMode(attr(this, 'mode', 'count'));
+      const bare = this.hasAttribute('bare');
       root.innerHTML = `<style>${contributorHistogramElementCss}</style>`;
-      const loadingPanel = createChartPanel('Histograma de aportantes');
-      loadingPanel.body.append(
-        Object.assign(document.createElement('div'), { className: 'loading', textContent: 'Cargando…' }),
-      );
-      root.append(loadingPanel.panel);
+      if (bare) {
+        root.append(Object.assign(document.createElement('div'), { className: 'loading', textContent: 'Cargando…' }));
+      } else {
+        const loadingPanel = createChartPanel('Histograma de aportantes');
+        loadingPanel.body.append(
+          Object.assign(document.createElement('div'), { className: 'loading', textContent: 'Cargando…' }),
+        );
+        root.append(loadingPanel.panel);
+      }
       try {
         const store = await resolveStoreForElement(this);
         if (token !== this._token) return;
         const node = renderContributorHistogramChart(store, mode);
         root.innerHTML = `<style>${contributorHistogramElementCss}</style>`;
-        const panel = createChartPanel('Histograma de aportantes');
+        const panel = bare ? null : createChartPanel('Histograma de aportantes');
+        const body = bare ? createBareChartBody() : panel.body;
         const chart = document.createElement('div');
         chart.className = 'wh-chart';
-        panel.body.append(
+        body.append(
           createTabsControl({ label: 'Modo', value: mode, options: CONTRIBUTOR_HISTOGRAM_TABS }, (value) =>
             this.setAttribute('mode', value),
           ),
         );
-        panel.body.append(chart);
+        body.append(chart);
         chart.append(
           node || Object.assign(document.createElement('div'), { className: 'empty', textContent: 'Sin datos.' }),
         );
-        root.append(panel.panel);
+        if (bare) {
+          root.append(body);
+        } else {
+          root.append(panel.panel);
+        }
       } catch (error) {
         if (token !== this._token) return;
         root.innerHTML = `<style>${contributorHistogramElementCss}</style>`;
-        const errorPanel = createChartPanel('Histograma de aportantes');
-        errorPanel.body.append(
-          Object.assign(document.createElement('div'), {
-            className: 'error',
-            textContent: String(error?.message || error),
-          }),
-        );
-        root.append(errorPanel.panel);
+        const errorNode = Object.assign(document.createElement('div'), {
+          className: 'error',
+          textContent: String(error?.message || error),
+        });
+        if (bare) {
+          root.append(errorNode);
+        } else {
+          const errorPanel = createChartPanel('Histograma de aportantes');
+          errorPanel.body.append(errorNode);
+          root.append(errorPanel.panel);
+        }
       }
     }
   }
