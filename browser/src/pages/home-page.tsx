@@ -89,11 +89,26 @@ export function HomePage() {
   const [formState, setFormState] = React.useState(() => toFormState(search));
   const [downloadId, setDownloadId] = React.useState<string | null>(null);
   const deferredCandidateQuery = React.useDeferredValue(formState.q.trim());
+  const searchStateKey = [
+    search.page,
+    search.limit,
+    search.q,
+    search.status,
+    search.eventId,
+    search.positionId,
+    search.provinceId,
+    search.districtId,
+    search.townshipId,
+    search.circuitId,
+    search.partyId,
+    search.month,
+    search.isProclaimed,
+  ].join('|');
 
   React.useEffect(() => {
     setFormState(toFormState(search));
     if (hasActiveFilters(search)) setIsFiltersOpen(true);
-  }, [search]);
+  }, [searchStateKey]);
 
   const searchQuery = useQuery({
     queryKey: ['affidavits', search],
@@ -202,6 +217,8 @@ export function HomePage() {
 
   const total = searchQuery.data?.count ?? 0;
   const pageNumbers = buildPageNumbers(search.page, pageCount);
+  const candidateSuggestions =
+    deferredCandidateQuery.length >= 2 ? candidateSuggestionsQuery.data ?? [] : [];
 
   return (
     <div className="page-shell space-y-6">
@@ -223,22 +240,32 @@ export function HomePage() {
                 <div className="relative">
                   <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
-                    list="candidate-suggestions"
                     value={formState.q}
                     onChange={(event) => handleFieldChange('q', event.target.value)}
                     placeholder="Nombre o número de cédula"
                     className="pl-9"
                   />
-                  <datalist id="candidate-suggestions">
-                    {candidateSuggestionsQuery.data?.map((option) => (
-                      <option
-                        key={option.label}
-                        value={option.value}
-                        label={option.label}
-                      />
-                    ))}
-                  </datalist>
                 </div>
+                {candidateSuggestions.length ? (
+                  <div className="rounded-md border bg-card shadow-xs">
+                    {candidateSuggestions.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        className="flex w-full items-start justify-between gap-3 border-b px-3 py-2 text-left text-sm last:border-b-0 hover:bg-muted/60"
+                        onMouseDown={(event) => {
+                          event.preventDefault();
+                          handleFieldChange('q', option.value);
+                        }}
+                      >
+                        <span className="font-medium">{option.label}</span>
+                        <span className="shrink-0 text-xs text-muted-foreground">
+                          usar
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </label>
 
               <div className="flex gap-2">
