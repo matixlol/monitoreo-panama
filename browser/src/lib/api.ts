@@ -62,7 +62,8 @@ export type SelectOption = {
 };
 
 export type FilterCatalog = {
-  events: SelectOption[];
+  eventCategories: SelectOption[];
+  periods: SelectOption[];
   positions: SelectOption[];
   provinces: SelectOption[];
   districts: SelectOption[];
@@ -70,6 +71,17 @@ export type FilterCatalog = {
   circuits: SelectOption[];
   parties: SelectOption[];
   months: SelectOption[];
+};
+
+type NamedEntity = {
+  id: string;
+  name: string;
+};
+
+type PeriodEntity = {
+  id: string;
+  startYear: number;
+  endYear: number;
 };
 
 async function fetchJson<T>(path: string, params?: URLSearchParams) {
@@ -84,30 +96,40 @@ async function fetchJson<T>(path: string, params?: URLSearchParams) {
 }
 
 function buildSearchParams(search: BrowserSearch) {
-  const params = new URLSearchParams();
-  params.set('page', String(search.page));
-  params.set('limit', String(search.limit));
-  params.set('sortKey', 'updatedAt');
-  params.set('sortOrder', 'desc');
-
-  for (const key of [
-    'q',
-    'status',
-    'eventId',
-    'positionId',
-    'provinceId',
-    'districtId',
-    'townshipId',
-    'circuitId',
-    'partyId',
-    'month',
-    'isProclaimed',
-  ] as const) {
-    const value = search[key];
-    if (value) params.set(key, value);
-  }
-
-  return params;
+  return serializeParams({
+    page: String(search.page),
+    limit: String(search.limit),
+    sortKey: 'updatedAt',
+    sortOrder: 'desc',
+    q: search.q || undefined,
+    status: search.status || undefined,
+    partyId: search.partyId || undefined,
+    month: search.month || undefined,
+    isProclaimed: search.isProclaimed || undefined,
+    Postulation:
+      search.eventCategoryId ||
+      search.periodId ||
+      search.positionId ||
+      search.provinceId ||
+      search.districtId ||
+      search.townshipId ||
+      search.circuitId
+        ? {
+            Event:
+              search.eventCategoryId || search.periodId
+                ? {
+                    eventCategoryId: search.eventCategoryId || undefined,
+                    periodId: search.periodId || undefined,
+                  }
+                : undefined,
+            positionId: search.positionId || undefined,
+            provinceId: search.provinceId || undefined,
+            districtId: search.districtId || undefined,
+            townshipId: search.townshipId || undefined,
+            circuitId: search.circuitId || undefined,
+          }
+        : undefined,
+  });
 }
 
 export function searchAffidavits(search: BrowserSearch) {
@@ -190,7 +212,8 @@ export async function getAffidavitRows(affidavitId: string, type: 'ingress' | 'e
 
 function createEmptyCatalog(): FilterCatalog {
   return {
-    events: [],
+    eventCategories: [],
+    periods: [],
     positions: [],
     provinces: [],
     districts: [],
@@ -210,7 +233,8 @@ function sortOptions(options: Map<string, SelectOption>) {
 
 export function buildFilterCatalog(items: AffidavitListItem[]) {
   const catalog = createEmptyCatalog();
-  const events = new Map<string, SelectOption>();
+  const eventCategories = new Map<string, SelectOption>();
+  const periods = new Map<string, SelectOption>();
   const positions = new Map<string, SelectOption>();
   const provinces = new Map<string, SelectOption>();
   const districts = new Map<string, SelectOption>();
@@ -219,16 +243,18 @@ export function buildFilterCatalog(items: AffidavitListItem[]) {
   const parties = new Map<string, SelectOption>();
 
   for (const item of items) {
-    const event = item.Postulation?.Event;
-    if (event?.id) {
-      const label = [
-        event.EventCategory?.name,
-        event.Party?.name,
-        event.Period ? `${event.Period.startYear}-${event.Period.endYear}` : null,
-      ]
-        .filter(Boolean)
-        .join(' · ');
-      events.set(event.id, { label, value: event.id });
+    const eventCategory = item.Postulation?.Event?.EventCategory;
+    if (eventCategory?.name) {
+      eventCategories.set(eventCategory.name, {
+        label: eventCategory.name,
+        value: eventCategory.name,
+      });
+    }
+
+    const period = item.Postulation?.Event?.Period;
+    if (period?.startYear && period?.endYear) {
+      const label = `${period.startYear}-${period.endYear}`;
+      periods.set(label, { label, value: label });
     }
 
     const position = item.Postulation?.Position;
@@ -246,11 +272,12 @@ export function buildFilterCatalog(items: AffidavitListItem[]) {
     const circuit = item.Postulation?.Circuit;
     if (circuit?.id) circuits.set(circuit.id, { label: circuit.name, value: circuit.id });
 
-    const party = item.Party ?? event?.Party;
+    const party = item.Party ?? item.Postulation?.Event?.Party;
     if (party?.id) parties.set(party.id, { label: party.name, value: party.id });
   }
 
-  catalog.events = sortOptions(events);
+  catalog.eventCategories = sortOptions(eventCategories);
+  catalog.periods = sortOptions(periods);
   catalog.positions = sortOptions(positions);
   catalog.provinces = sortOptions(provinces);
   catalog.districts = sortOptions(districts);
@@ -259,6 +286,93 @@ export function buildFilterCatalog(items: AffidavitListItem[]) {
   catalog.parties = sortOptions(parties);
 
   return catalog;
+}
+
+function appendParams(params: URLSearchParams, key: string, value: unknown) {
+  if (value === undefined || value === null || value === '') return;
+
+  if (Array.isArray(value)) {
+    value.forEach((entry) => appendParams(params, `${key}[]`, entry));
+    return;
+  }
+
+  if (typeof value === 'object') {
+    Object.entries(value).forEach(([childKey, childValue]) => {
+      appendParams(params, `${key}[${childKey}]`, childValue);
+    });
+    return;
+  }
+
+  params.set(key, String(value));
+}
+
+function serializeParams(input: Record<string, unknown>) {
+  const params = new URLSearchParams();
+  Object.entries(input).forEach(([key, value]) => appendParams(params, key, value));
+  return params;
+}
+
+function mapNamedOptions(items: NamedEntity[]) {
+  return items.map((item) => ({ label: item.name, value: item.id }));
+}
+
+async function fetchCatalogOptions<T>(
+  path: string,
+  mapFn: (items: T[]) => SelectOption[],
+  sortKey = 'name',
+) {
+  const response = await fetchJson<{ data: T[] }>(
+    path,
+    new URLSearchParams({
+      limit: '0',
+      sortKey,
+      sortOrder: 'asc',
+    }),
+  );
+
+  return mapFn(response.data);
+}
+
+export async function getFilterCatalog() {
+  const [
+    eventCategories,
+    periods,
+    positions,
+    provinces,
+    districts,
+    townships,
+    circuits,
+    parties,
+  ] = await Promise.all([
+    fetchCatalogOptions<NamedEntity>('/event-category', mapNamedOptions),
+    fetchCatalogOptions<PeriodEntity>(
+      '/event/period',
+      (items) =>
+        items.map((item) => ({
+          label: `${item.startYear}-${item.endYear}`,
+          value: item.id,
+        })),
+      'startYear',
+    ),
+    fetchCatalogOptions<NamedEntity>('/event/position', mapNamedOptions),
+    fetchCatalogOptions<NamedEntity>('/event/province', mapNamedOptions),
+    fetchCatalogOptions<NamedEntity>('/event/district', mapNamedOptions),
+    fetchCatalogOptions<NamedEntity>('/event/township', mapNamedOptions),
+    fetchCatalogOptions<NamedEntity>('/event/circuit', mapNamedOptions),
+    fetchCatalogOptions<NamedEntity>('/party', mapNamedOptions),
+  ]);
+
+  return {
+    eventCategories,
+    periods,
+    positions,
+    provinces,
+    districts,
+    townships,
+    circuits,
+    parties,
+    months: createEmptyCatalog().months,
+  } satisfies FilterCatalog;
 }
 
 export async function downloadPdf(url: string, fileName: string) {

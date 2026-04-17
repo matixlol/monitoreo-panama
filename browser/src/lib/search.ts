@@ -19,7 +19,8 @@ export type BrowserSearch = {
   limit: number;
   q: string;
   status: string;
-  eventId: string;
+  eventCategoryId: string;
+  periodId: string;
   positionId: string;
   provinceId: string;
   districtId: string;
@@ -35,7 +36,8 @@ export const DEFAULT_SEARCH: BrowserSearch = {
   limit: 10,
   q: '',
   status: '',
-  eventId: '',
+  eventCategoryId: '',
+  periodId: '',
   positionId: '',
   provinceId: '',
   districtId: '',
@@ -59,7 +61,8 @@ export function parseSearch(input: Record<string, unknown>): BrowserSearch {
     limit: Number.isFinite(limit) && limit > 0 ? limit : DEFAULT_SEARCH.limit,
     q: getString(input.q),
     status: getString(input.status),
-    eventId: getString(input.eventId),
+    eventCategoryId: getString(input.eventCategoryId),
+    periodId: getString(input.periodId),
     positionId: getString(input.positionId),
     provinceId: getString(input.provinceId),
     districtId: getString(input.districtId),

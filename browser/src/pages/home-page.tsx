@@ -9,9 +9,9 @@ import {
   Search as SearchIcon,
 } from 'lucide-react';
 import {
-  buildFilterCatalog,
   downloadPdf,
   getAffidavitDetail,
+  getFilterCatalog,
   searchAffidavits,
   searchCandidateSuggestions,
   type AffidavitListItem,
@@ -94,7 +94,8 @@ export function HomePage() {
     search.limit,
     search.q,
     search.status,
-    search.eventId,
+    search.eventCategoryId,
+    search.periodId,
     search.positionId,
     search.provinceId,
     search.districtId,
@@ -145,10 +146,12 @@ export function HomePage() {
     return map;
   }, [detailQueries, searchQuery.data?.data]);
 
-  const filterCatalog = React.useMemo(
-    () => buildFilterCatalog(searchQuery.data?.data ?? []),
-    [searchQuery.data?.data],
-  );
+  const catalogQuery = useQuery({
+    queryKey: ['filter-catalog'],
+    queryFn: getFilterCatalog,
+    staleTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
 
   const pageCount = searchQuery.data
     ? Math.max(1, Math.ceil(searchQuery.data.count / searchQuery.data.limit))
@@ -174,7 +177,8 @@ export function HomePage() {
     setFormState((current) => ({
       ...current,
       status: '',
-      eventId: '',
+      eventCategoryId: '',
+      periodId: '',
       positionId: '',
       provinceId: '',
       districtId: '',
@@ -309,12 +313,22 @@ export function HomePage() {
                   </label>
 
                   <label className="space-y-2 text-sm">
-                    <span className="text-muted-foreground">Evento</span>
+                    <span className="text-muted-foreground">Categoría del evento</span>
                     <Select
-                      value={formState.eventId}
-                      onChange={(event) => handleFieldChange('eventId', event.target.value)}
-                      options={filterCatalog.events}
-                      placeholder="Opciones visibles"
+                      value={formState.eventCategoryId}
+                      onChange={(event) => handleFieldChange('eventCategoryId', event.target.value)}
+                      options={catalogQuery.data?.eventCategories ?? []}
+                      placeholder={catalogQuery.isLoading ? 'Cargando...' : 'Todas'}
+                    />
+                  </label>
+
+                  <label className="space-y-2 text-sm">
+                    <span className="text-muted-foreground">Periodo</span>
+                    <Select
+                      value={formState.periodId}
+                      onChange={(event) => handleFieldChange('periodId', event.target.value)}
+                      options={catalogQuery.data?.periods ?? []}
+                      placeholder={catalogQuery.isLoading ? 'Cargando...' : 'Todos'}
                     />
                   </label>
 
@@ -323,8 +337,8 @@ export function HomePage() {
                     <Select
                       value={formState.positionId}
                       onChange={(event) => handleFieldChange('positionId', event.target.value)}
-                      options={filterCatalog.positions}
-                      placeholder="Opciones visibles"
+                      options={catalogQuery.data?.positions ?? []}
+                      placeholder={catalogQuery.isLoading ? 'Cargando...' : 'Todos'}
                     />
                   </label>
 
@@ -333,8 +347,8 @@ export function HomePage() {
                     <Select
                       value={formState.partyId}
                       onChange={(event) => handleFieldChange('partyId', event.target.value)}
-                      options={filterCatalog.parties}
-                      placeholder="Opciones visibles"
+                      options={catalogQuery.data?.parties ?? []}
+                      placeholder={catalogQuery.isLoading ? 'Cargando...' : 'Todos'}
                     />
                   </label>
 
@@ -343,7 +357,7 @@ export function HomePage() {
                     <Select
                       value={formState.month}
                       onChange={(event) => handleFieldChange('month', event.target.value)}
-                      options={filterCatalog.months}
+                      options={catalogQuery.data?.months ?? []}
                     />
                   </label>
 
@@ -352,8 +366,8 @@ export function HomePage() {
                     <Select
                       value={formState.provinceId}
                       onChange={(event) => handleFieldChange('provinceId', event.target.value)}
-                      options={filterCatalog.provinces}
-                      placeholder="Opciones visibles"
+                      options={catalogQuery.data?.provinces ?? []}
+                      placeholder={catalogQuery.isLoading ? 'Cargando...' : 'Todas'}
                     />
                   </label>
 
@@ -362,8 +376,8 @@ export function HomePage() {
                     <Select
                       value={formState.districtId}
                       onChange={(event) => handleFieldChange('districtId', event.target.value)}
-                      options={filterCatalog.districts}
-                      placeholder="Opciones visibles"
+                      options={catalogQuery.data?.districts ?? []}
+                      placeholder={catalogQuery.isLoading ? 'Cargando...' : 'Todos'}
                     />
                   </label>
 
@@ -372,8 +386,8 @@ export function HomePage() {
                     <Select
                       value={formState.townshipId}
                       onChange={(event) => handleFieldChange('townshipId', event.target.value)}
-                      options={filterCatalog.townships}
-                      placeholder="Opciones visibles"
+                      options={catalogQuery.data?.townships ?? []}
+                      placeholder={catalogQuery.isLoading ? 'Cargando...' : 'Todos'}
                     />
                   </label>
 
@@ -382,8 +396,8 @@ export function HomePage() {
                     <Select
                       value={formState.circuitId}
                       onChange={(event) => handleFieldChange('circuitId', event.target.value)}
-                      options={filterCatalog.circuits}
-                      placeholder="Opciones visibles"
+                      options={catalogQuery.data?.circuits ?? []}
+                      placeholder={catalogQuery.isLoading ? 'Cargando...' : 'Todos'}
                     />
                   </label>
 
@@ -402,8 +416,8 @@ export function HomePage() {
 
                 <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-xs text-muted-foreground">
-                    Los combos se llenan con los resultados cargados para evitar consultas masivas a
-                    la API pública.
+                    Los catálogos se cargan desde los endpoints públicos del sitio real. Categoría
+                    del evento y periodo vuelven a estar separados, como en la página original.
                   </p>
                   <div className="flex flex-wrap gap-2">
                     <Button type="submit">Aplicar filtros</Button>
