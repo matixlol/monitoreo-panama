@@ -2,6 +2,8 @@ import * as d3 from 'd3';
 
 const WIDTH = 1000;
 const HEIGHT = 420;
+const MOBILE_WIDTH = 760;
+const MOBILE_HEIGHT = 1140;
 const PADDING = 1;
 
 const esc = (value) =>
@@ -110,7 +112,7 @@ const STYLE = `
 .tm-back:hover{background:#f8fafc}
 .tm-note{font-size:12px;color:#667085}
 .tm-stage{position:relative;border:1px solid #e4e7ec;background:#fff;overflow:hidden}
-.tm-canvas{position:relative;width:100%;aspect-ratio:1000 / 420;overflow:hidden}
+.tm-canvas{position:relative;width:100%;overflow:hidden}
 .tm-canvas svg{position:absolute;inset:0;display:block;width:100%;height:100%;max-width:none}
 .tm-zoom-overlay{position:absolute;z-index:2;border:1px solid rgba(255,255,255,.95);box-shadow:0 10px 24px rgba(15,23,42,.08);pointer-events:none;transform-origin:center center}
 .tm-node{cursor:default}
@@ -120,14 +122,19 @@ const STYLE = `
 .tm-tooltip-title{font-weight:700;margin-bottom:4px}
 .tm-tooltip-row{font-size:12px;line-height:1.35}
 .tm-tooltip-hint{margin-top:6px;font-size:12px;opacity:.75}
-@media (max-width:720px){
-  .tm-canvas{aspect-ratio:1000 / 620}
-}
 `;
+
+function getTreemapDimensions() {
+  if (typeof window !== 'undefined' && window.matchMedia?.('(max-width: 720px)').matches) {
+    return { width: MOBILE_WIDTH, height: MOBILE_HEIGHT, isMobile: true };
+  }
+  return { width: WIDTH, height: HEIGHT, isMobile: false };
+}
 
 export const treemap = (data, { colors = [], money, int }) => {
   const tree = normalizeTree(data, colors);
   if (!tree.children.length) return null;
+  const dimensions = getTreemapDimensions();
 
   const wrap = document.createElement('div');
   wrap.className = 'tm-root';
@@ -159,6 +166,7 @@ export const treemap = (data, { colors = [], money, int }) => {
 
   const canvas = document.createElement('div');
   canvas.className = 'tm-canvas';
+  canvas.style.aspectRatio = `${dimensions.width} / ${dimensions.height}`;
 
   const tooltip = document.createElement('div');
   tooltip.className = 'tm-tooltip';
@@ -423,11 +431,11 @@ export const treemap = (data, { colors = [], money, int }) => {
       .sum((node) => node.value || 0)
       .sort((a, b) => d3.descending(a.value, b.value));
 
-    d3.treemap().size([WIDTH, HEIGHT]).paddingInner(PADDING).paddingOuter(PADDING)(hierarchyRoot);
+    d3.treemap().size([dimensions.width, dimensions.height]).paddingInner(PADDING).paddingOuter(PADDING)(hierarchyRoot);
 
     const svg = d3
       .create('svg')
-      .attr('viewBox', [0, 0, WIDTH, HEIGHT])
+      .attr('viewBox', [0, 0, dimensions.width, dimensions.height])
       .attr('aria-label', currentNode.label)
       .style('display', 'block');
 
@@ -461,14 +469,18 @@ export const treemap = (data, { colors = [], money, int }) => {
       const fill = colorForNode(leaf.data, currentNode, colors, nodes);
       const labelColor = textColorFor(fill);
       const lines = labelLines(leaf.data, width, height, money);
+      const labelFontSize = dimensions.isMobile ? 17 : 13;
+      const labelLineHeight = dimensions.isMobile ? 21 : 17;
+      const labelInset = dimensions.isMobile ? 12 : 10;
+      const labelTop = dimensions.isMobile ? 21 : 18;
       if (!lines.length) return;
 
       const text = group
         .append('text')
-        .attr('x', 10)
-        .attr('y', 18)
+        .attr('x', labelInset)
+        .attr('y', labelTop)
         .attr('fill', labelColor)
-        .attr('font-size', 13)
+        .attr('font-size', labelFontSize)
         .attr('font-weight', 600)
         .attr('pointer-events', 'none');
 
@@ -476,8 +488,8 @@ export const treemap = (data, { colors = [], money, int }) => {
         .selectAll('tspan')
         .data(lines)
         .join('tspan')
-        .attr('x', 10)
-        .attr('dy', (_, lineIndex) => (lineIndex === 0 ? 0 : 17))
+        .attr('x', labelInset)
+        .attr('dy', (_, lineIndex) => (lineIndex === 0 ? 0 : labelLineHeight))
         .attr('font-weight', (_, lineIndex) => (lineIndex === 0 ? 600 : 500))
         .text((line) => line);
     });
