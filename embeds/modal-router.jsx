@@ -115,6 +115,7 @@ function CsvDownloadButton({ columns, rows, filename, label }) {
           strokeLinejoin="round"
         />
       </svg>
+      <span className="mf-icon-button__label">{label}</span>
     </button>
   );
 }
@@ -194,7 +195,7 @@ function CandidateModal({ entity }) {
               columns={ingresoColumns}
               rows={ingresoTableRows}
               filename={`${entitySlug}-ingresos.csv`}
-              label="Descargar tabla de ingresos en CSV"
+              label="Descargar esta tabla"
             />
           ) : null
         }
@@ -254,7 +255,7 @@ function CandidateModal({ entity }) {
               columns={gastoColumns}
               rows={gastoTableRows}
               filename={`${entitySlug}-egresos.csv`}
-              label="Descargar tabla de egresos en CSV"
+              label="Descargar esta tabla"
             />
           ) : null
         }
@@ -321,7 +322,7 @@ function DonorModal({ entity }) {
               columns={columns}
               rows={tableRows}
               filename={`${entitySlug}-ingresos.csv`}
-              label="Descargar tabla de ingresos en CSV"
+              label="Descargar esta tabla"
             />
           ) : null
         }
@@ -409,7 +410,7 @@ function ProviderModal({ entity }) {
               columns={columns}
               rows={tableRows}
               filename={`${entitySlug}-egresos.csv`}
-              label="Descargar tabla de egresos en CSV"
+              label="Descargar esta tabla"
             />
           ) : null
         }
