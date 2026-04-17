@@ -64,37 +64,34 @@ const attachOpenFicha = (chart, kind, buildHashRoute) => {
 
 const mobileCandidateBeeswarm = (rows, kind, { buildHashRoute, money, short }) => {
   const width = 720;
-  const margin = { top: 6, right: 8, bottom: 24, left: 8 };
-  const innerWidth = width - margin.left - margin.right;
+  const sharedMargin = { top: 14, right: 8, bottom: 24, left: 32 };
+  const innerWidth = width - sharedMargin.left - sharedMargin.right;
   const amounts = rows.map(amountOf);
   const amountMax = d3.max(amounts) ?? 0;
-  const xScale = d3.scaleLinear().domain([0, amountMax || 1]).nice().range([0, innerWidth]);
+  const xScale = d3
+    .scaleLinear()
+    .domain([0, amountMax || 1])
+    .nice()
+    .range([0, innerWidth]);
   const rScale = d3
     .scaleSqrt()
     .domain([0, amountMax || 1])
     .range([4, amountMax > 500000 ? 18 : 22]);
-  const groups = Array.from(
-    d3.group(rows, candidateGroupOf),
-    ([label, values]) => ({ label, values }),
-  );
+  const groups = Array.from(d3.group(rows, candidateGroupOf), ([label, values]) => ({ label, values }));
   const colorScale = d3.scaleOrdinal(d3.schemeTableau10).domain(groups.map((group) => group.label));
 
   const container = d3
     .create('div')
     .classed('beeswarm-mobile-candidates', true)
     .style('display', 'grid')
-    .style('gap', '10px')
+    .style('gap', '4px')
     .style('width', '100%')
     .style('min-width', '0');
 
   container.append('style').text(`
     .beeswarm-mobile-candidates__group {
       display: grid;
-      gap: 8px;
-      padding: 10px 10px 8px;
-      border: 1px solid #d0d5dd;
-      border-radius: 14px;
-      background: #fff;
+      gap: 4px;
     }
 
     .beeswarm-mobile-candidates__label {
@@ -109,13 +106,15 @@ const mobileCandidateBeeswarm = (rows, kind, { buildHashRoute, money, short }) =
     }
   `);
 
-  groups.forEach(({ label, values }) => {
+  groups.forEach(({ label, values }, index) => {
+    const isLast = index === groups.length - 1;
+    const margin = isLast ? sharedMargin : { ...sharedMargin, bottom: 8 };
     const group = container.append('section').attr('class', 'beeswarm-mobile-candidates__group');
     group.append('div').attr('class', 'beeswarm-mobile-candidates__label').text(label);
 
     const chart = easyBeeSwarm(values, {
       width,
-      height: 106,
+      height: isLast ? 118 : 86,
       margin,
       x: amountOf,
       r: amountOf,
@@ -126,11 +125,11 @@ const mobileCandidateBeeswarm = (rows, kind, { buildHashRoute, money, short }) =
       colorScale,
       separateVertically: false,
       showYAxis: false,
-      showXAxis: true,
+      showXAxis: isLast,
       xAxisPosition: 'bottom',
       xTickCount: 4,
       xTickFormat: short,
-      xTickSize: 8,
+      xTickSize: isLast ? 8 : 0,
       xAxisColor: '#d0d5dd',
       xAxisWidth: 0.8,
       fontSize: 11,
