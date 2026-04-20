@@ -1,10 +1,13 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ALL, INCOME_TYPES, formatEmbedCurrency, incomeBreakdown, sortPos, uniq } from './embed-shared.jsx';
 
 const SIZE = 200;
 const CENTER = SIZE / 2;
-const RADIUS = 68;
-const STROKE_WIDTH = 24;
+const RADIUS = 82;
+const STROKE_WIDTH = 28;
+const ACTIVE_STROKE_WIDTH = 34;
+const ACTIVE_OUTLINE_WIDTH = 38;
+const HIT_STROKE_WIDTH = 44;
 const MIN_BAR_WIDTH = 8;
 const SEGMENT_GAP = 2.5;
 
@@ -125,6 +128,7 @@ const FINANCIACION_CHART_CSS = `
     justify-items:center;
     text-align:center;
     padding:24%;
+    pointer-events:none;
   }
   .mf-income-breakdown__metric{
     display:grid;
@@ -219,8 +223,13 @@ const FINANCIACION_CHART_CSS = `
     cursor:pointer;
     transition:stroke-dasharray .32s ease,stroke-dashoffset .32s ease,opacity .18s ease,stroke-width .18s ease,filter .18s ease;
   }
+  .mf-income-breakdown__segment-outline{
+    fill:none;
+    stroke:#111827;
+    opacity:.75;
+    pointer-events:none;
+  }
   .mf-income-breakdown__segment.is-active{
-    stroke-width:28px;
     filter:saturate(1.05);
   }
   .mf-income-breakdown__segment.is-dimmed{
@@ -315,35 +324,76 @@ export function Tabs({ label, value, options, onChange }) {
 }
 
 function Segment({ item, active, dimmed, strokeDasharray, strokeDashoffset, onSelect }) {
+  function handleSelect(event) {
+    event.stopPropagation();
+    onSelect();
+  }
+
   return (
-    <circle
-      cx={CENTER}
-      cy={CENTER}
-      r={RADIUS}
-      fill="none"
-      stroke={item.color}
-      strokeWidth={STROKE_WIDTH}
-      className={`mf-income-breakdown__segment${active ? ' is-active' : ''}${dimmed ? ' is-dimmed' : ''}`}
-      role="button"
-      tabIndex={0}
-      aria-pressed={active ? 'true' : 'false'}
-      aria-label={`${item.label}: ${formatEmbedCurrency(item.value, 0)} (${Math.round(item.ratio * 100)}%)`}
-      style={{
-        strokeDasharray,
-        strokeDashoffset,
+    <g
+      onPointerDown={(event) => {
+        event.stopPropagation();
       }}
-      onClick={onSelect}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          onSelect();
-        }
-      }}
-    />
+      onClick={handleSelect}
+    >
+      <circle
+        cx={CENTER}
+        cy={CENTER}
+        r={RADIUS}
+        fill="none"
+        stroke="transparent"
+        strokeWidth={HIT_STROKE_WIDTH}
+        style={{
+          cursor: 'pointer',
+          strokeDasharray,
+          strokeDashoffset,
+          pointerEvents: 'stroke',
+        }}
+      />
+      {active ? (
+        <circle
+          cx={CENTER}
+          cy={CENTER}
+          r={RADIUS}
+          strokeWidth={ACTIVE_OUTLINE_WIDTH}
+          className="mf-income-breakdown__segment-outline"
+          style={{
+            strokeDasharray,
+            strokeDashoffset,
+          }}
+        />
+      ) : null}
+      <circle
+        cx={CENTER}
+        cy={CENTER}
+        r={RADIUS}
+        fill="none"
+        stroke={item.color}
+        strokeWidth={active ? ACTIVE_STROKE_WIDTH : STROKE_WIDTH}
+        className={`mf-income-breakdown__segment${active ? ' is-active' : ''}${dimmed ? ' is-dimmed' : ''}`}
+        role="button"
+        tabIndex={0}
+        aria-pressed={active ? 'true' : 'false'}
+        aria-label={`${item.label}: ${formatEmbedCurrency(item.value, 0)} (${Math.round(item.ratio * 100)}%)`}
+        style={{
+          strokeDasharray,
+          strokeDashoffset,
+          pointerEvents: 'none',
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            event.stopPropagation();
+            onSelect();
+          }
+        }}
+      />
+    </g>
   );
 }
 
 export function IncomeBreakdownChart({ items }) {
+  const rootRef = useRef(null);
   const rows = useMemo(() => normalizeBreakdownItems(items), [items]);
   const total = useMemo(() => rows.reduce((acc, item) => acc + (+item.value || 0), 0), [rows]);
   const [activeKey, setActiveKey] = useState(null);
@@ -352,6 +402,21 @@ export function IncomeBreakdownChart({ items }) {
     if (!(total > 0)) return [];
     return rows.map((item) => ({ ...item, ratio: (+item.value || 0) / total }));
   }, [rows, total]);
+
+  useEffect(() => {
+    if (!activeKey) return undefined;
+
+    function handlePointerDown(event) {
+      if (!rootRef.current?.contains(event.target)) {
+        setActiveKey(null);
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+    };
+  }, [activeKey]);
 
   if (!(total > 0)) return <div className="empty">Sin datos.</div>;
 
@@ -364,8 +429,13 @@ export function IncomeBreakdownChart({ items }) {
   let offset = 0;
 
   return (
-    <div className="mf-income-breakdown">
-      <div className="mf-income-breakdown__visual">
+    <div className="mf-income-breakdown" ref={rootRef}>
+      <div
+        className="mf-income-breakdown__visual"
+        onClick={() => {
+          if (hasSelection) setActiveKey(null);
+        }}
+      >
         <div className="mf-income-breakdown__donut">
           <svg
             viewBox={`0 0 ${SIZE} ${SIZE}`}
