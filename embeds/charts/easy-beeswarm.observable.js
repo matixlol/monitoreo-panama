@@ -91,6 +91,7 @@ const defaults = {
   // Distancia máxima para activar tooltip:
   // null => auto = (maxRadiusPx * 2)
   hoverMaxDistance: null,
+  interactionBoundsPadding: null,
 
   // Dimming por hover (CSS)
   dimOthersOnHover: true,
@@ -195,6 +196,8 @@ export const easyBeeSwarm = (data, options = {}) => {
   // ---- Umbral auto: maxRadiusPx * 2 ----
   const maxRadiusPx = d3.max(nodes, (d) => r(d.__rv)) ?? 0;
   const hoverMaxDistancePx = config.hoverMaxDistance == null ? maxRadiusPx * 2 : config.hoverMaxDistance;
+  const interactionBoundsPadding =
+    config.interactionBoundsPadding == null ? hoverMaxDistancePx : config.interactionBoundsPadding;
 
   // ---- Contenedor (embed-safe) ----
   const container = d3
@@ -366,10 +369,11 @@ export const easyBeeSwarm = (data, options = {}) => {
     ); // nearest-neighbor [web:91]
     const overlay = g
       .append('rect')
-      .attr('x', 0)
-      .attr('y', 0)
-      .attr('width', innerWidth)
-      .attr('height', innerHeight)
+      .attr('class', 'hover-overlay')
+      .attr('x', -interactionBoundsPadding)
+      .attr('y', -interactionBoundsPadding)
+      .attr('width', innerWidth + interactionBoundsPadding * 2)
+      .attr('height', innerHeight + interactionBoundsPadding * 2)
       .style('fill', 'transparent')
       .style('pointer-events', 'all');
 

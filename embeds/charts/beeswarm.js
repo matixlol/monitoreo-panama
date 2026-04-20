@@ -35,7 +35,7 @@ const tooltipFor = (kind, d, money) => {
 const attachOpenFicha = (chart, kind, buildHashRoute) => {
   const svg = d3.select(chart).select('svg');
   const plotGroup = svg.select('g');
-  const overlay = plotGroup.select('rect');
+  const overlay = plotGroup.select('rect.hover-overlay');
   const circles = plotGroup.selectAll('circle.bubble').style('cursor', 'pointer');
   const nodes = circles.data();
 
