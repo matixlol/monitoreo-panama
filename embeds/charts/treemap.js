@@ -70,9 +70,7 @@ function tooltipHtml(node, money, int, currentNode) {
     parentLabel ? `<div class="tm-tooltip-row">Categoría: ${esc(parentLabel)}</div>` : '',
     `<div class="tm-tooltip-row">Monto: ${esc(money(node.value || 0))}</div>`,
     node.count ? `<div class="tm-tooltip-row">Registros: ${esc(int(node.count))}</div>` : '',
-    node.children?.length
-      ? '<div class="tm-tooltip-hint">Click para ver el detalle</div>'
-      : '<div class="tm-tooltip-hint">Detalle final</div>',
+    node.children?.length ? '<div class="tm-tooltip-hint">Click para ver el detalle</div>' : '',
   ];
   return lines.filter(Boolean).join('');
 }
@@ -456,11 +454,6 @@ export const treemap = (data, { colors = [], money, int }) => {
       .attr('ry', (leaf) => rectCornerRadius(Math.max(0, leaf.x1 - leaf.x0), Math.max(0, leaf.y1 - leaf.y0)))
       .attr('stroke', '#ffffff')
       .attr('stroke-width', (leaf) => rectStrokeWidth(Math.max(0, leaf.x1 - leaf.x0), Math.max(0, leaf.y1 - leaf.y0)));
-
-    groups.append('title').text((leaf) => {
-      const prefix = path.length ? `${currentNode.label} / ` : '';
-      return `${prefix}${leaf.data.label}\n${money(leaf.data.value || 0)}${leaf.data.count ? `\n${int(leaf.data.count)} registros` : ''}`;
-    });
 
     groups.each(function (leaf) {
       const group = d3.select(this);
