@@ -7,14 +7,14 @@ const plotBase = {
   color: { legend: false },
 };
 
-export const line = (points, { int, money, short }) =>
+export const line = (points, { int, money, short }, options = {}) =>
   points.length
     ? Plot.plot({
         ...plotBase,
         width: 1000,
         height: 320,
         marginLeft: 64,
-        x: { label: null },
+        x: { label: null, domain: options.xDomain },
         y: { label: null, grid: true, tickFormat: short },
         marks: [
           Plot.ruleY([0], { stroke: '#cbd5e1' }),

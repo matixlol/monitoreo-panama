@@ -135,6 +135,26 @@
         <section class="mf-card">
           <div class="mf-head">
             <div>
+              <h2>Línea de tiempo de aportes</h2>
+              <p class="mf-note">Serie temporal de aportes con el mismo formato y selector de cobertura que gastos.</p>
+            </div>
+          </div>
+          <div class="mf-section-body">
+            <aside class="mf-code">
+              <pre>
+&lt;script type="module" src="https://fichas.panama.datos.party/visualizaciones-panama.js"&gt;&lt;/script&gt;
+&lt;panama-aportes-tiempo-chart&gt;&lt;/panama-aportes-tiempo-chart&gt;</pre
+              >
+            </aside>
+            <div class="mf-section-main">
+              <panama-aportes-tiempo-chart></panama-aportes-tiempo-chart>
+            </div>
+          </div>
+        </section>
+
+        <section class="mf-card">
+          <div class="mf-head">
+            <div>
               <h2>Paridad de género por provincia</h2>
               <p class="mf-note">Mapa de participación de mujeres sobre candidaturas únicas.</p>
             </div>
@@ -211,7 +231,6 @@
             </div>
           </div>
         </section>
-
       </div>
 
       <details class="mf-details">
@@ -233,26 +252,6 @@
               </aside>
               <div class="mf-section-main">
                 <panama-mapa-financiero-chart></panama-mapa-financiero-chart>
-              </div>
-            </div>
-          </section>
-
-          <section class="mf-card">
-            <div class="mf-head">
-              <div>
-                <h2>Histograma de aportantes</h2>
-                <p class="mf-note">Distribución facetada por cargo, con modos por cantidad, suma total y fecha.</p>
-              </div>
-            </div>
-            <div class="mf-section-body">
-              <aside class="mf-code">
-                <pre>
-&lt;script type="module" src="https://fichas.panama.datos.party/visualizaciones-panama.js"&gt;&lt;/script&gt;
-&lt;panama-histograma-aportantes-chart&gt;&lt;/panama-histograma-aportantes-chart&gt;</pre
-                >
-              </aside>
-              <div class="mf-section-main">
-                <panama-histograma-aportantes-chart></panama-histograma-aportantes-chart>
               </div>
             </div>
           </section>
@@ -283,7 +282,9 @@
             <div class="mf-head">
               <div>
                 <h2>Transacciones por candidatura</h2>
-                <p class="mf-note">Tabla de ingresos y egresos con filtro por candidatura, tipo de movimiento y cargo.</p>
+                <p class="mf-note">
+                  Tabla de ingresos y egresos con filtro por candidatura, tipo de movimiento y cargo.
+                </p>
               </div>
             </div>
             <div class="mf-section-body">
@@ -315,7 +316,7 @@
             'panama-aportantes-chart',
             'panama-home-gastos-treemap-chart',
             'panama-mapa-financiero-chart',
-            'panama-histograma-aportantes-chart',
+            'panama-aportes-tiempo-chart',
           ].join(','),
         )
         .forEach((element) => element.setAttribute('bare', ''));
