@@ -85,6 +85,7 @@ const PROVINCE_ALIASES = new Map(
     'ngabebugle': provinceName('ngabe_bugle'),
   }),
 );
+const PANAMA_MAP_REGIONS = [...PANAMA_PROVINCE_NAMES.values()];
 
 const SUMMARY_CARDS_CSS = `.mf-summary-grid{display:grid;gap:24px;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr))}.mf-summary-card{min-width:0;min-height:200px;padding:34px 24px 28px;display:grid;justify-items:center;align-content:center;text-align:center;background:#fff;border:1px solid #d0d5dd;border-radius:18px;box-shadow:0 1px 3px rgba(16,24,40,.08)}.mf-summary-icon{width:64px;height:64px;display:grid;place-items:center;color:#1f1f24}.mf-summary-icon svg{width:64px;height:64px;display:block;stroke:currentColor;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}.mf-summary-value{margin-top:16px;font-size:clamp(1.15rem,1.7vw,1.55rem);font-weight:700;line-height:1.1;letter-spacing:-.015em;overflow-wrap:anywhere}.mf-summary-label{margin-top:10px;font-size:clamp(.72rem,1vw,.9rem);line-height:1.15;color:#202531}@media (max-width:720px){.mf-summary-grid{gap:16px;grid-template-columns:repeat(2,minmax(0,1fr))}.mf-summary-card{min-height:auto;padding:22px 16px 18px}.mf-summary-icon{width:52px;height:52px}.mf-summary-icon svg{width:52px;height:52px}.mf-summary-value{font-size:clamp(.95rem,4.2vw,1.15rem)}.mf-summary-label{font-size:clamp(.68rem,3vw,.8rem)}}`;
 
@@ -448,9 +449,26 @@ function getExpenseRows(store, position = ALL) {
 }
 
 function getParityRows(store, position) {
+  const rows = store.overview.candidates.filter((d) => d.position === position && d.gender);
+
+  if (position === 'Presidente') {
+    const mujeres = sum(rows, (d) => (d.gender === 'female' ? 1 : 0));
+    const hombres = sum(rows, (d) => (d.gender === 'male' ? 1 : 0));
+
+    if (!rows.length) return [];
+
+    return PANAMA_MAP_REGIONS.map((provincia) => ({
+      provincia,
+      mujeres,
+      hombres,
+      totalCandidaturas: rows.length,
+      paridad: rows.length ? mujeres / rows.length : 0,
+    }));
+  }
+
   return d3
     .rollups(
-      store.overview.candidates.filter((d) => d.position === position && d.gender),
+      rows,
       (values) => {
         const mujeres = sum(values, (d) => (d.gender === 'female' ? 1 : 0));
         const hombres = sum(values, (d) => (d.gender === 'male' ? 1 : 0));
