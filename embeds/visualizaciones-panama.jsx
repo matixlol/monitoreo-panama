@@ -12,6 +12,7 @@ import { mapChart } from './charts/map.js';
 import { PANAMA_PROVINCE_NAMES } from './charts/panama-map.js';
 import { treemap } from './charts/treemap.js';
 import { FinanciacionChartElementApp } from './financiacion-chart-element.jsx';
+import { IngresosGeneroChartElementApp } from './ingresos-genero-chart-element.jsx';
 import { ModalRouter } from './modal-router.jsx';
 import { GeneralSearchElementApp } from './general-search-element.jsx';
 import { CandidatesTableElementApp, TransactionsTableElementApp } from './tables-elements.jsx';
@@ -1317,6 +1318,13 @@ function defineChartElements() {
     ['position', 'ingresos-url', 'egresos-url'],
     ({ element, store, loading, error }) => (
       <FinanciacionChartElementApp element={element} store={store} loading={loading} error={error} />
+    ),
+  );
+  defineReactElement(
+    'panama-ingresos-genero-chart',
+    ['position', 'ingresos-url', 'egresos-url'],
+    ({ element, store, loading, error }) => (
+      <IngresosGeneroChartElementApp element={element} store={store} loading={loading} error={error} />
     ),
   );
   defineChartElement(

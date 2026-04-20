@@ -278,7 +278,7 @@ const FINANCIACION_CHART_CSS = `
   }
 `;
 
-function positionOptions(store) {
+export function positionOptions(store) {
   return [ALL, ...uniq(store.ingresos.map((row) => row.candidatePosition)).sort(sortPos)];
 }
 
@@ -298,7 +298,7 @@ function normalizeBreakdownItems(items) {
   });
 }
 
-function Tabs({ label, value, options, onChange }) {
+export function Tabs({ label, value, options, onChange }) {
   return (
     <div className="wc-tabs-wrap">
       <ul className="nav nav-tabs wc-tabs" role="tablist" aria-label={label}>

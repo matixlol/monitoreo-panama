@@ -115,6 +115,26 @@
         <section class="mf-card">
           <div class="mf-head">
             <div>
+              <h2>Promedio de ingresos por género</h2>
+              <p class="mf-note">Comparación del ingreso promedio por candidatura entre mujeres y varones.</p>
+            </div>
+          </div>
+          <div class="mf-section-body">
+            <aside class="mf-code">
+              <pre>
+&lt;script type="module" src="https://fichas.panama.datos.party/visualizaciones-panama.js"&gt;&lt;/script&gt;
+&lt;panama-ingresos-genero-chart&gt;&lt;/panama-ingresos-genero-chart&gt;</pre
+              >
+            </aside>
+            <div class="mf-section-main">
+              <panama-ingresos-genero-chart></panama-ingresos-genero-chart>
+            </div>
+          </div>
+        </section>
+
+        <section class="mf-card">
+          <div class="mf-head">
+            <div>
               <h2>Línea de tiempo de gastos</h2>
               <p class="mf-note">Serie temporal con selector de cobertura y granularidad.</p>
             </div>
@@ -310,6 +330,7 @@
           [
             'panama-candidaturas-chart',
             'panama-financiacion-chart',
+            'panama-ingresos-genero-chart',
             'panama-gastos-tiempo-chart',
             'panama-paridad-chart',
             'panama-aportantes-chart',
