@@ -363,12 +363,13 @@ export function Toggle({ value, options, onChange, format = (d) => d }) {
   );
 }
 
-export function Section({ title, note, controls, children }) {
+export function Section({ title, note, controls, children, titleAs = 'h2' }) {
+  const TitleTag = titleAs;
   return (
     <section className="card mf-card">
       <div className="mf-head">
         <div>
-          <h2>{title}</h2>
+          <TitleTag>{title}</TitleTag>
           {note ? <p className="mf-note">{note}</p> : null}
         </div>
         {controls ? <div className="mf-controls">{controls}</div> : null}

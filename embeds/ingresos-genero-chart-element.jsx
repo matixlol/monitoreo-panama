@@ -253,7 +253,7 @@ export function IngresosGeneroChartElementApp({ element, store, loading = false,
       <FinanciacionChartStyles />
       <style>{INGRESOS_GENERO_CHART_CSS}</style>
       <section className="wc-panel">
-        <h2 className="wc-title">Promedio de ingresos por género</h2>
+        <h4>Promedio de ingresos por género</h4>
         <div className="wc-body wc-body--bare">
           {loading ? <div className="loading">Cargando…</div> : null}
           {!loading && error ? <div className="error">{error}</div> : null}

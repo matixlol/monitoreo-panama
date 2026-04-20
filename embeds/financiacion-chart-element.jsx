@@ -22,15 +22,6 @@ const FINANCIACION_CHART_CSS = `
     background:#f8f8f8;
     border-radius:12px;
   }
-  .wc-title{
-    margin:0;
-    font:inherit;
-    font-size:clamp(1.95rem,4vw,2.5rem);
-    font-weight:500;
-    line-height:1.05;
-    letter-spacing:-.04em;
-    overflow-wrap:anywhere;
-  }
   .wc-body{
     min-width:0;
   }
@@ -247,9 +238,6 @@ const FINANCIACION_CHART_CSS = `
     .wc-panel{
       gap:14px;
       padding:14px;
-    }
-    .wc-title{
-      font-size:clamp(1.5rem,8vw,2rem);
     }
     .wc-tabs-wrap{
       margin-bottom:14px;
@@ -471,7 +459,7 @@ export function FinanciacionChartElementApp({ element, store, loading = false, e
     <>
       <FinanciacionChartStyles />
       <section className="wc-panel">
-        <h2 className="wc-title">Financiación por tipo</h2>
+        <h4>Financiación por tipo</h4>
         <div className="wc-body wc-body--bare">
           {loading ? <div className="loading">Cargando…</div> : null}
           {!loading && error ? <div className="error">{error}</div> : null}

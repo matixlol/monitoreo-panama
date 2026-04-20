@@ -184,7 +184,7 @@ function CandidateModal({ entity }) {
           balanceStat,
         ]}
       />
-      <Section title="Financiación por tipo">
+      <Section title="Financiación por tipo" titleAs="h4">
         {incomeBreakdown(entity.ingresos).length ? (
           <>
             <FinanciacionChartStyles />
@@ -218,6 +218,7 @@ function CandidateModal({ entity }) {
       </Section>
       <Section
         title="Tipo de gastos de campaña"
+        titleAs="h4"
         controls={
           entity.positions.length > 1 ? (
             <Toggle
@@ -237,6 +238,7 @@ function CandidateModal({ entity }) {
       </Section>
       <Section
         title="Línea de tiempo de gastos"
+        titleAs="h4"
         controls={
           entity.positions.length > 1 ? (
             <Toggle
@@ -314,7 +316,7 @@ function DonorModal({ entity }) {
           { value: MONEY(entity.total), label: 'Aportes totales' },
         ]}
       />
-      <Section title="Aportes por tipo">
+      <Section title="Aportes por tipo" titleAs="h4">
         {incomeBreakdown(entity.ingresos).length ? (
           <PlotFigure renderNode={() => bars(incomeBreakdown(entity.ingresos), chartOpts)} deps={[entity.ingresos]} />
         ) : (
@@ -343,7 +345,7 @@ function DonorModal({ entity }) {
           }))}
         />
       </Section>
-      <Section title="Aportes por partido">
+      <Section title="Aportes por partido" titleAs="h4">
         {partyBreakdown(entity.ingresos).length ? (
           <PlotFigure renderNode={() => bars(partyBreakdown(entity.ingresos), chartOpts)} deps={[entity.ingresos]} />
         ) : (
@@ -392,6 +394,7 @@ function ProviderModal({ entity }) {
       />
       <Section
         title="Tipo de gastos de campaña"
+        titleAs="h4"
         controls={
           entity.positions.length > 1 ? (
             <Toggle
