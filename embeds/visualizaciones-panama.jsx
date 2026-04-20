@@ -26,6 +26,7 @@ import {
   POS,
   SHORT,
   TEXT,
+  TIMELINE_X_DOMAIN,
   candidateIdFromRow,
   candidateLabel,
   chartOpts,
@@ -556,7 +557,10 @@ function renderCandidateChart(store, position = POS[0]) {
 }
 
 function renderExpenseTimelineChart(store, position = ALL, grain = 'mes') {
-  return wrapMobileScrollableChart(line(expenseTimeline(getExpenseRows(store, position), grain), chartOpts), 'plot');
+  return wrapMobileScrollableChart(
+    line(expenseTimeline(getExpenseRows(store, position), grain), { ...chartOpts, xDomain: TIMELINE_X_DOMAIN }),
+    'plot',
+  );
 }
 
 function renderParityChart(store, position = POS[0]) {

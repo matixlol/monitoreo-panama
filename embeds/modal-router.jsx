@@ -14,6 +14,7 @@ import {
   Stats,
   TEXT,
   Table,
+  TIMELINE_X_DOMAIN,
   Toggle,
   byPos,
   candidateDisplayName,
@@ -251,7 +252,10 @@ function CandidateModal({ entity }) {
         }
       >
         {expenseTimeline(expenseRows, 'día').length ? (
-          <PlotFigure renderNode={() => line(expenseTimeline(expenseRows, 'día'), chartOpts)} deps={[expenseRows]} />
+          <PlotFigure
+            renderNode={() => line(expenseTimeline(expenseRows, 'día'), { ...chartOpts, xDomain: TIMELINE_X_DOMAIN })}
+            deps={[expenseRows]}
+          />
         ) : (
           <Empty text="No hay fechas válidas suficientes." />
         )}
