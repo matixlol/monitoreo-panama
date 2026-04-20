@@ -155,6 +155,26 @@
         <section class="mf-card">
           <div class="mf-head">
             <div>
+              <h4>Línea de tiempo de aportes</h4>
+              <p class="mf-note">Serie temporal de aportes con el mismo formato y selector de cobertura que gastos.</p>
+            </div>
+          </div>
+          <div class="mf-section-body">
+            <aside class="mf-code">
+              <pre>
+&lt;script type="module" src="https://fichas.panama.datos.party/visualizaciones-panama.js"&gt;&lt;/script&gt;
+&lt;panama-aportes-tiempo-chart&gt;&lt;/panama-aportes-tiempo-chart&gt;</pre
+              >
+            </aside>
+            <div class="mf-section-main">
+              <panama-aportes-tiempo-chart></panama-aportes-tiempo-chart>
+            </div>
+          </div>
+        </section>
+
+        <section class="mf-card">
+          <div class="mf-head">
+            <div>
               <h4>Paridad de género por provincia</h4>
               <p class="mf-note">Mapa de participación de mujeres sobre candidaturas únicas.</p>
             </div>
@@ -231,7 +251,6 @@
             </div>
           </div>
         </section>
-
       </div>
 
       <details class="mf-details">
@@ -303,7 +322,9 @@
             <div class="mf-head">
               <div>
                 <h2>Transacciones por candidatura</h2>
-                <p class="mf-note">Tabla de ingresos y egresos con filtro por candidatura, tipo de movimiento y cargo.</p>
+                <p class="mf-note">
+                  Tabla de ingresos y egresos con filtro por candidatura, tipo de movimiento y cargo.
+                </p>
               </div>
             </div>
             <div class="mf-section-body">
@@ -332,11 +353,12 @@
             'panama-financiacion-chart',
             'panama-ingresos-genero-chart',
             'panama-gastos-tiempo-chart',
+            'panama-aportes-tiempo-chart',
             'panama-paridad-chart',
             'panama-aportantes-chart',
             'panama-home-gastos-treemap-chart',
             'panama-mapa-financiero-chart',
-            'panama-histograma-aportantes-chart',
+            'panama-aportes-tiempo-chart',
           ].join(','),
         )
         .forEach((element) => element.setAttribute('bare', ''));

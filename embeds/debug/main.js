@@ -178,12 +178,12 @@ function candidateCard(candidate) {
     chartSection(
       'Línea de tiempo de aportes',
       'Suma semanal de aportes reportados.',
-      line(incomeTimeline(candidate.ingresos, 'semana'), { ...chartOpts, xDomain: TIMELINE_X_DOMAIN }),
+      line(incomeTimeline(candidate.ingresos, 'semana'), chartOpts, { xDomain: TIMELINE_X_DOMAIN }),
     ),
     chartSection(
       'Línea de tiempo de egresos',
       'Suma semanal de egresos reportados.',
-      line(expenseTimeline(candidate.egresos, 'semana'), { ...chartOpts, xDomain: TIMELINE_X_DOMAIN }),
+      line(expenseTimeline(candidate.egresos, 'semana'), chartOpts, { xDomain: TIMELINE_X_DOMAIN }),
     ),
   );
 

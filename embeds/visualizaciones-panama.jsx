@@ -5,7 +5,6 @@ import egresosDatasetUrl from './data/documentos-egresos.csv?url';
 import donorBeeswarmLayout from './data/donor-beeswarm.json';
 import { beeswarm } from './charts/beeswarm.js';
 import { createDonorBeeswarmSignature } from './charts/beeswarm-precomputed.js';
-import { contributorHistogram } from './charts/contributor-histogram.js';
 import { groupedBarsChart, groupedBarsChartCss } from './charts/grouped-bars.js';
 import { line } from './charts/line.js';
 import { mapChart } from './charts/map.js';
@@ -35,6 +34,7 @@ import {
   expenseAmount,
   expenseTreemapBreakdown,
   expenseTimeline,
+  incomeTimeline,
   num,
   parseCsvText,
   parseHashRoute,
@@ -449,6 +449,10 @@ function getExpenseRows(store, position = ALL) {
   return byPos(store.egresos, position);
 }
 
+function getIncomeRows(store, position = ALL) {
+  return byPos(store.ingresos, position);
+}
+
 function getParityRows(store, position) {
   const rows = store.overview.candidates.filter((d) => d.position === position && d.gender);
 
@@ -556,9 +560,22 @@ function renderCandidateChart(store, position = POS[0]) {
   return beeswarm(getCandidatesRows(store, position), 'candidato', chartOpts);
 }
 
+const APORTE_TIMELINE_START = new Date(2023, 6, 1);
+const APORTE_TIMELINE_END = new Date(2024, 6, 31);
+
+function renderIncomeTimelineChart(store, position = ALL, grain = 'semana') {
+  const points = incomeTimeline(getIncomeRows(store, position), grain).filter(
+    (point) => point.date >= APORTE_TIMELINE_START && point.date <= APORTE_TIMELINE_END,
+  );
+  return wrapMobileScrollableChart(
+    line(points, chartOpts, { xDomain: [APORTE_TIMELINE_START, APORTE_TIMELINE_END] }),
+    'plot',
+  );
+}
+
 function renderExpenseTimelineChart(store, position = ALL, grain = 'mes') {
   return wrapMobileScrollableChart(
-    line(expenseTimeline(getExpenseRows(store, position), grain), { ...chartOpts, xDomain: TIMELINE_X_DOMAIN }),
+    line(expenseTimeline(getExpenseRows(store, position), grain), chartOpts, { xDomain: TIMELINE_X_DOMAIN }),
     'plot',
   );
 }
@@ -636,153 +653,6 @@ function renderHomeExpenseTreemapChart(store) {
   return treemap(expenseTreemapBreakdown(store.egresos), chartOpts);
 }
 
-const CONTRIBUTOR_HISTOGRAM_TABS = [
-  { value: 'count', label: 'Por cantidad' },
-  { value: 'sum', label: 'Por suma total' },
-  { value: 'date', label: 'Por fecha de aporte' },
-];
-
-const CONTRIBUTOR_HISTOGRAM_POSITIONS = [...POS].reverse();
-const CONTRIBUTOR_HISTOGRAM_BIN_STEP = 5000;
-
-function contributorHistogramMode(value) {
-  return CONTRIBUTOR_HISTOGRAM_TABS.some((tab) => tab.value === value) ? value : 'count';
-}
-
-function contributorTotalsByPosition(store) {
-  return d3
-    .rollups(
-      store.ingresos.filter(
-        (row) => TEXT(row.candidatePosition) && TEXT(row.contribuyenteNombre) && num(row.total) > 0,
-      ),
-      (values) => ({
-        position: TEXT(values[0].candidatePosition),
-        total: sum(values, (row) => num(row.total)),
-        entries: values.length,
-        firstDate: d3.min(values, (row) => parsePanamaDate(row.fecha)),
-        lastDate: d3.max(values, (row) => parsePanamaDate(row.fecha)),
-      }),
-      (row) => TEXT(row.candidatePosition),
-      (row) => NORM(row.contribuyenteNombre),
-    )
-    .flatMap(([position, donors]) =>
-      donors.map(([, donor]) => ({
-        ...donor,
-        position,
-      })),
-    );
-}
-
-function contributionDatesByPosition(store) {
-  return store.ingresos.flatMap((row) => {
-    const position = TEXT(row.candidatePosition);
-    const date = parsePanamaDate(row.fecha);
-    const total = num(row.total);
-    return position && date && total > 0 ? [{ position, date, total }] : [];
-  });
-}
-
-function contributorDateExtent(rows) {
-  const dates = rows
-    .map((row) => +row.date)
-    .filter(Number.isFinite)
-    .sort(d3.ascending);
-  if (!dates.length) return null;
-  const min = dates.length > 200 ? d3.quantileSorted(dates, 0.01) : dates[0];
-  const max = dates.length > 200 ? d3.quantileSorted(dates, 0.99) : dates[dates.length - 1];
-  return [new Date(min), new Date(max)];
-}
-
-function roundedAmountDomainMax(maxValue) {
-  if (!Number.isFinite(maxValue) || maxValue <= 0) return 20000;
-  return Math.max(20000, Math.round(maxValue / 20000) * 20000 || 20000);
-}
-
-function contributorHistogramModel(store, mode = 'count') {
-  const currentMode = contributorHistogramMode(mode);
-
-  if (currentMode === 'date') {
-    const rows = contributionDatesByPosition(store);
-    const extent = contributorDateExtent(rows);
-    if (!rows.length || !extent) return null;
-
-    const [rawMin, rawMax] = extent;
-    const minDate = d3.timeWeek.floor(rawMin);
-    const maxDate = d3.timeWeek.offset(d3.timeWeek.ceil(rawMax), 1);
-    const thresholds = d3.timeWeek.range(minDate, maxDate).map((date) => +date);
-    const positions = CONTRIBUTOR_HISTOGRAM_POSITIONS.filter((position) =>
-      rows.some((row) => row.position === position),
-    );
-    const minTime = +minDate;
-    const maxTime = +maxDate;
-
-    const series = positions.map((position) => {
-      const values = rows.filter((row) => row.position === position);
-      const bins = d3
-        .bin()
-        .domain([minTime, maxTime])
-        .thresholds(thresholds)
-        .value((row) => Math.max(minTime, Math.min(maxTime, +row.date)))(values)
-        .map((bin) => ({
-          x0: new Date(bin.x0),
-          x1: new Date(bin.x1),
-          count: bin.length,
-          sum: sum(bin, (row) => row.total),
-          y: bin.length,
-        }));
-      return { key: position, label: position, bins };
-    });
-
-    return {
-      mode: currentMode,
-      xType: 'date',
-      xDomain: [minDate, maxDate],
-      yMax: d3.max(series, (row) => d3.max(row.bins, (bin) => bin.y)) || 0,
-      series,
-    };
-  }
-
-  const contributors = contributorTotalsByPosition(store);
-  if (!contributors.length) return null;
-
-  const positions = CONTRIBUTOR_HISTOGRAM_POSITIONS.filter((position) =>
-    contributors.some((row) => row.position === position),
-  );
-  const amountMax = roundedAmountDomainMax(d3.max(contributors, (row) => row.total) || 0);
-  const thresholds = d3.range(0, amountMax + CONTRIBUTOR_HISTOGRAM_BIN_STEP, CONTRIBUTOR_HISTOGRAM_BIN_STEP);
-
-  const series = positions.map((position) => {
-    const values = contributors.filter((row) => row.position === position);
-    const bins = d3
-      .bin()
-      .domain([0, amountMax])
-      .thresholds(thresholds)
-      .value((row) => Math.max(0, Math.min(amountMax, row.total)))(values)
-      .map((bin) => ({
-        x0: bin.x0,
-        x1: bin.x1,
-        count: bin.length,
-        sum: sum(bin, (row) => row.total),
-        y: currentMode === 'sum' ? sum(bin, (row) => row.total) : bin.length,
-      }));
-    return { key: position, label: position, bins };
-  });
-
-  return {
-    mode: currentMode,
-    xType: 'amount',
-    xDomain: [0, amountMax],
-    tickStep: 20000,
-    yMax: d3.max(series, (row) => d3.max(row.bins, (bin) => bin.y)) || 0,
-    series,
-  };
-}
-
-function renderContributorHistogramChart(store, mode = 'count') {
-  const model = contributorHistogramModel(store, mode);
-  return model ? contributorHistogram(model, chartOpts) : null;
-}
-
 function esc(value) {
   return String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 }
@@ -838,7 +708,6 @@ const summaryCardsElementCss = `:host{display:block;min-width:0;color:#111827}${
 const bootstrapTabsCss = `.wc-tabs-wrap,.wc-tabs,.wc-tab-item,.wc-tab-link{box-sizing:border-box}.wc-tabs-wrap{margin:0 0 16px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans","Liberation Sans",sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";font-size:1rem;font-weight:400;line-height:1.5;color:#212529;-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}.wc-tabs{display:flex;flex-wrap:wrap;margin-top:0;margin-bottom:0;padding-left:0;list-style:none;border-bottom:1px solid #dee2e6}.wc-tab-item{margin-bottom:-1px;flex:none;list-style:none}.wc-tab-link{display:block;padding:.5rem 1rem;background-color:transparent;color:inherit;font:inherit;line-height:1.5;text-decoration:none;white-space:nowrap;transition:color .18s ease,background-color .18s ease,border-color .18s ease}.wc-tabs .wc-tab-link{border:1px solid transparent;border-top-left-radius:.25rem;border-top-right-radius:.25rem}.wc-tabs .wc-tab-link:hover,.wc-tabs .wc-tab-link:focus{text-decoration:none;border-color:#e9ecef #e9ecef #dee2e6}.wc-tab-link:focus-visible{outline:2px solid rgba(0,123,255,.35);outline-offset:2px}.wc-tabs .wc-tab-link.active,.wc-tabs .wc-tab-item.show .wc-tab-link{color:#495057;background-color:#fff;border-color:#dee2e6 #dee2e6 #fff}@media (max-width:720px){.wc-tabs-wrap{margin-bottom:14px}.wc-tab-link{padding:.45rem .625rem;font-size:.84rem;line-height:1.35}}`;
 const chartPanelCss = `:host{display:block;min-width:0;color:#111827;}.wc-panel{display:grid;gap:16px;padding:16px;background:#f8f8f8;border-radius:12px}.wc-body,.wh-chart,.wc-chart-slot{min-width:0}.wc-body--bare{display:grid;gap:12px;min-width:0}.wc-chart-slot{display:grid;animation:wc-tab-panel-in .18s ease both}.loading,.error,.empty{padding:14px 0;color:#667085}@keyframes wc-tab-panel-in{0%{opacity:.32;transform:translateY(6px)}100%{opacity:1;transform:translateY(0)}}@media (max-width:720px){.wc-panel{gap:14px;padding:14px}}`;
 const chartElementCss = `${chartPanelCss}.wc-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin:0 0 12px}.wc-field{display:grid;gap:4px;min-width:180px;color:#344054;}.wc-field select{padding:8px 12px;border:1px solid #e4e7ec;border-radius:999px;background:#fff;color:#344054;}${bootstrapTabsCss}.mf-map{overflow-x:auto;overflow-y:hidden}.mf-map svg{display:block;width:100%;height:auto;max-width:960px;margin:auto}.legend{display:flex;align-items:center;gap:10px;margin-top:10px;color:#667085;}.mf-grad{height:12px;flex:1;max-width:300px;border-radius:999px;background:linear-gradient(90deg,#eff6ff,#1d4ed8)}.mf-parity-layout{display:grid;gap:24px;align-items:start;grid-template-columns:minmax(0,1.7fr) minmax(210px,.65fr)}.mf-parity-layout__map,.mf-parity-layout__breakdown{min-width:0}.mf-parity-layout__breakdown{display:grid;align-content:start}.wc-mobile-scroll{min-width:0}@media (max-width:1040px){.mf-parity-layout{grid-template-columns:1fr}}@media (max-width:720px){.wc-mobile-scroll{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;padding:8px 0 8px 8px;border:1px solid #e4e7ec;background:#f8fafc}.wc-mobile-scroll__inner{width:min(200vw,1000px);min-width:720px;background:linear-gradient(180deg,#fbfdff 0%,#f3f6fa 100%)}.wc-mobile-scroll--plot>.wc-mobile-scroll__inner>svg{display:block;width:100%!important;height:auto}.mf-map.wc-mobile-map-shell{display:grid;gap:8px;overflow:visible}.wc-mobile-scroll--map .wc-mobile-scroll__inner>div{width:88%!important;max-width:840px!important;margin:0!important}.wc-mobile-scroll--map svg{display:block;width:100%!important;max-width:none!important;height:auto;margin:0!important}.mf-map.wc-mobile-map-shell>.legend{font-size:11px;gap:8px;margin-top:0}.mf-map.wc-mobile-map-shell>.legend .mf-legend-scale{max-width:320px}.mf-map.wc-mobile-map-shell>.legend .mf-legend-bar{height:10px}.mf-map.wc-mobile-map-shell>.legend .mf-legend-note{gap:6px}.wc-mobile-scroll--beeswarm .beeswarm{width:100%!important;max-width:none!important}.wc-mobile-scroll--beeswarm .beeswarm svg{display:block;width:100%!important;max-width:none!important;height:auto}.wc-mobile-scroll--treemap .tm-root,.wc-mobile-scroll--treemap .tm-stage,.wc-mobile-scroll--treemap .tm-canvas{width:100%}.wc-mobile-scroll--treemap .tm-canvas svg{display:block;width:100%!important;height:100%!important;max-width:none!important}.mf-parity-breakdown-chart{justify-items:center;gap:12px}.mf-parity-breakdown-chart .mf-grouped-bars__legend{gap:14px}.mf-parity-breakdown-chart .mf-grouped-bars__legend-item{font-size:13px}.mf-parity-breakdown-chart .mf-grouped-bars__legend-dot{width:11px;height:11px}}${groupedBarsChartCss}`;
-const contributorHistogramElementCss = `${chartPanelCss}${bootstrapTabsCss}`;
 
 function attr(el, name, fallback) {
   return el.getAttribute(name) || fallback;
@@ -1104,89 +973,6 @@ function defineChartElement(name, title, observedAttributes, renderChart, getCon
   customElements.define(name, PanamaChartElement);
 }
 
-function defineContributorHistogramElement() {
-  if (typeof window === 'undefined' || customElements.get('panama-histograma-aportantes-chart')) return;
-
-  class PanamaContributorHistogramElement extends HTMLElement {
-    static get observedAttributes() {
-      return ['mode', 'ingresos-url', 'egresos-url'];
-    }
-
-    connectedCallback() {
-      this.render();
-    }
-
-    attributeChangedCallback(name) {
-      if (name === 'ingresos-url' || name === 'egresos-url') this._store = null;
-      if (this.isConnected) this.render();
-    }
-
-    async render() {
-      const root = this.shadowRoot || this.attachShadow({ mode: 'open' });
-      const token = (this._token || 0) + 1;
-      this._token = token;
-      const mode = contributorHistogramMode(attr(this, 'mode', 'count'));
-      const bare = this.hasAttribute('bare');
-      const renderResolved = (store) => {
-        const node = renderContributorHistogramChart(store, mode);
-        root.innerHTML = `<style>${contributorHistogramElementCss}</style>`;
-        const panel = bare ? null : createChartPanel('Histograma de aportantes');
-        const body = bare ? createBareChartBody() : panel.body;
-        const chart = document.createElement('div');
-        chart.className = 'wh-chart';
-        body.append(
-          createTabsControl({ label: 'Modo', value: mode, options: CONTRIBUTOR_HISTOGRAM_TABS }, (value) =>
-            this.setAttribute('mode', value),
-          ),
-        );
-        body.append(chart);
-        appendChartSlot(chart, node);
-        if (bare) {
-          root.append(body);
-        } else {
-          root.append(panel.panel);
-        }
-      };
-      if (this._store) {
-        renderResolved(this._store);
-        return;
-      }
-      root.innerHTML = `<style>${contributorHistogramElementCss}</style>`;
-      if (bare) {
-        root.append(Object.assign(document.createElement('div'), { className: 'loading', textContent: 'Cargando…' }));
-      } else {
-        const loadingPanel = createChartPanel('Histograma de aportantes');
-        loadingPanel.body.append(
-          Object.assign(document.createElement('div'), { className: 'loading', textContent: 'Cargando…' }),
-        );
-        root.append(loadingPanel.panel);
-      }
-      try {
-        const store = await resolveStoreForElement(this);
-        if (token !== this._token) return;
-        this._store = store;
-        renderResolved(store);
-      } catch (error) {
-        if (token !== this._token) return;
-        root.innerHTML = `<style>${contributorHistogramElementCss}</style>`;
-        const errorNode = Object.assign(document.createElement('div'), {
-          className: 'error',
-          textContent: String(error?.message || error),
-        });
-        if (bare) {
-          root.append(errorNode);
-        } else {
-          const errorPanel = createChartPanel('Histograma de aportantes');
-          errorPanel.body.append(errorNode);
-          root.append(errorPanel.panel);
-        }
-      }
-    }
-  }
-
-  customElements.define('panama-histograma-aportantes-chart', PanamaContributorHistogramElement);
-}
-
 function defineReactElement(name, observedAttributes, renderApp, options = {}) {
   const { shadow = true } = options;
   if (typeof window === 'undefined' || customElements.get(name)) return;
@@ -1349,6 +1135,23 @@ function defineChartElements() {
     ),
   );
   defineChartElement(
+    'panama-aportes-tiempo-chart',
+    'Línea de tiempo de aportes',
+    ['position', 'grain', 'ingresos-url', 'egresos-url'],
+    (el, store) => renderIncomeTimelineChart(store, attr(el, 'position', ALL), 'semana'),
+    (el, store) => [
+      {
+        attr: 'position',
+        label: 'Cobertura',
+        value: attr(el, 'position', ALL),
+        options: [ALL, ...uniq(store.ingresos.map((d) => d.candidatePosition)).sort(sortPos)].map((value) => ({
+          value,
+          label: value,
+        })),
+      },
+    ],
+  );
+  defineChartElement(
     'panama-gastos-tiempo-chart',
     'Línea de tiempo de gastos',
     ['position', 'grain', 'ingresos-url', 'egresos-url'],
@@ -1439,7 +1242,6 @@ function defineChartElements() {
       },
     ],
   );
-  defineContributorHistogramElement();
   defineChartElement(
     'panama-gastos-treemap-chart',
     'Tipo de gastos de campaña',
