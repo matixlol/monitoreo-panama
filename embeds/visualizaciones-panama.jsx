@@ -52,6 +52,7 @@ const SLUG_CACHE = new Map();
 const PANAMA_DATE_CACHE = new Map();
 const CANDIDATE_ID_CACHE = new Map();
 const PROVINCE_CACHE = new Map();
+const CONTRIBUTOR_DOCUMENT_CACHE = new Map();
 const resolveModuleAssetUrl = (assetUrl) => new URL(assetUrl, import.meta.url).href;
 const DEFAULT_INGRESOS_URL = resolveModuleAssetUrl(ingresosDatasetUrl);
 const DEFAULT_EGRESOS_URL = resolveModuleAssetUrl(egresosDatasetUrl);
@@ -128,6 +129,40 @@ function provinceCached(value) {
   const text = TEXT(value);
   if (!PROVINCE_CACHE.has(text)) PROVINCE_CACHE.set(text, PROVINCE_ALIASES.get(normCached(text)) ?? text);
   return PROVINCE_CACHE.get(text);
+}
+
+function normalizeContributorDocument(value) {
+  const text = TEXT(value);
+  if (!CONTRIBUTOR_DOCUMENT_CACHE.has(text)) {
+    const normalized = text
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[ÃÂ]/g, '')
+      .toUpperCase();
+    const compact = normalized.replace(/\bDV\b/g, '').replace(/[^A-Z0-9]+/g, '');
+    const digitsOnly = compact.replace(/[^0-9]+/g, '');
+    const isValid =
+      compact &&
+      !/^0+$/.test(compact) &&
+      /\d/.test(compact) &&
+      digitsOnly.length >= 3 &&
+      compact.length >= 5 &&
+      !['ANULADO', 'NULL', 'NULO', 'NONE', 'NA', 'N A', 'SN', 'S N'].includes(compact);
+    CONTRIBUTOR_DOCUMENT_CACHE.set(text, isValid ? compact : '');
+  }
+  return CONTRIBUTOR_DOCUMENT_CACHE.get(text);
+}
+
+function contributorKeyFromRow(row) {
+  const documentId = normalizeContributorDocument(row?.cedulaRuc);
+  if (documentId) return `doc:${documentId}`;
+  const contributorName = normCached(row?.contribuyenteNombre);
+  return contributorName ? `name:${contributorName}` : '';
+}
+
+function contributorIdFromRow(row) {
+  const key = contributorKeyFromRow(row);
+  return key ? slugify(key) : '';
 }
 
 function inject() {
@@ -232,7 +267,7 @@ function createCandidateBucket() {
     provinces: new Map(),
     districts: new Map(),
     genders: new Map(),
-    contributorNames: new Set(),
+    contributorKeys: new Set(),
     providerNames: new Set(),
   };
 }
@@ -263,15 +298,15 @@ function getIngresoRowCache(row) {
   const parsedDate = parsePanamaDateCached(row.fecha);
   return (row[INGRESO_ROW_CACHE] = {
     candidateId: candidateIdFromRowCached(row),
-    donorId: slugifyCached(row.contribuyenteNombre),
+    donorId: contributorIdFromRow(row),
     candidateName: TEXT(row.candidateName),
     candidateParty: TEXT(row.candidateParty),
     candidatePosition: TEXT(row.candidatePosition),
     candidateProvince: provinceCached(row.candidateProvince),
     candidateDistrict: TEXT(row.candidateDistrict),
     candidateGender: TEXT(row.candidateGender),
-    contributorName: TEXT(row.contribuyenteNombre),
-    contributorNameNorm: normCached(row.contribuyenteNombre),
+    contributorLabel: TEXT(row.contribuyenteNombre) || TEXT(row.cedulaRuc),
+    contributorKey: contributorKeyFromRow(row),
     sortDate: parsedDate,
     total: num(row.total),
   });
@@ -319,13 +354,13 @@ function buildStore({ ingresos = [], egresos = [] }) {
       rememberValue(bucket.positions, cached.candidatePosition);
       rememberValue(bucket.provinces, cached.candidateProvince);
       rememberValue(bucket.districts, cached.candidateDistrict);
-      if (cached.contributorNameNorm) bucket.contributorNames.add(cached.contributorNameNorm);
+      if (cached.contributorKey) bucket.contributorKeys.add(cached.contributorKey);
     }
 
     if (cached.donorId) {
       const bucket = put(donorBuckets, cached.donorId, createDonorBucket);
       bucket.ingresos.push(row);
-      incrementCount(bucket.nameCounts, cached.contributorName);
+      incrementCount(bucket.nameCounts, cached.contributorLabel);
       rememberValue(bucket.parties, cached.candidateParty);
       rememberValue(bucket.positions, cached.candidatePosition);
       if (cached.candidateId) bucket.candidateIds.add(cached.candidateId);
@@ -373,7 +408,7 @@ function buildStore({ ingresos = [], egresos = [] }) {
         egresos: sortRowsByCachedTime(bucket.egresos, EGRESO_ROW_CACHE),
         ingresoTotal: sum(bucket.ingresos, (row) => row[INGRESO_ROW_CACHE].total),
         egresoTotal: sum(bucket.egresos, (row) => row[EGRESO_ROW_CACHE].total),
-        contributorCount: bucket.contributorNames.size,
+        contributorCount: bucket.contributorKeys.size,
         providerCount: bucket.providerNames.size,
       };
     })
@@ -653,6 +688,155 @@ function renderHomeExpenseTreemapChart(store) {
   return treemap(expenseTreemapBreakdown(store.egresos), chartOpts);
 }
 
+const CONTRIBUTOR_HISTOGRAM_TABS = [
+  { value: 'count', label: 'Por cantidad' },
+  { value: 'sum', label: 'Por suma total' },
+  { value: 'date', label: 'Por fecha de aporte' },
+];
+
+const CONTRIBUTOR_HISTOGRAM_POSITIONS = [...POS].reverse();
+const CONTRIBUTOR_HISTOGRAM_BIN_STEP = 5000;
+
+function contributorHistogramMode(value) {
+  return CONTRIBUTOR_HISTOGRAM_TABS.some((tab) => tab.value === value) ? value : 'count';
+}
+
+function contributorTotalsByPosition(store) {
+  return d3
+    .rollups(
+      store.ingresos.filter(
+        (row) =>
+          TEXT(row.candidatePosition) &&
+          (row[INGRESO_ROW_CACHE]?.contributorKey || contributorKeyFromRow(row)) &&
+          num(row.total) > 0,
+      ),
+      (values) => ({
+        position: TEXT(values[0].candidatePosition),
+        total: sum(values, (row) => num(row.total)),
+        entries: values.length,
+        firstDate: d3.min(values, (row) => parsePanamaDate(row.fecha)),
+        lastDate: d3.max(values, (row) => parsePanamaDate(row.fecha)),
+      }),
+      (row) => TEXT(row.candidatePosition),
+      (row) => row[INGRESO_ROW_CACHE]?.contributorKey || contributorKeyFromRow(row),
+    )
+    .flatMap(([position, donors]) =>
+      donors.map(([, donor]) => ({
+        ...donor,
+        position,
+      })),
+    );
+}
+
+function contributionDatesByPosition(store) {
+  return store.ingresos.flatMap((row) => {
+    const position = TEXT(row.candidatePosition);
+    const date = parsePanamaDate(row.fecha);
+    const total = num(row.total);
+    return position && date && total > 0 ? [{ position, date, total }] : [];
+  });
+}
+
+function contributorDateExtent(rows) {
+  const dates = rows
+    .map((row) => +row.date)
+    .filter(Number.isFinite)
+    .sort(d3.ascending);
+  if (!dates.length) return null;
+  const min = dates.length > 200 ? d3.quantileSorted(dates, 0.01) : dates[0];
+  const max = dates.length > 200 ? d3.quantileSorted(dates, 0.99) : dates[dates.length - 1];
+  return [new Date(min), new Date(max)];
+}
+
+function roundedAmountDomainMax(maxValue) {
+  if (!Number.isFinite(maxValue) || maxValue <= 0) return 20000;
+  return Math.max(20000, Math.round(maxValue / 20000) * 20000 || 20000);
+}
+
+function contributorHistogramModel(store, mode = 'count') {
+  const currentMode = contributorHistogramMode(mode);
+
+  if (currentMode === 'date') {
+    const rows = contributionDatesByPosition(store);
+    const extent = contributorDateExtent(rows);
+    if (!rows.length || !extent) return null;
+
+    const [rawMin, rawMax] = extent;
+    const minDate = d3.timeWeek.floor(rawMin);
+    const maxDate = d3.timeWeek.offset(d3.timeWeek.ceil(rawMax), 1);
+    const thresholds = d3.timeWeek.range(minDate, maxDate).map((date) => +date);
+    const positions = CONTRIBUTOR_HISTOGRAM_POSITIONS.filter((position) =>
+      rows.some((row) => row.position === position),
+    );
+    const minTime = +minDate;
+    const maxTime = +maxDate;
+
+    const series = positions.map((position) => {
+      const values = rows.filter((row) => row.position === position);
+      const bins = d3
+        .bin()
+        .domain([minTime, maxTime])
+        .thresholds(thresholds)
+        .value((row) => Math.max(minTime, Math.min(maxTime, +row.date)))(values)
+        .map((bin) => ({
+          x0: new Date(bin.x0),
+          x1: new Date(bin.x1),
+          count: bin.length,
+          sum: sum(bin, (row) => row.total),
+          y: bin.length,
+        }));
+      return { key: position, label: position, bins };
+    });
+
+    return {
+      mode: currentMode,
+      xType: 'date',
+      xDomain: [minDate, maxDate],
+      yMax: d3.max(series, (row) => d3.max(row.bins, (bin) => bin.y)) || 0,
+      series,
+    };
+  }
+
+  const contributors = contributorTotalsByPosition(store);
+  if (!contributors.length) return null;
+
+  const positions = CONTRIBUTOR_HISTOGRAM_POSITIONS.filter((position) =>
+    contributors.some((row) => row.position === position),
+  );
+  const amountMax = roundedAmountDomainMax(d3.max(contributors, (row) => row.total) || 0);
+  const thresholds = d3.range(0, amountMax + CONTRIBUTOR_HISTOGRAM_BIN_STEP, CONTRIBUTOR_HISTOGRAM_BIN_STEP);
+
+  const series = positions.map((position) => {
+    const values = contributors.filter((row) => row.position === position);
+    const bins = d3
+      .bin()
+      .domain([0, amountMax])
+      .thresholds(thresholds)
+      .value((row) => Math.max(0, Math.min(amountMax, row.total)))(values)
+      .map((bin) => ({
+        x0: bin.x0,
+        x1: bin.x1,
+        count: bin.length,
+        sum: sum(bin, (row) => row.total),
+        y: currentMode === 'sum' ? sum(bin, (row) => row.total) : bin.length,
+      }));
+    return { key: position, label: position, bins };
+  });
+
+  return {
+    mode: currentMode,
+    xType: 'amount',
+    xDomain: [0, amountMax],
+    tickStep: 20000,
+    yMax: d3.max(series, (row) => d3.max(row.bins, (bin) => bin.y)) || 0,
+    series,
+  };
+}
+
+function renderContributorHistogramChart(store, mode = 'count') {
+  const model = contributorHistogramModel(store, mode);
+  return model ? contributorHistogram(model, chartOpts) : null;
+}
 function esc(value) {
   return String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 }
