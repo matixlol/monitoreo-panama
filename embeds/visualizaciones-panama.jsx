@@ -56,6 +56,7 @@ const CONTRIBUTOR_DOCUMENT_CACHE = new Map();
 const resolveModuleAssetUrl = (assetUrl) => new URL(assetUrl, import.meta.url).href;
 const DEFAULT_INGRESOS_URL = resolveModuleAssetUrl(ingresosDatasetUrl);
 const DEFAULT_EGRESOS_URL = resolveModuleAssetUrl(egresosDatasetUrl);
+const FIXED_EXPENSE_TIMELINE_DOMAIN = [new Date(2023, 8, 1), new Date(2024, 6, 31)];
 
 const provinceName = (id) => PANAMA_PROVINCE_NAMES.get(id);
 
@@ -608,9 +609,17 @@ function renderIncomeTimelineChart(store, position = ALL, grain = 'semana') {
   );
 }
 
+function filterRowsByDateRange(rows, [start, end]) {
+  return rows.filter((row) => {
+    const date = parsePanamaDate(row.fecha);
+    return date && date >= start && date <= end;
+  });
+}
+
 function renderExpenseTimelineChart(store, position = ALL, grain = 'mes') {
+  const filteredRows = filterRowsByDateRange(getExpenseRows(store, position), FIXED_EXPENSE_TIMELINE_DOMAIN);
   return wrapMobileScrollableChart(
-    line(expenseTimeline(getExpenseRows(store, position), grain), chartOpts, { xDomain: TIMELINE_X_DOMAIN }),
+    line(expenseTimeline(filteredRows, grain), chartOpts, { xDomain: FIXED_EXPENSE_TIMELINE_DOMAIN }),
     'plot',
   );
 }
