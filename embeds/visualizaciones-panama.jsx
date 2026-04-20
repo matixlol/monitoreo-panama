@@ -50,6 +50,7 @@ const SLUG_CACHE = new Map();
 const PANAMA_DATE_CACHE = new Map();
 const CANDIDATE_ID_CACHE = new Map();
 const PROVINCE_CACHE = new Map();
+const CONTRIBUTOR_DOCUMENT_CACHE = new Map();
 const resolveModuleAssetUrl = (assetUrl) => new URL(assetUrl, import.meta.url).href;
 const DEFAULT_INGRESOS_URL = resolveModuleAssetUrl(ingresosDatasetUrl);
 const DEFAULT_EGRESOS_URL = resolveModuleAssetUrl(egresosDatasetUrl);
@@ -125,6 +126,40 @@ function provinceCached(value) {
   const text = TEXT(value);
   if (!PROVINCE_CACHE.has(text)) PROVINCE_CACHE.set(text, PROVINCE_ALIASES.get(normCached(text)) ?? text);
   return PROVINCE_CACHE.get(text);
+}
+
+function normalizeContributorDocument(value) {
+  const text = TEXT(value);
+  if (!CONTRIBUTOR_DOCUMENT_CACHE.has(text)) {
+    const normalized = text
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[ÃÂ]/g, '')
+      .toUpperCase();
+    const compact = normalized.replace(/\bDV\b/g, '').replace(/[^A-Z0-9]+/g, '');
+    const digitsOnly = compact.replace(/[^0-9]+/g, '');
+    const isValid =
+      compact &&
+      !/^0+$/.test(compact) &&
+      /\d/.test(compact) &&
+      digitsOnly.length >= 3 &&
+      compact.length >= 5 &&
+      !['ANULADO', 'NULL', 'NULO', 'NONE', 'NA', 'N A', 'SN', 'S N'].includes(compact);
+    CONTRIBUTOR_DOCUMENT_CACHE.set(text, isValid ? compact : '');
+  }
+  return CONTRIBUTOR_DOCUMENT_CACHE.get(text);
+}
+
+function contributorKeyFromRow(row) {
+  const documentId = normalizeContributorDocument(row?.cedulaRuc);
+  if (documentId) return `doc:${documentId}`;
+  const contributorName = normCached(row?.contribuyenteNombre);
+  return contributorName ? `name:${contributorName}` : '';
+}
+
+function contributorIdFromRow(row) {
+  const key = contributorKeyFromRow(row);
+  return key ? slugify(key) : '';
 }
 
 function inject() {
@@ -229,7 +264,7 @@ function createCandidateBucket() {
     provinces: new Map(),
     districts: new Map(),
     genders: new Map(),
-    contributorNames: new Set(),
+    contributorKeys: new Set(),
     providerNames: new Set(),
   };
 }
@@ -260,15 +295,15 @@ function getIngresoRowCache(row) {
   const parsedDate = parsePanamaDateCached(row.fecha);
   return (row[INGRESO_ROW_CACHE] = {
     candidateId: candidateIdFromRowCached(row),
-    donorId: slugifyCached(row.contribuyenteNombre),
+    donorId: contributorIdFromRow(row),
     candidateName: TEXT(row.candidateName),
     candidateParty: TEXT(row.candidateParty),
     candidatePosition: TEXT(row.candidatePosition),
     candidateProvince: provinceCached(row.candidateProvince),
     candidateDistrict: TEXT(row.candidateDistrict),
     candidateGender: TEXT(row.candidateGender),
-    contributorName: TEXT(row.contribuyenteNombre),
-    contributorNameNorm: normCached(row.contribuyenteNombre),
+    contributorLabel: TEXT(row.contribuyenteNombre) || TEXT(row.cedulaRuc),
+    contributorKey: contributorKeyFromRow(row),
     sortDate: parsedDate,
     total: num(row.total),
   });
@@ -316,13 +351,13 @@ function buildStore({ ingresos = [], egresos = [] }) {
       rememberValue(bucket.positions, cached.candidatePosition);
       rememberValue(bucket.provinces, cached.candidateProvince);
       rememberValue(bucket.districts, cached.candidateDistrict);
-      if (cached.contributorNameNorm) bucket.contributorNames.add(cached.contributorNameNorm);
+      if (cached.contributorKey) bucket.contributorKeys.add(cached.contributorKey);
     }
 
     if (cached.donorId) {
       const bucket = put(donorBuckets, cached.donorId, createDonorBucket);
       bucket.ingresos.push(row);
-      incrementCount(bucket.nameCounts, cached.contributorName);
+      incrementCount(bucket.nameCounts, cached.contributorLabel);
       rememberValue(bucket.parties, cached.candidateParty);
       rememberValue(bucket.positions, cached.candidatePosition);
       if (cached.candidateId) bucket.candidateIds.add(cached.candidateId);
@@ -370,7 +405,7 @@ function buildStore({ ingresos = [], egresos = [] }) {
         egresos: sortRowsByCachedTime(bucket.egresos, EGRESO_ROW_CACHE),
         ingresoTotal: sum(bucket.ingresos, (row) => row[INGRESO_ROW_CACHE].total),
         egresoTotal: sum(bucket.egresos, (row) => row[EGRESO_ROW_CACHE].total),
-        contributorCount: bucket.contributorNames.size,
+        contributorCount: bucket.contributorKeys.size,
         providerCount: bucket.providerNames.size,
       };
     })
@@ -630,7 +665,10 @@ function contributorTotalsByPosition(store) {
   return d3
     .rollups(
       store.ingresos.filter(
-        (row) => TEXT(row.candidatePosition) && TEXT(row.contribuyenteNombre) && num(row.total) > 0,
+        (row) =>
+          TEXT(row.candidatePosition) &&
+          (row[INGRESO_ROW_CACHE]?.contributorKey || contributorKeyFromRow(row)) &&
+          num(row.total) > 0,
       ),
       (values) => ({
         position: TEXT(values[0].candidatePosition),
@@ -640,7 +678,7 @@ function contributorTotalsByPosition(store) {
         lastDate: d3.max(values, (row) => parsePanamaDate(row.fecha)),
       }),
       (row) => TEXT(row.candidatePosition),
-      (row) => NORM(row.contribuyenteNombre),
+      (row) => row[INGRESO_ROW_CACHE]?.contributorKey || contributorKeyFromRow(row),
     )
     .flatMap(([position, donors]) =>
       donors.map(([, donor]) => ({
