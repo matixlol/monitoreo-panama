@@ -258,6 +258,14 @@ export function useSharedChartFilterState(scopeKey) {
   return [filter, (nextFilter) => setSharedChartFilter(scopeKey, nextFilter)];
 }
 
+function afterInteraction(callback) {
+  if (typeof window !== 'undefined' && typeof window.setTimeout === 'function') {
+    window.setTimeout(callback, 0);
+    return;
+  }
+  setTimeout(callback, 0);
+}
+
 function SharedChartFilterControlBase({ scopeKey, filterOptions }) {
   const [filter, setFilter] = useSharedChartFilterState(scopeKey);
   const [isOpen, setIsOpen] = useState(false);
@@ -339,8 +347,8 @@ function SharedChartFilterControlBase({ scopeKey, filterOptions }) {
                   type="button"
                   className="btn btn-link btn-sm p-0 wc-filter-status-clear"
                   onClick={() => {
-                    setFilter(defaultFilterState());
                     setIsOpen(false);
+                    afterInteraction(() => setFilter(defaultFilterState()));
                   }}
                 >
                   Limpiar filtro

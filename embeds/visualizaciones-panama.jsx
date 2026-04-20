@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import * as d3 from 'd3';
 import ingresosDatasetUrl from './data/documentos-ingresos.csv?url';
@@ -1104,6 +1104,7 @@ function TabbedChartElementApp({
   tabLabel,
   tabValue,
   tabOptions,
+  chartCacheKey,
   onTabChange,
   renderChart,
 }) {
@@ -1111,6 +1112,14 @@ function TabbedChartElementApp({
   const scopeKey = sharedChartFilterScopeKey(element);
   const [sharedFilter] = useSharedChartFilterState(scopeKey);
   const filterOptions = store ? getSharedChartFilterOptions(store) : EMPTY_SHARED_FILTER_OPTIONS;
+  const deferredSharedFilter = useDeferredValue(sharedFilter);
+  const deferredChartCacheKey = useDeferredValue(chartCacheKey);
+  const renderChartRef = useRef(renderChart);
+  renderChartRef.current = renderChart;
+  const chartNode = useMemo(() => {
+    if (loading || error || !store) return null;
+    return renderChartRef.current(store, deferredSharedFilter);
+  }, [deferredChartCacheKey, deferredSharedFilter, error, loading, store]);
 
   const content = loading ? (
     <div className="loading">Cargando…</div>
@@ -1126,7 +1135,7 @@ function TabbedChartElementApp({
         onChange={onTabChange}
         filterOptions={filterOptions}
       />
-      <ChartNodeMount node={renderChart(store, sharedFilter)} />
+      <ChartNodeMount node={chartNode} />
     </>
   );
 
@@ -1158,6 +1167,7 @@ function CandidateTabbedChartElementApp({ element, store, loading = false, error
       tabLabel="Cargo"
       tabValue={position}
       tabOptions={POS}
+      chartCacheKey={position}
       onTabChange={(nextPosition) => applyElementAttribute(element, 'position', nextPosition)}
       renderChart={(resolvedStore, sharedFilter) => renderCandidateChart(resolvedStore, position, sharedFilter)}
     />
@@ -1177,6 +1187,7 @@ function IncomeTimelineTabbedChartElementApp({ element, store, loading = false, 
       tabLabel="Cobertura"
       tabValue={position}
       tabOptions={tabOptions}
+      chartCacheKey={position}
       onTabChange={(nextPosition) => applyElementAttribute(element, 'position', nextPosition)}
       renderChart={(resolvedStore, sharedFilter) => renderIncomeTimelineChart(resolvedStore, position, 'semana', sharedFilter)}
     />
@@ -1196,6 +1207,7 @@ function ExpenseTimelineTabbedChartElementApp({ element, store, loading = false,
       tabLabel="Cobertura"
       tabValue={position}
       tabOptions={tabOptions}
+      chartCacheKey={position}
       onTabChange={(nextPosition) => applyElementAttribute(element, 'position', nextPosition)}
       renderChart={(resolvedStore, sharedFilter) =>
         renderExpenseTimelineChart(resolvedStore, position, 'semana', sharedFilter)
@@ -1216,6 +1228,7 @@ function ParityTabbedChartElementApp({ element, store, loading = false, error = 
       tabLabel="Cargo"
       tabValue={position}
       tabOptions={POS}
+      chartCacheKey={position}
       onTabChange={(nextPosition) => applyElementAttribute(element, 'position', nextPosition)}
       renderChart={(resolvedStore, sharedFilter) => renderParityChart(resolvedStore, position, sharedFilter)}
     />
@@ -1234,6 +1247,7 @@ function DonorsTabbedChartElementApp({ element, store, loading = false, error = 
       tabLabel="Cargo"
       tabValue={position}
       tabOptions={POS}
+      chartCacheKey={position}
       onTabChange={(nextPosition) => applyElementAttribute(element, 'position', nextPosition)}
       renderChart={(resolvedStore, sharedFilter) => renderDonorsChart(resolvedStore, position, sharedFilter)}
     />
