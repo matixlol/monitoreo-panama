@@ -106,6 +106,16 @@ export const plural = (n, one, many) => ((+n || 0) === 1 ? one : many);
 const monthNames = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 const shortDate = (d) => `${`${d.getDate()}`.padStart(2, '0')} ${monthNames[d.getMonth()]}`;
 export const parseCsvText = (text) => d3.csvParse(text);
+export const TIMELINE_X_DOMAIN = [new Date(2023, 6, 1), new Date(2024, 7, 1)];
+
+function isInTimelineWindow(date) {
+  const time = +date;
+  return Number.isFinite(time) && time >= +TIMELINE_X_DOMAIN[0] && time < +TIMELINE_X_DOMAIN[1];
+}
+
+function clampTimelinePoints(points) {
+  return points.filter((point) => isInTimelineWindow(point.date)).sort((a, b) => d3.ascending(a.date, b.date));
+}
 
 export const INCOME_TYPES = [
   ['donacionesPrivadasEfectivo', 'Donación privada · efectivo'],
@@ -277,43 +287,45 @@ export function contributionLabel(row) {
 }
 
 export function incomeTimeline(rows, grain = 'día') {
-  return d3
-    .rollups(
-      rows.flatMap((r) => {
-        const d = parsePanamaDate(r.fecha);
-        const value = num(r.total);
-        return d && value ? [{ date: bucketDate(d, grain), value }] : [];
-      }),
-      (values) => ({ value: sum(values, (d) => d.value), count: values.length }),
-      (d) => +d.date,
-    )
-    .map(([time, stats]) => ({
-      date: new Date(time),
-      value: stats.value,
-      count: stats.count,
-      label: bucketLabel(new Date(time), grain),
-    }))
-    .sort((a, b) => d3.ascending(a.date, b.date));
+  return clampTimelinePoints(
+    d3
+      .rollups(
+        rows.flatMap((r) => {
+          const d = parsePanamaDate(r.fecha);
+          const value = num(r.total);
+          return d && value ? [{ date: bucketDate(d, grain), value }] : [];
+        }),
+        (values) => ({ value: sum(values, (d) => d.value), count: values.length }),
+        (d) => +d.date,
+      )
+      .map(([time, stats]) => ({
+        date: new Date(time),
+        value: stats.value,
+        count: stats.count,
+        label: bucketLabel(new Date(time), grain),
+      })),
+  );
 }
 
 export function expenseTimeline(rows, grain = 'día') {
-  return d3
-    .rollups(
-      rows.flatMap((r) => {
-        const d = parsePanamaDate(r.fecha);
-        const value = expenseAmount(r);
-        return d && value ? [{ date: bucketDate(d, grain), value }] : [];
-      }),
-      (values) => ({ value: sum(values, (d) => d.value), count: values.length }),
-      (d) => +d.date,
-    )
-    .map(([time, stats]) => ({
-      date: new Date(time),
-      value: stats.value,
-      count: stats.count,
-      label: bucketLabel(new Date(time), grain),
-    }))
-    .sort((a, b) => d3.ascending(a.date, b.date));
+  return clampTimelinePoints(
+    d3
+      .rollups(
+        rows.flatMap((r) => {
+          const d = parsePanamaDate(r.fecha);
+          const value = expenseAmount(r);
+          return d && value ? [{ date: bucketDate(d, grain), value }] : [];
+        }),
+        (values) => ({ value: sum(values, (d) => d.value), count: values.length }),
+        (d) => +d.date,
+      )
+      .map(([time, stats]) => ({
+        date: new Date(time),
+        value: stats.value,
+        count: stats.count,
+        label: bucketLabel(new Date(time), grain),
+      })),
+  );
 }
 
 export function parseHashRoute(hash) {

@@ -1,7 +1,7 @@
 import ingresosUrl from '../data/documentos-ingresos.csv?url';
 import egresosUrl from '../data/documentos-egresos.csv?url';
 import { line } from '../charts/line.js';
-import { candidateLabel, chartOpts, expenseTimeline, incomeTimeline, MONEY } from '../embed-shared.jsx';
+import { TIMELINE_X_DOMAIN, candidateLabel, chartOpts, expenseTimeline, incomeTimeline, MONEY } from '../embed-shared.jsx';
 import { buildStore, loadCsvDatasets } from '../visualizaciones-panama.jsx';
 
 const app = document.querySelector('#debug-app');
@@ -178,12 +178,12 @@ function candidateCard(candidate) {
     chartSection(
       'Línea de tiempo de aportes',
       'Suma semanal de aportes reportados.',
-      line(incomeTimeline(candidate.ingresos, 'semana'), chartOpts),
+      line(incomeTimeline(candidate.ingresos, 'semana'), { ...chartOpts, xDomain: TIMELINE_X_DOMAIN }),
     ),
     chartSection(
       'Línea de tiempo de egresos',
       'Suma semanal de egresos reportados.',
-      line(expenseTimeline(candidate.egresos, 'semana'), chartOpts),
+      line(expenseTimeline(candidate.egresos, 'semana'), { ...chartOpts, xDomain: TIMELINE_X_DOMAIN }),
     ),
   );
 
