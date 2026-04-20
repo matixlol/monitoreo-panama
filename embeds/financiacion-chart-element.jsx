@@ -1,5 +1,14 @@
 import { useMemo, useState } from 'react';
 import { ALL, INCOME_TYPES, formatEmbedCurrency, incomeBreakdown, sortPos, uniq } from './embed-shared.jsx';
+import {
+  BootstrapShadowStyles,
+  SHARED_CHART_FILTER_CSS,
+  SharedChartTabs,
+  getSharedChartFilterOptions,
+  matchesSharedChartFilter,
+  sharedChartFilterScopeKey,
+  useSharedChartFilterState,
+} from './shared-chart-filter.jsx';
 
 const SIZE = 200;
 const CENTER = SIZE / 2;
@@ -271,7 +280,15 @@ export function positionOptions(store) {
 }
 
 export function FinanciacionChartStyles() {
-  return <style>{FINANCIACION_CHART_CSS}</style>;
+  return (
+    <>
+      <BootstrapShadowStyles />
+      <style>
+        {FINANCIACION_CHART_CSS}
+        {SHARED_CHART_FILTER_CSS}
+      </style>
+    </>
+  );
 }
 
 function normalizeBreakdownItems(items) {
@@ -286,31 +303,16 @@ function normalizeBreakdownItems(items) {
   });
 }
 
-export function Tabs({ label, value, options, onChange }) {
+export function Tabs({ scopeKey, label, value, options, onChange, filterOptions }) {
   return (
-    <div className="wc-tabs-wrap">
-      <ul className="nav nav-tabs wc-tabs" role="tablist" aria-label={label}>
-        {options.map((option) => {
-          const active = option === value;
-          return (
-            <li className="nav-item wc-tab-item" key={option}>
-              <button
-                type="button"
-                className={`nav-link wc-tab-link${active ? ' active' : ''}`}
-                role="tab"
-                aria-selected={active ? 'true' : 'false'}
-                tabIndex={active ? 0 : -1}
-                onClick={() => {
-                  if (!active) onChange(option);
-                }}
-              >
-                {option}
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
+    <SharedChartTabs
+      scopeKey={scopeKey}
+      label={label}
+      value={value}
+      options={options}
+      onChange={onChange}
+      filterOptions={filterOptions}
+    />
   );
 }
 
@@ -449,9 +451,18 @@ export function IncomeBreakdownChart({ items }) {
 export function FinanciacionChartElementApp({ element, store, loading = false, error = null }) {
   const position = element?.getAttribute('position') || ALL;
   const options = store ? positionOptions(store) : [ALL];
+  const scopeKey = sharedChartFilterScopeKey(element);
+  const [sharedFilter] = useSharedChartFilterState(scopeKey);
+  const filterOptions = useMemo(() => (store ? getSharedChartFilterOptions(store) : { province: [], party: [] }), [store]);
   const breakdown = store
     ? incomeBreakdown(
-        position === ALL ? store.ingresos : store.ingresos.filter((row) => row.candidatePosition?.trim() === position),
+        (position === ALL ? store.ingresos : store.ingresos.filter((row) => row.candidatePosition?.trim() === position)).filter(
+          (row) =>
+            matchesSharedChartFilter(sharedFilter, {
+              province: row.candidateProvince,
+              party: row.candidateParty,
+            }),
+        ),
       )
     : [];
 
@@ -466,10 +477,12 @@ export function FinanciacionChartElementApp({ element, store, loading = false, e
           {!loading && !error && store ? (
             <>
               <Tabs
+                scopeKey={scopeKey}
                 label="Cobertura"
                 value={position}
                 options={options}
                 onChange={(value) => element.applyAttrs({ position: value })}
+                filterOptions={filterOptions}
               />
               <IncomeBreakdownChart items={breakdown} />
             </>

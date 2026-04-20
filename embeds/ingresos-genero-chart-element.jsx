@@ -1,6 +1,12 @@
 import { useMemo } from 'react';
 import { ALL, formatEmbedCurrency, formatEmbedNumber, sortPos, uniq } from './embed-shared.jsx';
 import { FinanciacionChartStyles, Tabs } from './financiacion-chart-element.jsx';
+import {
+  getSharedChartFilterOptions,
+  matchesSharedChartFilter,
+  sharedChartFilterScopeKey,
+  useSharedChartFilterState,
+} from './shared-chart-filter.jsx';
 
 const MIN_BAR_WIDTH = 8;
 const FEMALE_COLOR = '#d96b8f';
@@ -244,8 +250,17 @@ function GenderIncomeBars({ candidates }) {
 export function IngresosGeneroChartElementApp({ element, store, loading = false, error = null }) {
   const position = element?.getAttribute('position') || ALL;
   const options = store ? positionOptions(store) : [ALL];
+  const scopeKey = sharedChartFilterScopeKey(element);
+  const [sharedFilter] = useSharedChartFilterState(scopeKey);
+  const filterOptions = useMemo(() => (store ? getSharedChartFilterOptions(store) : { province: [], party: [] }), [store]);
   const candidates = store
     ? store.overview.candidates.filter((candidate) => position === ALL || candidate.position === position)
+        .filter((candidate) =>
+          matchesSharedChartFilter(sharedFilter, {
+            province: candidate.province,
+            party: candidate.party,
+          }),
+        )
     : [];
 
   return (
@@ -260,10 +275,12 @@ export function IngresosGeneroChartElementApp({ element, store, loading = false,
           {!loading && !error && store ? (
             <>
               <Tabs
+                scopeKey={scopeKey}
                 label="Cobertura"
                 value={position}
                 options={options}
                 onChange={(value) => element.applyAttrs({ position: value })}
+                filterOptions={filterOptions}
               />
               <GenderIncomeBars candidates={candidates} />
             </>

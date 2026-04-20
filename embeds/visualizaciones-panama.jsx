@@ -17,6 +17,16 @@ import { GeneralSearchElementApp } from './general-search-element.jsx';
 import { CandidatesTableElementApp, TransactionsTableElementApp } from './tables-elements.jsx';
 import { resolveCandidateNames } from './candidate-common-names.js';
 import {
+  SHARED_CHART_FILTER_CSS,
+  bootstrapShadowLinkHtml,
+  createSharedChartFilterControls,
+  getSharedChartFilter,
+  getSharedChartFilterOptions,
+  matchesSharedChartFilter,
+  sharedChartFilterScopeKey,
+  subscribeSharedChartFilter,
+} from './shared-chart-filter.jsx';
+import {
   ALL,
   COLORS,
   INT,
@@ -476,20 +486,47 @@ function targetNode(target) {
   return document.body.appendChild(document.createElement('div'));
 }
 
-function getCandidatesRows(store, position) {
-  return topPartyRows(store.overview.candidates.filter((d) => d.position === position));
+function getCandidatesRows(store, position, sharedFilter = null) {
+  return topPartyRows(
+    store.overview.candidates.filter(
+      (d) =>
+        d.position === position &&
+        matchesSharedChartFilter(sharedFilter, {
+          province: d.province,
+          party: d.party,
+        }),
+    ),
+  );
 }
 
-function getExpenseRows(store, position = ALL) {
-  return byPos(store.egresos, position);
+function getExpenseRows(store, position = ALL, sharedFilter = null) {
+  return byPos(store.egresos, position).filter((row) =>
+    matchesSharedChartFilter(sharedFilter, {
+      province: row.candidateProvince,
+      party: row.candidateParty,
+    }),
+  );
 }
 
-function getIncomeRows(store, position = ALL) {
-  return byPos(store.ingresos, position);
+function getIncomeRows(store, position = ALL, sharedFilter = null) {
+  return byPos(store.ingresos, position).filter((row) =>
+    matchesSharedChartFilter(sharedFilter, {
+      province: row.candidateProvince,
+      party: row.candidateParty,
+    }),
+  );
 }
 
-function getParityRows(store, position) {
-  const rows = store.overview.candidates.filter((d) => d.position === position && d.gender);
+function getParityRows(store, position, sharedFilter = null) {
+  const rows = store.overview.candidates.filter(
+    (d) =>
+      d.position === position &&
+      d.gender &&
+      matchesSharedChartFilter(sharedFilter, {
+        province: d.province,
+        party: d.party,
+      }),
+  );
 
   if (position === 'Presidente') {
     const mujeres = sum(rows, (d) => (d.gender === 'female' ? 1 : 0));
@@ -535,9 +572,16 @@ const PARITY_MAP_COLORS = {
   female: '#b91c1c',
 };
 
-function getParitySummaryRows(store) {
+function getParitySummaryRows(store, sharedFilter = null) {
   const counts = d3.rollup(
-    store.overview.candidates.filter((d) => d.gender),
+    store.overview.candidates.filter(
+      (d) =>
+        d.gender &&
+        matchesSharedChartFilter(sharedFilter, {
+          province: d.province,
+          party: d.party,
+        }),
+    ),
     (values) => ({
       male: sum(values, (d) => (d.gender === 'male' ? 1 : 0)),
       female: sum(values, (d) => (d.gender === 'female' ? 1 : 0)),
@@ -591,15 +635,41 @@ function getFinancialRows(store, position, filter = 'all') {
     .map(([, value]) => value);
 }
 
-function renderCandidateChart(store, position = POS[0]) {
-  return beeswarm(getCandidatesRows(store, position), 'candidato', chartOpts);
+function donorRowsFromIngresosRows(rows, position) {
+  return d3
+    .rollups(
+      rows,
+      (values) => ({
+        kind: 'aportante',
+        id: values[0][INGRESO_ROW_CACHE]?.donorId || contributorIdFromRow(values[0]),
+        name: values[0][INGRESO_ROW_CACHE]?.contributorLabel || TEXT(values[0].contribuyenteNombre) || TEXT(values[0].cedulaRuc),
+        ingresoTotal: sum(values, (row) => row[INGRESO_ROW_CACHE]?.total || num(row.total)),
+        total: sum(values, (row) => row[INGRESO_ROW_CACHE]?.total || num(row.total)),
+        position,
+        party: modeFromCounts(
+          values.reduce((map, row) => {
+            incrementCount(map, row[INGRESO_ROW_CACHE]?.candidateParty || row.candidateParty);
+            return map;
+          }, new Map()),
+          'Sin partido',
+        ),
+      }),
+      (row) => row[INGRESO_ROW_CACHE]?.donorId || contributorIdFromRow(row),
+    )
+    .map(([, donor]) => donor)
+    .filter((donor) => donor.id)
+    .sort((a, b) => d3.descending(a.total, b.total));
+}
+
+function renderCandidateChart(store, position = POS[0], sharedFilter = null) {
+  return beeswarm(getCandidatesRows(store, position, sharedFilter), 'candidato', chartOpts);
 }
 
 const APORTE_TIMELINE_START = new Date(2023, 6, 1);
 const APORTE_TIMELINE_END = new Date(2024, 6, 31);
 
-function renderIncomeTimelineChart(store, position = ALL, grain = 'semana') {
-  const points = incomeTimeline(getIncomeRows(store, position), grain).filter(
+function renderIncomeTimelineChart(store, position = ALL, grain = 'semana', sharedFilter = null) {
+  const points = incomeTimeline(getIncomeRows(store, position, sharedFilter), grain).filter(
     (point) => point.date >= APORTE_TIMELINE_START && point.date <= APORTE_TIMELINE_END,
   );
   return wrapMobileScrollableChart(
@@ -608,14 +678,16 @@ function renderIncomeTimelineChart(store, position = ALL, grain = 'semana') {
   );
 }
 
-function renderExpenseTimelineChart(store, position = ALL, grain = 'mes') {
+function renderExpenseTimelineChart(store, position = ALL, grain = 'mes', sharedFilter = null) {
   return wrapMobileScrollableChart(
-    line(expenseTimeline(getExpenseRows(store, position), grain), chartOpts, { xDomain: TIMELINE_X_DOMAIN }),
+    line(expenseTimeline(getExpenseRows(store, position, sharedFilter), grain), chartOpts, {
+      xDomain: TIMELINE_X_DOMAIN,
+    }),
     'plot',
   );
 }
 
-function renderParityChart(store, position = POS[0]) {
+function renderParityChart(store, position = POS[0], sharedFilter = null) {
   const root = document.createElement('div');
   root.className = 'mf-parity-layout';
 
@@ -624,7 +696,7 @@ function renderParityChart(store, position = POS[0]) {
   mapWrap.append(
     wrapMobileScrollableChart(
       mapChart({
-        rows: getParityRows(store, position),
+        rows: getParityRows(store, position, sharedFilter),
         valueKey: 'paridad',
         domain: [0, 1],
         valueFormat: (v) => d3.format('.0%')(v),
@@ -642,7 +714,7 @@ function renderParityChart(store, position = POS[0]) {
 
   const breakdownWrap = document.createElement('div');
   breakdownWrap.className = 'mf-parity-layout__breakdown';
-  const parityBreakdown = groupedBarsChart(getParitySummaryRows(store), {
+  const parityBreakdown = groupedBarsChart(getParitySummaryRows(store, sharedFilter), {
     ...chartOpts,
     compact: isNarrowMobileViewport(),
   });
@@ -672,11 +744,13 @@ function renderFinancialMapChart(store, position = POS[0], metric = 'ingresoTota
   );
 }
 
-function renderDonorsChart(store, position = POS[0]) {
-  const rows = store.overview.donors.filter((row) => row.position === position);
+function renderDonorsChart(store, position = POS[0], sharedFilter = null) {
+  const rows = donorRowsFromIngresosRows(getIncomeRows(store, position, sharedFilter), position);
   const precomputedLayout = donorBeeswarmLayout.layoutsByPosition?.[position];
   const precomputedPositions =
-    precomputedLayout?.signature === createDonorBeeswarmSignature(rows) ? precomputedLayout.positionsById : null;
+    !sharedFilter?.type && !sharedFilter?.value && precomputedLayout?.signature === createDonorBeeswarmSignature(rows)
+      ? precomputedLayout.positionsById
+      : null;
   return wrapMobileScrollableChart(beeswarm(rows, 'aportante', { ...chartOpts, precomputedPositions }), 'beeswarm');
 }
 
@@ -889,7 +963,7 @@ function summaryCardsMarkup(items) {
 }
 
 const summaryCardsElementCss = `:host{display:block;min-width:0;color:#111827}${SUMMARY_CARDS_CSS}.loading,.error{padding:14px 0;color:#667085}`;
-const bootstrapTabsCss = `.wc-tabs-wrap,.wc-tabs,.wc-tab-item,.wc-tab-link{box-sizing:border-box}.wc-tabs-wrap{margin:0 0 16px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans","Liberation Sans",sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";font-size:1rem;font-weight:400;line-height:1.5;color:#212529;-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}.wc-tabs{display:flex;flex-wrap:wrap;margin-top:0;margin-bottom:0;padding-left:0;list-style:none;border-bottom:1px solid #dee2e6}.wc-tab-item{margin-bottom:-1px;flex:none;list-style:none}.wc-tab-link{display:block;padding:.5rem 1rem;background-color:transparent;color:inherit;font:inherit;line-height:1.5;text-decoration:none;white-space:nowrap;transition:color .18s ease,background-color .18s ease,border-color .18s ease}.wc-tabs .wc-tab-link{border:1px solid transparent;border-top-left-radius:.25rem;border-top-right-radius:.25rem}.wc-tabs .wc-tab-link:hover,.wc-tabs .wc-tab-link:focus{text-decoration:none;border-color:#e9ecef #e9ecef #dee2e6}.wc-tab-link:focus-visible{outline:2px solid rgba(0,123,255,.35);outline-offset:2px}.wc-tabs .wc-tab-link.active,.wc-tabs .wc-tab-item.show .wc-tab-link{color:#495057;background-color:#fff;border-color:#dee2e6 #dee2e6 #fff}@media (max-width:720px){.wc-tabs-wrap{margin-bottom:14px}.wc-tab-link{padding:.45rem .625rem;font-size:.84rem;line-height:1.35}}`;
+const bootstrapTabsCss = `.wc-tabs-wrap,.wc-tabs,.wc-tab-item,.wc-tab-link{box-sizing:border-box}.wc-tabs-wrap{margin:0 0 16px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans","Liberation Sans",sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";font-size:1rem;font-weight:400;line-height:1.5;color:#212529;-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}.wc-tabs{display:flex;flex-wrap:wrap;margin-top:0;margin-bottom:0;padding-left:0;list-style:none;border-bottom:1px solid #dee2e6}.wc-tab-item{margin-bottom:-1px;flex:none;list-style:none}.wc-tab-link{display:block;padding:.5rem 1rem;background-color:transparent;color:inherit;font:inherit;line-height:1.5;text-decoration:none;white-space:nowrap;transition:color .18s ease,background-color .18s ease,border-color .18s ease}.wc-tabs .wc-tab-link{border:1px solid transparent;border-top-left-radius:.25rem;border-top-right-radius:.25rem}.wc-tabs .wc-tab-link:hover,.wc-tabs .wc-tab-link:focus{text-decoration:none;border-color:#e9ecef #e9ecef #dee2e6}.wc-tab-link:focus-visible{outline:2px solid rgba(0,123,255,.35);outline-offset:2px}.wc-tabs .wc-tab-link.active,.wc-tabs .wc-tab-item.show .wc-tab-link{color:#495057;background-color:#fff;border-color:#dee2e6 #dee2e6 #fff}${SHARED_CHART_FILTER_CSS}@media (max-width:720px){.wc-tabs-wrap{margin-bottom:14px}.wc-tab-link{padding:.45rem .625rem;font-size:.84rem;line-height:1.35}}`;
 const chartPanelCss = `:host{display:block;min-width:0;color:#111827;}.wc-panel{display:grid;gap:16px;padding:16px;background:#f8f8f8;border-radius:12px}.wc-body,.wh-chart,.wc-chart-slot{min-width:0}.wc-body--bare{display:grid;gap:12px;min-width:0}.wc-chart-slot{display:grid;animation:wc-tab-panel-in .18s ease both}.loading,.error,.empty{padding:14px 0;color:#667085}@keyframes wc-tab-panel-in{0%{opacity:.32;transform:translateY(6px)}100%{opacity:1;transform:translateY(0)}}@media (max-width:720px){.wc-panel{gap:14px;padding:14px}}`;
 const chartElementCss = `${chartPanelCss}.wc-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin:0 0 12px}.wc-field{display:grid;gap:4px;min-width:180px;color:#344054;}.wc-field select{padding:8px 12px;border:1px solid #e4e7ec;border-radius:999px;background:#fff;color:#344054;}${bootstrapTabsCss}.mf-map{overflow-x:auto;overflow-y:hidden}.mf-map svg{display:block;width:100%;height:auto;max-width:960px;margin:auto}.legend{display:flex;align-items:center;gap:10px;margin-top:10px;color:#667085;}.mf-grad{height:12px;flex:1;max-width:300px;border-radius:999px;background:linear-gradient(90deg,#eff6ff,#1d4ed8)}.mf-parity-layout{display:grid;gap:24px;align-items:start;grid-template-columns:minmax(0,1.7fr) minmax(210px,.65fr)}.mf-parity-layout__map,.mf-parity-layout__breakdown{min-width:0}.mf-parity-layout__breakdown{display:grid;align-content:start}.wc-mobile-scroll{min-width:0}@media (max-width:1040px){.mf-parity-layout{grid-template-columns:1fr}}@media (max-width:720px){.wc-mobile-scroll{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;padding:8px 0 8px 8px;border:1px solid #e4e7ec;background:#f8fafc}.wc-mobile-scroll__inner{width:min(200vw,1000px);min-width:720px;background:linear-gradient(180deg,#fbfdff 0%,#f3f6fa 100%)}.wc-mobile-scroll--plot>.wc-mobile-scroll__inner>svg{display:block;width:100%!important;height:auto}.mf-map.wc-mobile-map-shell{display:grid;gap:8px;overflow:visible}.wc-mobile-scroll--map .wc-mobile-scroll__inner>div{width:88%!important;max-width:840px!important;margin:0!important}.wc-mobile-scroll--map svg{display:block;width:100%!important;max-width:none!important;height:auto;margin:0!important}.mf-map.wc-mobile-map-shell>.legend{font-size:11px;gap:8px;margin-top:0}.mf-map.wc-mobile-map-shell>.legend .mf-legend-scale{max-width:320px}.mf-map.wc-mobile-map-shell>.legend .mf-legend-bar{height:10px}.mf-map.wc-mobile-map-shell>.legend .mf-legend-note{gap:6px}.wc-mobile-scroll--beeswarm .beeswarm{width:100%!important;max-width:none!important}.wc-mobile-scroll--beeswarm .beeswarm svg{display:block;width:100%!important;max-width:none!important;height:auto}.wc-mobile-scroll--treemap .tm-root,.wc-mobile-scroll--treemap .tm-stage,.wc-mobile-scroll--treemap .tm-canvas{width:100%}.wc-mobile-scroll--treemap .tm-canvas svg{display:block;width:100%!important;height:100%!important;max-width:none!important}.mf-parity-breakdown-chart{justify-items:center;gap:12px}.mf-parity-breakdown-chart .mf-grouped-bars__legend{gap:14px}.mf-parity-breakdown-chart .mf-grouped-bars__legend-item{font-size:13px}.mf-parity-breakdown-chart .mf-grouped-bars__legend-dot{width:11px;height:11px}}${groupedBarsChartCss}`;
 
@@ -951,6 +1025,15 @@ function createTabsControl(control, onSelect, wrapClassName = 'wc-tabs-wrap') {
 
   wrap.append(list);
   return wrap;
+}
+
+function createTabsWithSharedFilterControl(control, onSelect, element, store) {
+  return createSharedChartFilterControls({
+    control,
+    onSelect,
+    scopeKey: sharedChartFilterScopeKey(element),
+    filterOptions: getSharedChartFilterOptions(store),
+  });
 }
 
 function createChartPanel(title) {
@@ -1045,7 +1128,8 @@ function defineSummaryCardsElement() {
   customElements.define('panama-resumen-cards', PanamaSummaryCardsElement);
 }
 
-function defineChartElement(name, title, observedAttributes, renderChart, getControls = () => []) {
+function defineChartElement(name, title, observedAttributes, renderChart, getControls = () => [], options = {}) {
+  const { sharedFilter = false } = options;
   if (typeof window === 'undefined' || customElements.get(name)) return;
   class PanamaChartElement extends HTMLElement {
     static get observedAttributes() {
@@ -1063,6 +1147,16 @@ function defineChartElement(name, title, observedAttributes, renderChart, getCon
 
     async render() {
       const root = this.shadowRoot || this.attachShadow({ mode: 'open' });
+      const nextSharedFilterScope = sharedFilter ? sharedChartFilterScopeKey(this) : null;
+      if (this._sharedFilterScope !== nextSharedFilterScope) {
+        this._sharedFilterUnsubscribe?.();
+        this._sharedFilterUnsubscribe = nextSharedFilterScope
+          ? subscribeSharedChartFilter(nextSharedFilterScope, () => {
+              if (this.isConnected) this.render();
+            })
+          : null;
+        this._sharedFilterScope = nextSharedFilterScope;
+      }
       const token = (this._token || 0) + 1;
       this._token = token;
       const bare = this.hasAttribute('bare');
@@ -1074,11 +1168,21 @@ function defineChartElement(name, title, observedAttributes, renderChart, getCon
       const renderResolved = (store) => {
         const controls = getControls(this, store);
         const node = renderChart(this, store);
-        root.innerHTML = `<style>${chartElementCss}</style>`;
+        Array.from(root.querySelectorAll('.wc-filter-shell')).forEach((shell) => shell.cleanup?.());
+        root.innerHTML = `${bootstrapShadowLinkHtml()}<style>${chartElementCss}</style>`;
         const panel = bare ? null : createChartPanel(title);
         const body = bare ? createBareChartBody() : panel.body;
         if (controls.length === 1) {
-          body.append(createTabsControl(controls[0], (value) => this.setAttribute(controls[0].attr, value)));
+          body.append(
+            sharedFilter
+              ? createTabsWithSharedFilterControl(
+                  controls[0],
+                  (value) => this.setAttribute(controls[0].attr, value),
+                  this,
+                  store,
+                )
+              : createTabsControl(controls[0], (value) => this.setAttribute(controls[0].attr, value)),
+          );
         } else if (controls.length) {
           const wrap = document.createElement('div');
           wrap.className = 'wc-controls';
@@ -1121,7 +1225,7 @@ function defineChartElement(name, title, observedAttributes, renderChart, getCon
         renderResolved(this._store);
         return;
       }
-      root.innerHTML = `<style>${chartElementCss}</style>`;
+      root.innerHTML = `${bootstrapShadowLinkHtml()}<style>${chartElementCss}</style>`;
       if (bare) {
         root.append(Object.assign(document.createElement('div'), { className: 'loading', textContent: 'Cargando…' }));
       } else {
@@ -1138,7 +1242,7 @@ function defineChartElement(name, title, observedAttributes, renderChart, getCon
         renderResolved(store);
       } catch (error) {
         if (token !== this._token) return;
-        root.innerHTML = `<style>${chartElementCss}</style>`;
+        root.innerHTML = `${bootstrapShadowLinkHtml()}<style>${chartElementCss}</style>`;
         const errorNode = Object.assign(document.createElement('div'), {
           className: 'error',
           textContent: String(error?.message || error),
@@ -1151,6 +1255,13 @@ function defineChartElement(name, title, observedAttributes, renderChart, getCon
           root.append(errorPanel.panel);
         }
       }
+    }
+
+    disconnectedCallback() {
+      Array.from((this.shadowRoot || this).querySelectorAll?.('.wc-filter-shell') || []).forEach((shell) => shell.cleanup?.());
+      this._sharedFilterUnsubscribe?.();
+      this._sharedFilterUnsubscribe = null;
+      this._sharedFilterScope = null;
     }
   }
 
@@ -1294,7 +1405,7 @@ function defineChartElements() {
     'panama-candidaturas-chart',
     'Candidaturas por volumen de fondos',
     ['position', 'ingresos-url', 'egresos-url'],
-    (el, store) => renderCandidateChart(store, attr(el, 'position', POS[0])),
+    (el, store) => renderCandidateChart(store, attr(el, 'position', POS[0]), getSharedChartFilter(sharedChartFilterScopeKey(el))),
     (el) => [
       {
         attr: 'position',
@@ -1303,6 +1414,7 @@ function defineChartElements() {
         options: POS.map((value) => ({ value, label: value })),
       },
     ],
+    { sharedFilter: true },
   );
   defineReactElement(
     'panama-financiacion-chart',
@@ -1322,7 +1434,13 @@ function defineChartElements() {
     'panama-aportes-tiempo-chart',
     'Línea de tiempo de aportes',
     ['position', 'grain', 'ingresos-url', 'egresos-url'],
-    (el, store) => renderIncomeTimelineChart(store, attr(el, 'position', ALL), 'semana'),
+    (el, store) =>
+      renderIncomeTimelineChart(
+        store,
+        attr(el, 'position', ALL),
+        'semana',
+        getSharedChartFilter(sharedChartFilterScopeKey(el)),
+      ),
     (el, store) => [
       {
         attr: 'position',
@@ -1334,12 +1452,19 @@ function defineChartElements() {
         })),
       },
     ],
+    { sharedFilter: true },
   );
   defineChartElement(
     'panama-gastos-tiempo-chart',
     'Línea de tiempo de gastos',
     ['position', 'grain', 'ingresos-url', 'egresos-url'],
-    (el, store) => renderExpenseTimelineChart(store, attr(el, 'position', ALL), 'semana'),
+    (el, store) =>
+      renderExpenseTimelineChart(
+        store,
+        attr(el, 'position', ALL),
+        'semana',
+        getSharedChartFilter(sharedChartFilterScopeKey(el)),
+      ),
     (el, store) => [
       {
         attr: 'position',
@@ -1351,12 +1476,13 @@ function defineChartElements() {
         })),
       },
     ],
+    { sharedFilter: true },
   );
   defineChartElement(
     'panama-paridad-chart',
     'Paridad de género por provincia',
     ['position', 'ingresos-url', 'egresos-url'],
-    (el, store) => renderParityChart(store, attr(el, 'position', POS[0])),
+    (el, store) => renderParityChart(store, attr(el, 'position', POS[0]), getSharedChartFilter(sharedChartFilterScopeKey(el))),
     (el) => [
       {
         attr: 'position',
@@ -1365,6 +1491,7 @@ function defineChartElements() {
         options: POS.map((value) => ({ value, label: value })),
       },
     ],
+    { sharedFilter: true },
   );
   defineChartElement(
     'panama-mapa-financiero-chart',
@@ -1416,7 +1543,7 @@ function defineChartElements() {
     'panama-aportantes-chart',
     'Aportantes',
     ['position', 'ingresos-url', 'egresos-url'],
-    (el, store) => renderDonorsChart(store, attr(el, 'position', POS[0])),
+    (el, store) => renderDonorsChart(store, attr(el, 'position', POS[0]), getSharedChartFilter(sharedChartFilterScopeKey(el))),
     (el) => [
       {
         attr: 'position',
@@ -1425,6 +1552,7 @@ function defineChartElements() {
         options: POS.map((value) => ({ value, label: value })),
       },
     ],
+    { sharedFilter: true },
   );
   defineChartElement(
     'panama-gastos-treemap-chart',
