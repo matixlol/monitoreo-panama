@@ -1345,6 +1345,23 @@ function defineChartElements() {
     ],
   );
   defineChartElement(
+    'panama-ingresos-tiempo-chart',
+    'Línea de tiempo de ingresos',
+    ['position', 'grain', 'ingresos-url', 'egresos-url'],
+    (el, store) => renderIncomeTimelineChart(store, attr(el, 'position', ALL), 'semana'),
+    (el, store) => [
+      {
+        attr: 'position',
+        label: 'Cobertura',
+        value: attr(el, 'position', ALL),
+        options: [ALL, ...uniq(store.ingresos.map((d) => d.candidatePosition)).sort(sortPos)].map((value) => ({
+          value,
+          label: value,
+        })),
+      },
+    ],
+  );
+  defineChartElement(
     'panama-gastos-tiempo-chart',
     'Línea de tiempo de gastos',
     ['position', 'grain', 'ingresos-url', 'egresos-url'],
