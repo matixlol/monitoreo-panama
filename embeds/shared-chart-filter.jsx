@@ -184,11 +184,15 @@ export const SHARED_CHART_FILTER_CSS = `
     flex:none;
   }
   .wc-filter-menu{
+    position:absolute;
+    top:calc(100% + 8px);
+    right:0;
+    left:auto;
+    z-index:10;
     width:min(320px,calc(100vw - 32px));
-    margin-top:8px;
     padding:1rem;
   }
-  .form-select.is-active{
+  .custom-select.is-active{
     border-color:#0f766e;
     background:#f6fef9;
     color:#064e3b;
@@ -198,10 +202,24 @@ export const SHARED_CHART_FILTER_CSS = `
     font-weight:600;
     line-height:1.35;
   }
+  .wc-filter-status{
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
   .wc-filter-status-clear{
+    margin-left:auto;
+    padding:.2rem .55rem !important;
+    border:1px solid currentColor;
+    border-radius:.25rem;
+    background:rgba(255,255,255,.45);
     color:inherit;
-    text-decoration:underline;
-    text-underline-offset:2px;
+    font-weight:600;
+    text-decoration:none;
+  }
+  .wc-filter-status-clear:hover{
+    background:rgba(255,255,255,.72);
+    color:inherit;
   }
   @media (max-width:720px){
     .wc-tabs-shell{
@@ -226,6 +244,9 @@ export const SHARED_CHART_FILTER_CSS = `
     .wc-filter-status{
       margin-bottom:14px;
       align-items:flex-start;
+    }
+    .wc-filter-status-clear{
+      margin-left:0;
     }
   }
 `;
@@ -282,11 +303,11 @@ function SharedChartFilterControlBase({ scopeKey, filterOptions }) {
         {isOpen ? (
           <div className="dropdown-menu show wc-filter-menu" role="dialog" aria-label="Filtrar gráfico">
             <p className="form-label mb-2">Filtrar todas estas visualizaciones por</p>
-            <div className="d-grid gap-2">
-              <label className="d-grid gap-1">
-                <span className="form-label">Provincia</span>
+            <div>
+              <div className="form-group mb-2">
+                <label className="d-block mb-1">Provincia</label>
                 <select
-                  className={`form-select${provinceValue ? ' is-active' : ''}`}
+                  className={`custom-select${provinceValue ? ' is-active' : ''}`}
                   aria-label="Seleccionar provincia"
                   value={provinceValue}
                   onChange={(event) => setFilter({ type: 'province', value: event.currentTarget.value })}
@@ -298,11 +319,11 @@ function SharedChartFilterControlBase({ scopeKey, filterOptions }) {
                     </option>
                   ))}
                 </select>
-              </label>
-              <label className="d-grid gap-1">
-                <span className="form-label">Partido</span>
+              </div>
+              <div className="form-group mb-2">
+                <label className="d-block mb-1">Partido</label>
                 <select
-                  className={`form-select${partyValue ? ' is-active' : ''}`}
+                  className={`custom-select${partyValue ? ' is-active' : ''}`}
                   aria-label="Seleccionar partido"
                   value={partyValue}
                   onChange={(event) => setFilter({ type: 'party', value: event.currentTarget.value })}
@@ -314,7 +335,7 @@ function SharedChartFilterControlBase({ scopeKey, filterOptions }) {
                     </option>
                   ))}
                 </select>
-              </label>
+              </div>
             </div>
             {sharedChartFilterActive(filter) ? (
               <div className="d-flex justify-content-end">
@@ -541,28 +562,27 @@ export function createSharedChartFilterControls({ control, onSelect, scopeKey, f
     heading.textContent = 'Filtrar todas estas visualizaciones por';
 
     const fields = document.createElement('div');
-    fields.className = 'd-grid gap-2';
 
-    const provinceField = document.createElement('label');
-    provinceField.className = 'd-grid gap-1';
-    const provinceLabel = document.createElement('span');
-    provinceLabel.className = 'form-label';
+    const provinceField = document.createElement('div');
+    provinceField.className = 'form-group mb-2';
+    const provinceLabel = document.createElement('label');
+    provinceLabel.className = 'd-block mb-1';
     provinceLabel.textContent = 'Provincia';
     provinceSelect = document.createElement('select');
-    provinceSelect.className = 'form-select';
+    provinceSelect.className = 'custom-select';
     provinceSelect.setAttribute('aria-label', 'Seleccionar provincia');
     provinceSelect.addEventListener('change', () => {
       setSharedChartFilter(scopeKey, { type: 'province', value: provinceSelect.value });
     });
     provinceField.append(provinceLabel, provinceSelect);
 
-    const partyField = document.createElement('label');
-    partyField.className = 'd-grid gap-1';
-    const partyLabel = document.createElement('span');
-    partyLabel.className = 'form-label';
+    const partyField = document.createElement('div');
+    partyField.className = 'form-group mb-2';
+    const partyLabel = document.createElement('label');
+    partyLabel.className = 'd-block mb-1';
     partyLabel.textContent = 'Partido';
     partySelect = document.createElement('select');
-    partySelect.className = 'form-select';
+    partySelect.className = 'custom-select';
     partySelect.setAttribute('aria-label', 'Seleccionar partido');
     partySelect.addEventListener('change', () => {
       setSharedChartFilter(scopeKey, { type: 'party', value: partySelect.value });
