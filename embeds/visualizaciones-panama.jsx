@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import * as d3 from 'd3';
 import ingresosDatasetUrl from './data/documentos-ingresos.csv?url';
@@ -17,14 +18,13 @@ import { GeneralSearchElementApp } from './general-search-element.jsx';
 import { CandidatesTableElementApp, TransactionsTableElementApp } from './tables-elements.jsx';
 import { resolveCandidateNames } from './candidate-common-names.js';
 import {
+  BootstrapShadowStyles,
   SHARED_CHART_FILTER_CSS,
-  bootstrapShadowLinkHtml,
-  createSharedChartFilterControls,
-  getSharedChartFilter,
   getSharedChartFilterOptions,
   matchesSharedChartFilter,
   sharedChartFilterScopeKey,
-  subscribeSharedChartFilter,
+  SharedChartTabs,
+  useSharedChartFilterState,
 } from './shared-chart-filter.jsx';
 import {
   ALL,
@@ -36,7 +36,6 @@ import {
   SHORT,
   TEXT,
   TIMELINE_X_DOMAIN,
-  candidateIdFromRow,
   candidateLabel,
   chartOpts,
   buildHashRoute,
@@ -993,49 +992,6 @@ function resolveStoreForElement(el) {
   return STORE_CACHE.get(key);
 }
 
-function createTabsControl(control, onSelect, wrapClassName = 'wc-tabs-wrap') {
-  const wrap = document.createElement('div');
-  wrap.className = wrapClassName;
-
-  const list = document.createElement('ul');
-  list.className = 'nav nav-tabs wc-tabs';
-  list.setAttribute('role', 'tablist');
-  list.setAttribute('aria-label', control.label);
-
-  control.options.forEach((option) => {
-    const active = option.value === control.value;
-    const item = document.createElement('li');
-    item.className = 'nav-item wc-tab-item';
-
-    const link = document.createElement('a');
-    link.href = '#';
-    link.className = `nav-link wc-tab-link${active ? ' active' : ''}`;
-    link.setAttribute('role', 'tab');
-    link.setAttribute('aria-selected', active ? 'true' : 'false');
-    link.tabIndex = active ? 0 : -1;
-    link.textContent = option.label;
-    link.addEventListener('click', (event) => {
-      event.preventDefault();
-      if (!active) onSelect(option.value);
-    });
-
-    item.append(link);
-    list.append(item);
-  });
-
-  wrap.append(list);
-  return wrap;
-}
-
-function createTabsWithSharedFilterControl(control, onSelect, element, store) {
-  return createSharedChartFilterControls({
-    control,
-    onSelect,
-    scopeKey: sharedChartFilterScopeKey(element),
-    filterOptions: getSharedChartFilterOptions(store),
-  });
-}
-
 function createChartPanel(title) {
   const panel = document.createElement('section');
   panel.className = 'wc-panel';
@@ -1094,6 +1050,196 @@ function appendChartSlot(body, node) {
   body.append(slot);
 }
 
+const EMPTY_SHARED_FILTER_OPTIONS = Object.freeze({ province: [], party: [] });
+
+function ChartNodeMount({ node }) {
+  const mountRef = useRef(null);
+  const scrollPositionsRef = useRef({});
+
+  useEffect(() => {
+    const mount = mountRef.current;
+    if (!mount) return;
+
+    scrollPositionsRef.current = Object.fromEntries(
+      Array.from(mount.querySelectorAll('.wc-mobile-scroll'))
+        .map((scrollNode) => [scrollNode.dataset.scrollKey || scrollNode.className, scrollNode.scrollLeft])
+        .filter(([, scrollLeft]) => Number.isFinite(scrollLeft)),
+    );
+
+    mount.replaceChildren(
+      node || Object.assign(document.createElement('div'), { className: 'empty', textContent: 'Sin datos.' }),
+    );
+
+    const nextScrollableNodes = Array.from(mount.querySelectorAll('.wc-mobile-scroll'));
+    if (!nextScrollableNodes.length) return;
+
+    requestAnimationFrame(() => {
+      nextScrollableNodes.forEach((scrollNode) => {
+        const key = scrollNode.dataset.scrollKey || scrollNode.className;
+        const scrollLeft = scrollPositionsRef.current[key];
+        if (Number.isFinite(scrollLeft)) scrollNode.scrollLeft = scrollLeft;
+      });
+    });
+  }, [node]);
+
+  return <div className="wc-chart-slot" ref={mountRef} />;
+}
+
+function applyElementAttribute(element, name, value) {
+  if (!element) return;
+  if (typeof element.applyAttrs === 'function') {
+    element.applyAttrs({ [name]: value });
+    return;
+  }
+  if (value == null || value === '') element.removeAttribute(name);
+  else element.setAttribute(name, String(value));
+}
+
+function TabbedChartElementApp({
+  element,
+  store,
+  loading = false,
+  error = null,
+  title,
+  tabLabel,
+  tabValue,
+  tabOptions,
+  onTabChange,
+  renderChart,
+}) {
+  const bare = element?.hasAttribute('bare');
+  const scopeKey = sharedChartFilterScopeKey(element);
+  const [sharedFilter] = useSharedChartFilterState(scopeKey);
+  const filterOptions = store ? getSharedChartFilterOptions(store) : EMPTY_SHARED_FILTER_OPTIONS;
+
+  const content = loading ? (
+    <div className="loading">Cargando…</div>
+  ) : error ? (
+    <div className="error">{error}</div>
+  ) : (
+    <>
+      <SharedChartTabs
+        scopeKey={scopeKey}
+        label={tabLabel}
+        value={tabValue}
+        options={tabOptions}
+        onChange={onTabChange}
+        filterOptions={filterOptions}
+      />
+      <ChartNodeMount node={renderChart(store, sharedFilter)} />
+    </>
+  );
+
+  return (
+    <>
+      <BootstrapShadowStyles />
+      <style>{chartElementCss}</style>
+      {bare ? (
+        <div className="wc-body wc-body--bare">{content}</div>
+      ) : (
+        <section className="wc-panel">
+          <h4>{title}</h4>
+          <div className="wc-body">{content}</div>
+        </section>
+      )}
+    </>
+  );
+}
+
+function CandidateTabbedChartElementApp({ element, store, loading = false, error = null }) {
+  const position = attr(element, 'position', POS[0]);
+  return (
+    <TabbedChartElementApp
+      element={element}
+      store={store}
+      loading={loading}
+      error={error}
+      title="Candidaturas por volumen de fondos"
+      tabLabel="Cargo"
+      tabValue={position}
+      tabOptions={POS}
+      onTabChange={(nextPosition) => applyElementAttribute(element, 'position', nextPosition)}
+      renderChart={(resolvedStore, sharedFilter) => renderCandidateChart(resolvedStore, position, sharedFilter)}
+    />
+  );
+}
+
+function IncomeTimelineTabbedChartElementApp({ element, store, loading = false, error = null }) {
+  const position = attr(element, 'position', ALL);
+  const tabOptions = store ? [ALL, ...uniq(store.ingresos.map((row) => row.candidatePosition)).sort(sortPos)] : [ALL];
+  return (
+    <TabbedChartElementApp
+      element={element}
+      store={store}
+      loading={loading}
+      error={error}
+      title="Línea de tiempo de aportes"
+      tabLabel="Cobertura"
+      tabValue={position}
+      tabOptions={tabOptions}
+      onTabChange={(nextPosition) => applyElementAttribute(element, 'position', nextPosition)}
+      renderChart={(resolvedStore, sharedFilter) => renderIncomeTimelineChart(resolvedStore, position, 'semana', sharedFilter)}
+    />
+  );
+}
+
+function ExpenseTimelineTabbedChartElementApp({ element, store, loading = false, error = null }) {
+  const position = attr(element, 'position', ALL);
+  const tabOptions = store ? [ALL, ...uniq(store.egresos.map((row) => row.candidatePosition)).sort(sortPos)] : [ALL];
+  return (
+    <TabbedChartElementApp
+      element={element}
+      store={store}
+      loading={loading}
+      error={error}
+      title="Línea de tiempo de gastos"
+      tabLabel="Cobertura"
+      tabValue={position}
+      tabOptions={tabOptions}
+      onTabChange={(nextPosition) => applyElementAttribute(element, 'position', nextPosition)}
+      renderChart={(resolvedStore, sharedFilter) =>
+        renderExpenseTimelineChart(resolvedStore, position, 'semana', sharedFilter)
+      }
+    />
+  );
+}
+
+function ParityTabbedChartElementApp({ element, store, loading = false, error = null }) {
+  const position = attr(element, 'position', POS[0]);
+  return (
+    <TabbedChartElementApp
+      element={element}
+      store={store}
+      loading={loading}
+      error={error}
+      title="Paridad de género por provincia"
+      tabLabel="Cargo"
+      tabValue={position}
+      tabOptions={POS}
+      onTabChange={(nextPosition) => applyElementAttribute(element, 'position', nextPosition)}
+      renderChart={(resolvedStore, sharedFilter) => renderParityChart(resolvedStore, position, sharedFilter)}
+    />
+  );
+}
+
+function DonorsTabbedChartElementApp({ element, store, loading = false, error = null }) {
+  const position = attr(element, 'position', POS[0]);
+  return (
+    <TabbedChartElementApp
+      element={element}
+      store={store}
+      loading={loading}
+      error={error}
+      title="Aportantes"
+      tabLabel="Cargo"
+      tabValue={position}
+      tabOptions={POS}
+      onTabChange={(nextPosition) => applyElementAttribute(element, 'position', nextPosition)}
+      renderChart={(resolvedStore, sharedFilter) => renderDonorsChart(resolvedStore, position, sharedFilter)}
+    />
+  );
+}
+
 function defineSummaryCardsElement() {
   if (typeof window === 'undefined' || customElements.get('panama-resumen-cards')) return;
   class PanamaSummaryCardsElement extends HTMLElement {
@@ -1128,8 +1274,7 @@ function defineSummaryCardsElement() {
   customElements.define('panama-resumen-cards', PanamaSummaryCardsElement);
 }
 
-function defineChartElement(name, title, observedAttributes, renderChart, getControls = () => [], options = {}) {
-  const { sharedFilter = false } = options;
+function defineChartElement(name, title, observedAttributes, renderChart, getControls = () => []) {
   if (typeof window === 'undefined' || customElements.get(name)) return;
   class PanamaChartElement extends HTMLElement {
     static get observedAttributes() {
@@ -1147,16 +1292,6 @@ function defineChartElement(name, title, observedAttributes, renderChart, getCon
 
     async render() {
       const root = this.shadowRoot || this.attachShadow({ mode: 'open' });
-      const nextSharedFilterScope = sharedFilter ? sharedChartFilterScopeKey(this) : null;
-      if (this._sharedFilterScope !== nextSharedFilterScope) {
-        this._sharedFilterUnsubscribe?.();
-        this._sharedFilterUnsubscribe = nextSharedFilterScope
-          ? subscribeSharedChartFilter(nextSharedFilterScope, () => {
-              if (this.isConnected) this.render();
-            })
-          : null;
-        this._sharedFilterScope = nextSharedFilterScope;
-      }
       const token = (this._token || 0) + 1;
       this._token = token;
       const bare = this.hasAttribute('bare');
@@ -1168,22 +1303,10 @@ function defineChartElement(name, title, observedAttributes, renderChart, getCon
       const renderResolved = (store) => {
         const controls = getControls(this, store);
         const node = renderChart(this, store);
-        Array.from(root.querySelectorAll('.wc-filter-shell')).forEach((shell) => shell.cleanup?.());
-        root.innerHTML = `${bootstrapShadowLinkHtml()}<style>${chartElementCss}</style>`;
+        root.innerHTML = `<style>${chartElementCss}</style>`;
         const panel = bare ? null : createChartPanel(title);
         const body = bare ? createBareChartBody() : panel.body;
-        if (controls.length === 1) {
-          body.append(
-            sharedFilter
-              ? createTabsWithSharedFilterControl(
-                  controls[0],
-                  (value) => this.setAttribute(controls[0].attr, value),
-                  this,
-                  store,
-                )
-              : createTabsControl(controls[0], (value) => this.setAttribute(controls[0].attr, value)),
-          );
-        } else if (controls.length) {
+        if (controls.length) {
           const wrap = document.createElement('div');
           wrap.className = 'wc-controls';
           controls.forEach((control) => {
@@ -1225,7 +1348,7 @@ function defineChartElement(name, title, observedAttributes, renderChart, getCon
         renderResolved(this._store);
         return;
       }
-      root.innerHTML = `${bootstrapShadowLinkHtml()}<style>${chartElementCss}</style>`;
+      root.innerHTML = `<style>${chartElementCss}</style>`;
       if (bare) {
         root.append(Object.assign(document.createElement('div'), { className: 'loading', textContent: 'Cargando…' }));
       } else {
@@ -1242,7 +1365,7 @@ function defineChartElement(name, title, observedAttributes, renderChart, getCon
         renderResolved(store);
       } catch (error) {
         if (token !== this._token) return;
-        root.innerHTML = `${bootstrapShadowLinkHtml()}<style>${chartElementCss}</style>`;
+        root.innerHTML = `<style>${chartElementCss}</style>`;
         const errorNode = Object.assign(document.createElement('div'), {
           className: 'error',
           textContent: String(error?.message || error),
@@ -1255,13 +1378,6 @@ function defineChartElement(name, title, observedAttributes, renderChart, getCon
           root.append(errorPanel.panel);
         }
       }
-    }
-
-    disconnectedCallback() {
-      Array.from((this.shadowRoot || this).querySelectorAll?.('.wc-filter-shell') || []).forEach((shell) => shell.cleanup?.());
-      this._sharedFilterUnsubscribe?.();
-      this._sharedFilterUnsubscribe = null;
-      this._sharedFilterScope = null;
     }
   }
 
@@ -1401,20 +1517,12 @@ function enableAutoRouter() {
 function defineChartElements() {
   inject();
   defineSummaryCardsElement();
-  defineChartElement(
+  defineReactElement(
     'panama-candidaturas-chart',
-    'Candidaturas por volumen de fondos',
     ['position', 'ingresos-url', 'egresos-url'],
-    (el, store) => renderCandidateChart(store, attr(el, 'position', POS[0]), getSharedChartFilter(sharedChartFilterScopeKey(el))),
-    (el) => [
-      {
-        attr: 'position',
-        label: 'Cargo',
-        value: attr(el, 'position', POS[0]),
-        options: POS.map((value) => ({ value, label: value })),
-      },
-    ],
-    { sharedFilter: true },
+    ({ element, store, loading, error }) => (
+      <CandidateTabbedChartElementApp element={element} store={store} loading={loading} error={error} />
+    ),
   );
   defineReactElement(
     'panama-financiacion-chart',
@@ -1430,68 +1538,26 @@ function defineChartElements() {
       <IngresosGeneroChartElementApp element={element} store={store} loading={loading} error={error} />
     ),
   );
-  defineChartElement(
+  defineReactElement(
     'panama-aportes-tiempo-chart',
-    'Línea de tiempo de aportes',
     ['position', 'grain', 'ingresos-url', 'egresos-url'],
-    (el, store) =>
-      renderIncomeTimelineChart(
-        store,
-        attr(el, 'position', ALL),
-        'semana',
-        getSharedChartFilter(sharedChartFilterScopeKey(el)),
-      ),
-    (el, store) => [
-      {
-        attr: 'position',
-        label: 'Cobertura',
-        value: attr(el, 'position', ALL),
-        options: [ALL, ...uniq(store.ingresos.map((d) => d.candidatePosition)).sort(sortPos)].map((value) => ({
-          value,
-          label: value,
-        })),
-      },
-    ],
-    { sharedFilter: true },
+    ({ element, store, loading, error }) => (
+      <IncomeTimelineTabbedChartElementApp element={element} store={store} loading={loading} error={error} />
+    ),
   );
-  defineChartElement(
+  defineReactElement(
     'panama-gastos-tiempo-chart',
-    'Línea de tiempo de gastos',
     ['position', 'grain', 'ingresos-url', 'egresos-url'],
-    (el, store) =>
-      renderExpenseTimelineChart(
-        store,
-        attr(el, 'position', ALL),
-        'semana',
-        getSharedChartFilter(sharedChartFilterScopeKey(el)),
-      ),
-    (el, store) => [
-      {
-        attr: 'position',
-        label: 'Cobertura',
-        value: attr(el, 'position', ALL),
-        options: [ALL, ...uniq(store.egresos.map((d) => d.candidatePosition)).sort(sortPos)].map((value) => ({
-          value,
-          label: value,
-        })),
-      },
-    ],
-    { sharedFilter: true },
+    ({ element, store, loading, error }) => (
+      <ExpenseTimelineTabbedChartElementApp element={element} store={store} loading={loading} error={error} />
+    ),
   );
-  defineChartElement(
+  defineReactElement(
     'panama-paridad-chart',
-    'Paridad de género por provincia',
     ['position', 'ingresos-url', 'egresos-url'],
-    (el, store) => renderParityChart(store, attr(el, 'position', POS[0]), getSharedChartFilter(sharedChartFilterScopeKey(el))),
-    (el) => [
-      {
-        attr: 'position',
-        label: 'Cargo',
-        value: attr(el, 'position', POS[0]),
-        options: POS.map((value) => ({ value, label: value })),
-      },
-    ],
-    { sharedFilter: true },
+    ({ element, store, loading, error }) => (
+      <ParityTabbedChartElementApp element={element} store={store} loading={loading} error={error} />
+    ),
   );
   defineChartElement(
     'panama-mapa-financiero-chart',
@@ -1539,20 +1605,12 @@ function defineChartElements() {
       ];
     },
   );
-  defineChartElement(
+  defineReactElement(
     'panama-aportantes-chart',
-    'Aportantes',
     ['position', 'ingresos-url', 'egresos-url'],
-    (el, store) => renderDonorsChart(store, attr(el, 'position', POS[0]), getSharedChartFilter(sharedChartFilterScopeKey(el))),
-    (el) => [
-      {
-        attr: 'position',
-        label: 'Cargo',
-        value: attr(el, 'position', POS[0]),
-        options: POS.map((value) => ({ value, label: value })),
-      },
-    ],
-    { sharedFilter: true },
+    ({ element, store, loading, error }) => (
+      <DonorsTabbedChartElementApp element={element} store={store} loading={loading} error={error} />
+    ),
   );
   defineChartElement(
     'panama-gastos-treemap-chart',
