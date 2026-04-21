@@ -5,6 +5,7 @@ import { line } from './charts/line.js';
 import { treemap } from './charts/treemap.js';
 import { FinanciacionChartStyles, IncomeBreakdownChart } from './financiacion-chart-element.jsx';
 import {
+  DateCell,
   Empty,
   INT,
   MONEY,
@@ -143,6 +144,7 @@ function CandidateModal({ entity }) {
   ];
   const ingresoTableRows = incomeRows.map((row) => ({
     fecha: TEXT(row.fecha) || '—',
+    rawFecha: TEXT(row.rawFecha) || TEXT(row.fecha),
     aportante: TEXT(row.contribuyenteNombre) || 'Sin nombre',
     cedula: TEXT(row.cedulaRuc) || '—',
     tipo: contributionLabel(row),
@@ -159,6 +161,7 @@ function CandidateModal({ entity }) {
   ];
   const gastoTableRows = expenseRows.map((row) => ({
     fecha: TEXT(row.fecha) || '—',
+    rawFecha: TEXT(row.rawFecha) || TEXT(row.fecha),
     proveedor: TEXT(row.proveedorNombre) || 'Sin nombre',
     detalle: TEXT(row.detalleGastoResumido) || TEXT(row.detalleGasto) || '—',
     categoria: TEXT(row.GastoCategoria) || 'Sin categoría',
@@ -213,6 +216,7 @@ function CandidateModal({ entity }) {
           columns={ingresoColumns}
           rows={ingresoTableRows.map((row) => ({
             ...row,
+            fecha: <DateCell value={row.rawFecha} />,
             pdf: <PdfLinkCell url={row.pdf} />,
           }))}
         />
@@ -278,6 +282,7 @@ function CandidateModal({ entity }) {
           columns={gastoColumns}
           rows={gastoTableRows.map((row) => ({
             ...row,
+            fecha: <DateCell value={row.rawFecha} />,
             pdf: <PdfLinkCell url={row.pdf} />,
           }))}
         />
@@ -298,6 +303,7 @@ function DonorModal({ entity }) {
   ];
   const tableRows = incomeRows.map((row) => ({
     fecha: TEXT(row.fecha) || '—',
+    rawFecha: TEXT(row.rawFecha) || TEXT(row.fecha),
     candidato: [TEXT(row.candidateName), TEXT(row.candidatePosition)].filter(Boolean).join(' · ') || 'Sin nombre',
     partido: TEXT(row.candidateParty) || 'Sin partido',
     tipo: contributionLabel(row),
@@ -345,6 +351,7 @@ function DonorModal({ entity }) {
           columns={columns}
           rows={tableRows.map((row) => ({
             ...row,
+            fecha: <DateCell value={row.rawFecha} />,
             pdf: <PdfLinkCell url={row.pdf} />,
           }))}
         />
@@ -374,6 +381,7 @@ function ProviderModal({ entity }) {
   ];
   const tableRows = rows.map((row) => ({
     fecha: TEXT(row.fecha) || '—',
+    rawFecha: TEXT(row.rawFecha) || TEXT(row.fecha),
     candidato: [TEXT(row.candidateName), TEXT(row.candidatePosition)].filter(Boolean).join(' · ') || 'Sin nombre',
     partido: TEXT(row.candidateParty) || 'Sin partido',
     categoria: TEXT(row.GastoCategoria) || TEXT(row.detalleGastoResumido) || 'Sin categoría',
@@ -434,6 +442,7 @@ function ProviderModal({ entity }) {
           columns={columns}
           rows={tableRows.map((row) => ({
             ...row,
+            fecha: <DateCell value={row.rawFecha} />,
             pdf: <PdfLinkCell url={row.pdf} />,
           }))}
         />
