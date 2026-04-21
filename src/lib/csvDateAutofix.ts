@@ -69,7 +69,10 @@ const MONTHS = new Map<string, number>([
 ]);
 
 function cleanRaw(value: string | null | undefined): string {
-  let cleaned = (value ?? '').trim().replace(/^"+|"+$/g, '').trim();
+  let cleaned = (value ?? '')
+    .trim()
+    .replace(/^"+|"+$/g, '')
+    .trim();
   if (cleaned.startsWith('(') && cleaned.endsWith(')')) {
     cleaned = cleaned.slice(1, -1).trim();
   }
@@ -82,7 +85,11 @@ function stripAccents(value: string): string {
 }
 
 function normalizeMonthToken(token: string): number | undefined {
-  return MONTHS.get(stripAccents(token).toLowerCase().replace(/[.\s]+/g, ''));
+  return MONTHS.get(
+    stripAccents(token)
+      .toLowerCase()
+      .replace(/[.\s]+/g, ''),
+  );
 }
 
 function formatDate({ year, month, day }: DateParts): string {
@@ -92,11 +99,7 @@ function formatDate({ year, month, day }: DateParts): string {
 function tryDate(year: number, month: number, day: number): DateParts | null {
   if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return null;
   const date = new Date(Date.UTC(year, month - 1, day));
-  if (
-    date.getUTCFullYear() !== year ||
-    date.getUTCMonth() !== month - 1 ||
-    date.getUTCDate() !== day
-  ) {
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
     return null;
   }
   return { year, month, day };
@@ -142,7 +145,10 @@ function parseWithStyle(year: number, first: number, second: number, style: Date
   return tryDate(year, first, second);
 }
 
-function inferNumericStyle(cleaned: string, yearOverride?: number): { dmy: DateParts | null; mdy: DateParts | null } | null {
+function inferNumericStyle(
+  cleaned: string,
+  yearOverride?: number,
+): { dmy: DateParts | null; mdy: DateParts | null } | null {
   const match = cleaned.match(NUM_RE);
   if (!match) return null;
   const [, firstToken, secondToken, rawYear] = match;
@@ -427,8 +433,14 @@ function buildEgressBroadKey(doc: CsvExportDocument): string {
 export function autofixCsvExportDates(exportData: CsvExportDocument[]): CsvExportDocument[] {
   const normalizedDocs = exportData.map((doc) => ({
     ...doc,
-    ingress: doc.ingress.map((row) => ({ ...row })),
-    egress: doc.egress.map((row) => ({ ...row })),
+    ingress: doc.ingress.map((row) => ({
+      ...row,
+      rawFecha: row.rawFecha ?? row.fecha ?? null,
+    })),
+    egress: doc.egress.map((row) => ({
+      ...row,
+      rawFecha: row.rawFecha ?? row.fecha ?? null,
+    })),
   }));
 
   const ingressRefs: RowRef<CsvIngressRow>[] = normalizedDocs.flatMap((doc, docIndex) =>

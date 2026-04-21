@@ -2,6 +2,7 @@ import { useMemo, useRef } from 'react';
 import { flexRender, getCoreRowModel, getFilteredRowModel, useReactTable } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import {
+  DateCell,
   INT,
   MONEY,
   NORM,
@@ -19,6 +20,73 @@ import {
   sortPos,
   uniq,
 } from './embed-shared.jsx';
+
+const DATE_TOOLTIP_CSS = `
+  .pt-date-cell{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+  }
+
+  .pt-date-warning{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:18px;
+    height:18px;
+    padding:0;
+    border:0;
+    border-radius:999px;
+    background:transparent;
+    color:inherit;
+    cursor:help;
+    flex:none;
+  }
+
+  .pt-date-warning svg{
+    width:18px;
+    height:18px;
+    display:block;
+  }
+
+  .pt-date-warning:focus-visible{
+    outline:2px solid #facc15;
+    outline-offset:2px;
+    box-shadow:none;
+  }
+
+  .pt-date-tooltip{
+    z-index:10050;
+    width:min(280px, calc(100vw - 24px));
+    max-width:calc(100vw - 24px);
+    padding:6px 8px;
+    box-sizing:border-box;
+    border:1px solid #d0d7de;
+    border-radius:8px;
+    background:#fffef3;
+    color:#4b5563;
+    font-size:12px;
+    line-height:1.35;
+    box-shadow:none;
+    white-space:normal;
+    overflow-wrap:anywhere;
+  }
+
+  .pt-date-tooltip[data-state='closed']{
+    opacity:0;
+    pointer-events:none;
+  }
+
+  .pt-date-tooltip-arrow{
+    fill:#fffef3;
+  }
+
+  .pt-date-tooltip-arrow polygon{
+    fill:#fffef3;
+    stroke:#d0d7de;
+    stroke-width:1px;
+  }
+`;
 
 const TABLES_CSS = `
   :host{
@@ -267,6 +335,8 @@ const TABLES_CSS = `
       margin-left:0;
     }
   }
+
+  ${DATE_TOOLTIP_CSS}
 `;
 
 function localeAsc(a, b) {
@@ -502,6 +572,7 @@ function buildTransactionRows(store) {
     const candidateFull = candidateFullName(candidate || { candidateName });
     const amount = num(row.total);
     const parsedDate = parsePanamaDate(row.fecha);
+    const displayDate = TEXT(row.rawFecha) || TEXT(row.fecha);
     const counterparty = TEXT(row.contribuyenteNombre) || 'Sin nombre';
     const detail = contributionLabel(row);
     return {
@@ -517,6 +588,7 @@ function buildTransactionRows(store) {
       province: TEXT(row.candidateProvince),
       district: TEXT(row.candidateDistrict),
       date: TEXT(row.fecha) || '—',
+      rawDate: displayDate,
       dateValue: parsedDate ? +parsedDate : -Infinity,
       counterparty,
       counterpartyDoc: TEXT(row.cedulaRuc),
@@ -536,6 +608,7 @@ function buildTransactionRows(store) {
           counterparty,
           row.cedulaRuc,
           detail,
+          row.rawFecha,
           row.fecha,
         ].join(' '),
       ),
@@ -550,6 +623,7 @@ function buildTransactionRows(store) {
     const candidateFull = candidateFullName(candidate || { candidateName });
     const amount = expenseAmount(row);
     const parsedDate = parsePanamaDate(row.fecha);
+    const displayDate = TEXT(row.rawFecha) || TEXT(row.fecha);
     const counterparty = TEXT(row.proveedorNombre) || 'Sin nombre';
     const detail = TEXT(row.detalleGastoResumido) || TEXT(row.detalleGasto) || 'Sin detalle';
     const category = TEXT(row.GastoCategoria) || 'Sin categoría';
@@ -566,6 +640,7 @@ function buildTransactionRows(store) {
       province: TEXT(row.candidateProvince),
       district: TEXT(row.candidateDistrict),
       date: TEXT(row.fecha) || '—',
+      rawDate: displayDate,
       dateValue: parsedDate ? +parsedDate : -Infinity,
       counterparty,
       counterpartyDoc: TEXT(row.cedulaRuc),
@@ -586,6 +661,7 @@ function buildTransactionRows(store) {
           row.cedulaRuc,
           detail,
           category,
+          row.rawFecha,
           row.fecha,
         ].join(' '),
       ),
@@ -671,7 +747,9 @@ function CandidatesTable({ element, store }) {
             <a className="pt-link" href={buildHashRoute('candidato', row.original.id)}>
               {row.original.name}
             </a>
-            {row.original.fullName !== row.original.name ? <div className="pt-subline">{row.original.fullName}</div> : null}
+            {row.original.fullName !== row.original.name ? (
+              <div className="pt-subline">{row.original.fullName}</div>
+            ) : null}
             <div className="pt-subline">
               {MONEY(row.original.ingresoTotal)} ingresos · {MONEY(row.original.egresoTotal)} gastos
             </div>
@@ -842,6 +920,7 @@ function TransactionsTable({ element, store }) {
         id: 'date',
         accessorKey: 'date',
         header: 'Fecha',
+        cell: ({ row }) => <DateCell value={row.original.rawDate} fallback="—" classPrefix="pt" />,
       },
     ];
 

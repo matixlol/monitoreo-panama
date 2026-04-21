@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
+import { Tooltip as TooltipPrimitive } from 'radix-ui';
 
 export const COLORS = ['#2f80ed', '#7db3f3', '#9ac7ff', '#b9d5fa', '#dceafd', '#9bc493', '#c8b0a3', '#e29196'];
 export const POS = ['Presidente', 'Diputado(a)', 'Alcalde'];
@@ -104,6 +105,20 @@ export const posOptions = (rows, first = 'total') => [
 export const sum = (rows, f) => d3.sum(rows, f);
 export const plural = (n, one, many) => ((+n || 0) === 1 ? one : many);
 const monthNames = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+const PANAMA_MONTH_INDEX = {
+  ene: 0,
+  feb: 1,
+  mar: 2,
+  abr: 3,
+  may: 4,
+  jun: 5,
+  jul: 6,
+  ago: 7,
+  sep: 8,
+  oct: 9,
+  nov: 10,
+  dic: 11,
+};
 const shortDate = (d) => `${`${d.getDate()}`.padStart(2, '0')} ${monthNames[d.getMonth()]}`;
 export const parseCsvText = (text) => d3.csvParse(text);
 export const TIMELINE_X_DOMAIN = [new Date(2023, 6, 1), new Date(2024, 7, 1)];
@@ -131,20 +146,90 @@ export function buildHashRoute(kind, id) {
 
 export const chartOpts = { buildHashRoute, colors: COLORS, int: INT, money: MONEY, short: SHORT };
 
-export function parsePanamaDate(v) {
+function parsePanamaDateParts(v) {
   const s = TEXT(v);
   if (!s) return null;
   const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (iso) {
-    const d = new Date(+iso[1], +iso[2] - 1, +iso[3]);
-    return Number.isNaN(+d) ? null : d;
-  }
-  const m = s.match(/^(\d{1,2})\/(\d{1,2}|ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)\/(\d{4})$/i);
-  if (!m) return null;
-  const mm = { ene: 0, feb: 1, mar: 2, abr: 3, may: 4, jun: 5, jul: 6, ago: 7, sep: 8, oct: 9, nov: 10, dic: 11 };
-  const month = /^\d+$/.test(m[2]) ? +m[2] - 1 : mm[m[2].toLowerCase()];
-  const d = new Date(+m[3], month, +m[1]);
-  return Number.isNaN(+d) ? null : d;
+  if (iso) return { year: +iso[1], month: +iso[2] - 1, day: +iso[3] };
+  const slash = s.match(/^(\d{1,2})\/(\d{1,2}|ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)\/(\d{4})$/i);
+  if (!slash) return null;
+  return {
+    year: +slash[3],
+    month: /^\d+$/.test(slash[2]) ? +slash[2] - 1 : PANAMA_MONTH_INDEX[slash[2].toLowerCase()],
+    day: +slash[1],
+  };
+}
+
+function buildStrictPanamaDate(parts) {
+  if (!parts || !Number.isInteger(parts.month) || parts.month < 0 || parts.month > 11) return null;
+  const date = new Date(parts.year, parts.month, parts.day);
+  if (Number.isNaN(+date)) return null;
+  return date.getFullYear() === parts.year && date.getMonth() === parts.month && date.getDate() === parts.day
+    ? date
+    : null;
+}
+
+export function getPanamaDateIssue(v) {
+  const raw = TEXT(v);
+  if (!raw) return { code: 'missing', raw };
+  const parts = parsePanamaDateParts(raw);
+  if (!parts) return { code: 'format', raw };
+  if (!buildStrictPanamaDate(parts)) return { code: 'invalid', raw };
+  return null;
+}
+
+export function parsePanamaDate(v) {
+  return buildStrictPanamaDate(parsePanamaDateParts(v));
+}
+
+function panamaDateIssueMessage(issue) {
+  if (!issue) return '';
+  if (issue.code === 'missing') return 'Este registro no tiene una fecha cargada en la fuente original.';
+  if (issue.code === 'format') return `La fecha "${issue.raw}" no tiene un formato reconocido.`;
+  return `La fecha "${issue.raw}" no corresponde a una fecha calendario válida.`;
+}
+
+export function DateCell({ value, fallback = '—', classPrefix = 'mf' }) {
+  const text = TEXT(value);
+  const issue = getPanamaDateIssue(text);
+  if (!issue) return text || fallback;
+  const tooltip = `${panamaDateIssueMessage(issue)} Se muestra en la tabla, pero no entra en el orden cronológico ni en los gráficos por fecha.`;
+  return (
+    <TooltipPrimitive.Provider delayDuration={0}>
+      <TooltipPrimitive.Root>
+        <span className={`${classPrefix}-date-cell`}>
+          <span>{text || fallback}</span>
+          <TooltipPrimitive.Trigger asChild>
+            <button className={`${classPrefix}-date-warning`} type="button" aria-label={tooltip}>
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <circle cx="10" cy="10" r="8.25" fill="#FDE68A" stroke="#CA8A04" strokeWidth="1.5" />
+                <path
+                  d="M10 8v4m0-6.25h.01"
+                  fill="none"
+                  stroke="#7C2D12"
+                  strokeWidth="1.9"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          </TooltipPrimitive.Trigger>
+        </span>
+        <TooltipPrimitive.Portal>
+          <TooltipPrimitive.Content
+            className={`${classPrefix}-date-tooltip`}
+            side="top"
+            align="center"
+            sideOffset={6}
+            collisionPadding={8}
+          >
+            {tooltip}
+            <TooltipPrimitive.Arrow className={`${classPrefix}-date-tooltip-arrow`} width={10} height={6} />
+          </TooltipPrimitive.Content>
+        </TooltipPrimitive.Portal>
+      </TooltipPrimitive.Root>
+    </TooltipPrimitive.Provider>
+  );
 }
 
 function startOfWeek(d) {
