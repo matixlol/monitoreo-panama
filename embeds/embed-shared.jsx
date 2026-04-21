@@ -146,6 +146,20 @@ export function buildHashRoute(kind, id) {
 
 export const chartOpts = { buildHashRoute, colors: COLORS, int: INT, money: MONEY, short: SHORT };
 
+function isMissingDateValue(v) {
+  const raw = TEXT(v);
+  if (!raw) return true;
+
+  const normalized = NORM(raw);
+  if (!normalized) return true;
+
+  if (['sin fecha', 's f', 'sf', 'n a', 'na', 'null', 'ninguna'].includes(normalized)) {
+    return true;
+  }
+
+  return /^[^a-z0-9]+$/i.test(raw);
+}
+
 function parsePanamaDateParts(v) {
   const s = TEXT(v);
   if (!s) return null;
@@ -171,7 +185,7 @@ function buildStrictPanamaDate(parts) {
 
 export function getPanamaDateIssue(v) {
   const raw = TEXT(v);
-  if (!raw) return { code: 'missing', raw };
+  if (isMissingDateValue(raw)) return { code: 'missing', raw: '' };
   const parts = parsePanamaDateParts(raw);
   if (!parts) return { code: 'format', raw };
   if (!buildStrictPanamaDate(parts)) return { code: 'invalid', raw };
