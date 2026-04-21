@@ -199,15 +199,15 @@ export function parsePanamaDate(v) {
 function panamaDateIssueMessage(issue) {
   if (!issue) return '';
   if (issue.code === 'missing') return 'Este registro no tiene una fecha cargada en la fuente original.';
-  if (issue.code === 'format') return `La fecha "${issue.raw}" no tiene un formato reconocido.`;
-  return `La fecha "${issue.raw}" no corresponde a una fecha calendario válida.`;
+  if (issue.code === 'format') return 'Esta fecha no tiene un formato estandar en la fuente.';
+  return `La fecha "${issue.raw}" no corresponde a una fecha calendario valida en la fuente.`;
 }
 
 export function DateCell({ value, fallback = '—', classPrefix = 'mf' }) {
   const text = TEXT(value);
   const issue = getPanamaDateIssue(text);
   if (!issue) return text || fallback;
-  const tooltip = `${panamaDateIssueMessage(issue)} Se muestra en la tabla, pero no entra en el orden cronológico ni en los gráficos por fecha.`;
+  const tooltip = panamaDateIssueMessage(issue);
   return (
     <TooltipPrimitive.Provider delayDuration={0}>
       <TooltipPrimitive.Root>
