@@ -146,6 +146,20 @@ export function buildHashRoute(kind, id) {
 
 export const chartOpts = { buildHashRoute, colors: COLORS, int: INT, money: MONEY, short: SHORT };
 
+function isMissingDateValue(v) {
+  const raw = TEXT(v);
+  if (!raw) return true;
+
+  const normalized = NORM(raw);
+  if (!normalized) return true;
+
+  if (['sin fecha', 's f', 'sf', 'n a', 'na', 'null', 'ninguna'].includes(normalized)) {
+    return true;
+  }
+
+  return /^[^a-z0-9]+$/i.test(raw);
+}
+
 function parsePanamaDateParts(v) {
   const s = TEXT(v);
   if (!s) return null;
@@ -171,7 +185,7 @@ function buildStrictPanamaDate(parts) {
 
 export function getPanamaDateIssue(v) {
   const raw = TEXT(v);
-  if (!raw) return { code: 'missing', raw };
+  if (isMissingDateValue(raw)) return { code: 'missing', raw: '' };
   const parts = parsePanamaDateParts(raw);
   if (!parts) return { code: 'format', raw };
   if (!buildStrictPanamaDate(parts)) return { code: 'invalid', raw };
@@ -185,15 +199,15 @@ export function parsePanamaDate(v) {
 function panamaDateIssueMessage(issue) {
   if (!issue) return '';
   if (issue.code === 'missing') return 'Este registro no tiene una fecha cargada en la fuente original.';
-  if (issue.code === 'format') return `La fecha "${issue.raw}" no tiene un formato reconocido.`;
-  return `La fecha "${issue.raw}" no corresponde a una fecha calendario válida.`;
+  if (issue.code === 'format') return 'Esta fecha no tiene un formato estandar en la fuente.';
+  return `La fecha "${issue.raw}" no corresponde a una fecha calendario valida en la fuente.`;
 }
 
 export function DateCell({ value, fallback = '—', classPrefix = 'mf' }) {
   const text = TEXT(value);
   const issue = getPanamaDateIssue(text);
   if (!issue) return text || fallback;
-  const tooltip = `${panamaDateIssueMessage(issue)} Se muestra en la tabla, pero no entra en el orden cronológico ni en los gráficos por fecha.`;
+  const tooltip = panamaDateIssueMessage(issue);
   return (
     <TooltipPrimitive.Provider delayDuration={0}>
       <TooltipPrimitive.Root>
