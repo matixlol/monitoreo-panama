@@ -14,6 +14,7 @@ import { FinanciacionChartElementApp } from './financiacion-chart-element.jsx';
 import { IngresosGeneroChartElementApp } from './ingresos-genero-chart-element.jsx';
 import { ModalRouter } from './modal-router.jsx';
 import { GeneralSearchElementApp } from './general-search-element.jsx';
+import { DownloadDataElementApp } from './download-data-element.jsx';
 import { CandidatesTableElementApp, TransactionsTableElementApp } from './tables-elements.jsx';
 import { resolveCandidateNames } from './candidate-common-names.js';
 import {
@@ -1459,6 +1460,12 @@ function defineChartElements() {
     ({ element, store, loading, error }) => (
       <TransactionsTableElementApp element={element} store={store} loading={loading} error={error} />
     ),
+  );
+  defineReactElement(
+    'panama-descargar-datos',
+    [],
+    ({ store, loading, error }) => <DownloadDataElementApp store={store} loading={loading} error={error} />,
+    { shadow: false },
   );
   defineRouterElement();
   enableAutoRouter();
