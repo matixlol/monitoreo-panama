@@ -340,7 +340,10 @@ function DonorModal({ entity }) {
       />
       <Section title="Aportes por tipo" titleAs="h4">
         {incomeBreakdown(entity.ingresos).length ? (
-          <PlotFigure renderNode={() => bars(incomeBreakdown(entity.ingresos), chartOpts)} deps={[entity.ingresos]} />
+          <>
+            <FinanciacionChartStyles />
+            <IncomeBreakdownChart items={incomeBreakdown(entity.ingresos)} />
+          </>
         ) : (
           <Empty text="Este aportante no tiene aportes clasificados." />
         )}
