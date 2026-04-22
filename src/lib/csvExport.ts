@@ -1,10 +1,12 @@
 import { categorizeEgress, summarizeDetalleGasto } from './egressClassification';
 
 type CsvIngressRow = {
+  sourceRowId?: string | null;
   pageNumber: number;
   fecha?: string | null;
   rawFecha?: string | null;
   reciboNumero?: string | null;
+  numeroCheque?: string | null;
   contribuyenteNombre?: string | null;
   representanteLegal?: string | null;
   cedulaRuc?: string | null;
@@ -22,10 +24,12 @@ type CsvIngressRow = {
 };
 
 type CsvEgressRow = {
+  sourceRowId?: string | null;
   pageNumber: number;
   fecha?: string | null;
   rawFecha?: string | null;
   numeroFacturaRecibo?: string | null;
+  numeroCheque?: string | null;
   cedulaRuc?: string | null;
   proveedorNombre?: string | null;
   detalleGasto?: string | null;
@@ -95,6 +99,7 @@ const BASE_CSV_COLUMNS = [
   'source',
   'sourceModel',
   'sourceCompletedAt',
+  'sourceRowId',
   'pageNumber',
   'fecha',
   'rawFecha',
@@ -103,6 +108,7 @@ const BASE_CSV_COLUMNS = [
 const INGRESS_CSV_COLUMNS = [
   ...BASE_CSV_COLUMNS,
   'reciboNumero',
+  'numeroCheque',
   'contribuyenteNombre',
   'representanteLegal',
   'cedulaRuc',
@@ -122,6 +128,7 @@ const INGRESS_CSV_COLUMNS = [
 const EGRESS_CSV_COLUMNS = [
   ...BASE_CSV_COLUMNS,
   'numeroFacturaRecibo',
+  'numeroCheque',
   'cedulaRuc',
   'proveedorNombre',
   'detalleGasto',

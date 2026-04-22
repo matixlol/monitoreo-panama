@@ -192,12 +192,14 @@ function maxPageNumber(rows: Array<{ pageNumber?: unknown }>): number {
 }
 
 type OfficialTx = {
+  id?: unknown;
   dateSearch?: unknown;
   date?: unknown;
   receiptNumber?: unknown;
   amount?: unknown;
   documentNumber?: unknown;
   name?: unknown;
+  checkNumber?: unknown;
   details?: unknown;
   Medium?: unknown;
   Subject?: unknown;
@@ -322,12 +324,14 @@ async function main() {
         const isDonation = getSubjectIsDonation(tx);
 
         return {
+          sourceRowId: cleanText(tx.id),
           pageNumber: 0, // official JSON isn't page-based
           fecha: toFecha(tx),
           reciboNumero: cleanText(tx.receiptNumber),
           contribuyenteNombre: cleanText(tx.name),
           representanteLegal: null,
           cedulaRuc: cleanText(tx.documentNumber),
+          numeroCheque: cleanText(tx.checkNumber),
           direccion: null,
           telefono: null,
           correoElectronico: null,
@@ -346,10 +350,12 @@ async function main() {
         const mediumName = getMediumName(tx);
 
         return {
+          sourceRowId: cleanText(tx.id),
           pageNumber: 0, // official JSON isn't page-based
           fecha: toFecha(tx),
           numeroFacturaRecibo: cleanText(tx.receiptNumber),
           cedulaRuc: cleanText(tx.documentNumber),
+          numeroCheque: cleanText(tx.checkNumber),
           proveedorNombre: cleanText(tx.name),
           detalleGasto: parseDetailsToText(tx.details),
           pagoTipo: pagoTipoFromMediumName(mediumName),

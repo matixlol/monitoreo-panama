@@ -95,6 +95,7 @@ function normalizeSignatureValue(value: unknown): string {
 function makeIngressRowSignature(row: NonNullable<CsvExportDocument['ingress']>[number]): string {
   return [
     row.reciboNumero,
+    row.numeroCheque,
     row.contribuyenteNombre,
     row.representanteLegal,
     row.cedulaRuc,
@@ -115,6 +116,7 @@ function makeIngressRowSignature(row: NonNullable<CsvExportDocument['ingress']>[
 function makeEgressRowSignature(row: NonNullable<CsvExportDocument['egress']>[number]): string {
   return [
     row.numeroFacturaRecibo,
+    row.numeroCheque,
     row.cedulaRuc,
     row.proveedorNombre,
     row.detalleGasto,
@@ -143,7 +145,49 @@ function isCoveredBySet(signatures: string[], covered: Set<string>): boolean {
   return signatures.length > 0 && signatures.every((signature) => covered.has(signature));
 }
 
-function dropRedundantLocalSummaryDocs(localDocs: CsvExportDocument[]): CsvExportDocument[] {
+function getDocRowCount(doc: CsvExportDocument): number {
+  return (doc.ingress?.length ?? 0) + (doc.egress?.length ?? 0);
+}
+
+function compareDocsByRecency(a: CsvExportDocument, b: CsvExportDocument): number {
+  const aCompletedAt = a.sourceCompletedAt ?? 0;
+  const bCompletedAt = b.sourceCompletedAt ?? 0;
+  if (aCompletedAt !== bCompletedAt) return bCompletedAt - aCompletedAt;
+  if (a._creationTime !== b._creationTime) return b._creationTime - a._creationTime;
+  const aRows = getDocRowCount(a);
+  const bRows = getDocRowCount(b);
+  if (aRows !== bRows) return bRows - aRows;
+  return a.name.localeCompare(b.name);
+}
+
+function preferFinalSummaryDocs(localDocs: CsvExportDocument[]): CsvExportDocument[] {
+  const docsByGroup = new Map<string, CsvExportDocument[]>();
+
+  for (const doc of localDocs) {
+    const key = getSummaryFilterGroupKey(doc);
+    if (!key) continue;
+
+    const group = docsByGroup.get(key);
+    if (group) group.push(doc);
+    else docsByGroup.set(key, [doc]);
+  }
+
+  const idsToDrop = new Set<string>();
+  for (const group of docsByGroup.values()) {
+    const summaries = group.filter((doc) => doc.isSummary === true);
+    if (summaries.length === 0) continue;
+
+    const preferredSummary = [...summaries].sort(compareDocsByRecency)[0];
+    for (const doc of group) {
+      if (doc._id !== preferredSummary?._id) idsToDrop.add(doc._id);
+    }
+  }
+
+  if (idsToDrop.size === 0) return localDocs;
+  return localDocs.filter((doc) => !idsToDrop.has(doc._id));
+}
+
+function dropCoveredLocalDocs(localDocs: CsvExportDocument[]): CsvExportDocument[] {
   const docsByGroup = new Map<string, CsvExportDocument[]>();
 
   for (const doc of localDocs) {
@@ -161,8 +205,8 @@ function dropRedundantLocalSummaryDocs(localDocs: CsvExportDocument[]): CsvExpor
     const keptEgressSignatures = new Set<string>();
 
     const sortedGroup = [...group].sort((a, b) => {
-      const aRowCount = (a.ingress?.length ?? 0) + (a.egress?.length ?? 0);
-      const bRowCount = (b.ingress?.length ?? 0) + (b.egress?.length ?? 0);
+      const aRowCount = getDocRowCount(a);
+      const bRowCount = getDocRowCount(b);
       if (aRowCount !== bRowCount) return aRowCount - bRowCount;
       if (a._creationTime !== b._creationTime) return a._creationTime - b._creationTime;
       return a.name.localeCompare(b.name);
@@ -243,6 +287,8 @@ export function buildCsvExportPayload(
   localDocs: CsvExportDocument[],
   archivedDocumentNames: Iterable<string> = [],
 ): CsvExportDocument[] {
-  const filteredLocalDocs = dropRedundantLocalSummaryDocs(filterExportDataByName(localDocs, archivedDocumentNames));
+  const filteredLocalDocs = dropCoveredLocalDocs(
+    preferFinalSummaryDocs(filterExportDataByName(localDocs, archivedDocumentNames)),
+  );
   return enrichCsvExportData(mergeExportData(dbDocs, filteredLocalDocs));
 }
