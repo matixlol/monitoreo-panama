@@ -152,17 +152,12 @@ const EGRESS_CSV_COLUMNS = [
   'humanUnreadableFields',
 ];
 
-function sanitizeCsvString(value: string): string {
-  // Strip non-printable control characters that occasionally leak from OCR or source data.
-  return value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '');
-}
-
 const serializeCsvValue = (value: unknown) => {
   if (value === null || value === undefined) return '';
   if (Array.isArray(value)) {
-    return `"${sanitizeCsvString(JSON.stringify(value)).replace(/"/g, '""')}"`;
+    return `"${JSON.stringify(value).replace(/"/g, '""')}"`;
   }
-  const stringValue = sanitizeCsvString(String(value));
+  const stringValue = String(value);
   if (/[",\n]/.test(stringValue)) {
     return `"${stringValue.replace(/"/g, '""')}"`;
   }
