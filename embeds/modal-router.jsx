@@ -7,6 +7,7 @@ import { FinanciacionChartStyles, IncomeBreakdownChart } from './financiacion-ch
 import {
   DateCell,
   Empty,
+  InfoTooltipButton,
   INT,
   MONEY,
   Meta,
@@ -36,6 +37,9 @@ import {
   slugify,
 } from './embed-shared.jsx';
 
+const OFFICIAL_JSON_PDF_TOOLTIP =
+  'Esta fila viene de los datos digitalizados en SIRIg. Por lo tanto, no podemos vincular al PDF original.';
+
 function candidateBalanceStat(entity) {
   const difference = entity.ingresoTotal - entity.egresoTotal;
   const sign = difference > 0 ? '+' : difference < 0 ? '-' : '';
@@ -46,9 +50,14 @@ function candidateBalanceStat(entity) {
   };
 }
 
-function PdfLinkCell({ url }) {
+function PdfLinkCell({ url, source }) {
   const href = TEXT(url);
-  if (!href) return '—';
+  if (!href) {
+    if (TEXT(source) === 'official-json') {
+      return <InfoTooltipButton tooltip={OFFICIAL_JSON_PDF_TOOLTIP} />;
+    }
+    return '—';
+  }
   return (
     <a href={href} target="_blank" rel="noreferrer">
       Ver PDF
@@ -150,6 +159,7 @@ function CandidateModal({ entity }) {
     tipo: contributionLabel(row),
     monto: MONEY(num(row.total)),
     pdf: TEXT(row.pdfUrl),
+    source: TEXT(row.source),
   }));
   const gastoColumns = [
     { header: 'Fecha', key: 'fecha' },
@@ -167,6 +177,7 @@ function CandidateModal({ entity }) {
     categoria: TEXT(row.GastoCategoria) || 'Sin categoría',
     monto: MONEY(expenseAmount(row)),
     pdf: TEXT(row.pdfUrl),
+    source: TEXT(row.source),
   }));
   const entitySlug = slugify(entity.name) || 'candidato';
   return (
@@ -217,7 +228,7 @@ function CandidateModal({ entity }) {
           rows={ingresoTableRows.map((row) => ({
             ...row,
             fecha: <DateCell value={row.rawFecha} />,
-            pdf: <PdfLinkCell url={row.pdf} />,
+            pdf: <PdfLinkCell url={row.pdf} source={row.source} />,
           }))}
         />
       </Section>
@@ -283,7 +294,7 @@ function CandidateModal({ entity }) {
           rows={gastoTableRows.map((row) => ({
             ...row,
             fecha: <DateCell value={row.rawFecha} />,
-            pdf: <PdfLinkCell url={row.pdf} />,
+            pdf: <PdfLinkCell url={row.pdf} source={row.source} />,
           }))}
         />
       </Section>
@@ -309,6 +320,7 @@ function DonorModal({ entity }) {
     tipo: contributionLabel(row),
     monto: MONEY(num(row.total)),
     pdf: TEXT(row.pdfUrl),
+    source: TEXT(row.source),
   }));
   const entitySlug = slugify(entity.name) || 'aportante';
   return (
@@ -352,7 +364,7 @@ function DonorModal({ entity }) {
           rows={tableRows.map((row) => ({
             ...row,
             fecha: <DateCell value={row.rawFecha} />,
-            pdf: <PdfLinkCell url={row.pdf} />,
+            pdf: <PdfLinkCell url={row.pdf} source={row.source} />,
           }))}
         />
       </Section>
@@ -387,6 +399,7 @@ function ProviderModal({ entity }) {
     categoria: TEXT(row.GastoCategoria) || TEXT(row.detalleGastoResumido) || 'Sin categoría',
     monto: MONEY(expenseAmount(row)),
     pdf: TEXT(row.pdfUrl),
+    source: TEXT(row.source),
   }));
   const entitySlug = slugify(entity.name) || 'proveedor';
   return (
@@ -443,7 +456,7 @@ function ProviderModal({ entity }) {
           rows={tableRows.map((row) => ({
             ...row,
             fecha: <DateCell value={row.rawFecha} />,
-            pdf: <PdfLinkCell url={row.pdf} />,
+            pdf: <PdfLinkCell url={row.pdf} source={row.source} />,
           }))}
         />
       </Section>

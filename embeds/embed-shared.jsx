@@ -203,32 +203,25 @@ function panamaDateIssueMessage(issue) {
   return `La fecha "${issue.raw}" no corresponde a una fecha calendario valida en la fuente.`;
 }
 
-export function DateCell({ value, fallback = '—', classPrefix = 'mf' }) {
-  const text = TEXT(value);
-  const issue = getPanamaDateIssue(text);
-  if (!issue) return text || fallback;
-  const tooltip = panamaDateIssueMessage(issue);
+export function InfoTooltipButton({ tooltip, classPrefix = 'mf' }) {
   return (
     <TooltipPrimitive.Provider delayDuration={0}>
       <TooltipPrimitive.Root>
-        <span className={`${classPrefix}-date-cell`}>
-          <span>{text || fallback}</span>
-          <TooltipPrimitive.Trigger asChild>
-            <button className={`${classPrefix}-date-warning`} type="button" aria-label={tooltip}>
-              <svg viewBox="0 0 20 20" aria-hidden="true">
-                <circle cx="10" cy="10" r="8.25" fill="#FDE68A" stroke="#CA8A04" strokeWidth="1.5" />
-                <path
-                  d="M10 8v4m0-6.25h.01"
-                  fill="none"
-                  stroke="#7C2D12"
-                  strokeWidth="1.9"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-          </TooltipPrimitive.Trigger>
-        </span>
+        <TooltipPrimitive.Trigger asChild>
+          <button className={`${classPrefix}-date-warning`} type="button" aria-label={tooltip}>
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <circle cx="10" cy="10" r="8.25" fill="#FDE68A" stroke="#CA8A04" strokeWidth="1.5" />
+              <path
+                d="M10 8v4m0-6.25h.01"
+                fill="none"
+                stroke="#7C2D12"
+                strokeWidth="1.9"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+        </TooltipPrimitive.Trigger>
         <TooltipPrimitive.Portal>
           <TooltipPrimitive.Content
             className={`${classPrefix}-date-tooltip`}
@@ -243,6 +236,19 @@ export function DateCell({ value, fallback = '—', classPrefix = 'mf' }) {
         </TooltipPrimitive.Portal>
       </TooltipPrimitive.Root>
     </TooltipPrimitive.Provider>
+  );
+}
+
+export function DateCell({ value, fallback = '—', classPrefix = 'mf' }) {
+  const text = TEXT(value);
+  const issue = getPanamaDateIssue(text);
+  if (!issue) return text || fallback;
+  const tooltip = panamaDateIssueMessage(issue);
+  return (
+    <span className={`${classPrefix}-date-cell`}>
+      <span>{text || fallback}</span>
+      <InfoTooltipButton tooltip={tooltip} classPrefix={classPrefix} />
+    </span>
   );
 }
 
