@@ -1,7 +1,7 @@
 import * as d3 from 'd3';
 
 const WIDTH = 1000;
-const HEIGHT = 420;
+const HEIGHT = 560;
 const MOBILE_WIDTH = 760;
 const MOBILE_HEIGHT = 1140;
 const PADDING = 1;
@@ -63,24 +63,87 @@ function truncateLabel(label, maxChars) {
   return `${label.slice(0, Math.max(0, maxChars - 1)).trimEnd()}…`;
 }
 
+function labelMetrics(width, height, isMobile, forceValue = false) {
+  if (width < 52 || height < 24) return null;
+
+  const minSide = Math.min(width, height);
+  if (isMobile) {
+    if (forceValue) {
+      return {
+        fontSize: minSide < 54 ? 13 : 15,
+        lineHeight: minSide < 54 ? 15 : 18,
+        inset: minSide < 54 ? 6 : 8,
+        top: minSide < 54 ? 14 : 17,
+        bottomInset: minSide < 54 ? 5 : 7,
+      };
+    }
+
+    return {
+      fontSize: minSide < 54 ? 15 : 17,
+      lineHeight: minSide < 54 ? 18 : 21,
+      inset: minSide < 54 ? 8 : 12,
+      top: minSide < 54 ? 17 : 21,
+      bottomInset: minSide < 54 ? 7 : 10,
+    };
+  }
+
+  if (forceValue) {
+    return {
+      fontSize: minSide < 56 ? 8.5 : minSide < 84 ? 10 : 11.5,
+      lineHeight: minSide < 56 ? 10 : minSide < 84 ? 12 : 14,
+      inset: minSide < 56 ? 4 : minSide < 84 ? 5 : 7,
+      top: minSide < 56 ? 10 : minSide < 84 ? 12 : 14,
+      bottomInset: minSide < 56 ? 3 : minSide < 84 ? 4 : 6,
+    };
+  }
+
+  return {
+    fontSize: minSide < 42 ? 10.5 : 13,
+    lineHeight: minSide < 42 ? 13 : 17,
+    inset: minSide < 42 ? 6 : 10,
+    top: minSide < 42 ? 13 : 18,
+    bottomInset: minSide < 42 ? 6 : 10,
+  };
+}
+
+function wholeMoney(money, value) {
+  return money(Math.round(+value || 0));
+}
+
+function approximateTextWidth(text, fontSize) {
+  return text.length * fontSize * 0.58;
+}
+
+function fitLabel(label, maxChars, forceValue = false) {
+  if (forceValue && maxChars >= 4) return truncateLabel(label, maxChars);
+  return truncateLabel(label, Math.min(32, maxChars));
+}
+
 function tooltipHtml(node, money, int, currentNode) {
   const parentLabel = currentNode?.id !== 'gastos' ? currentNode?.label : null;
   const lines = [
     `<div class="tm-tooltip-title">${esc(node.label)}</div>`,
     parentLabel ? `<div class="tm-tooltip-row">Categoría: ${esc(parentLabel)}</div>` : '',
-    `<div class="tm-tooltip-row">Monto: ${esc(money(node.value || 0))}</div>`,
+    `<div class="tm-tooltip-row">Monto: ${esc(wholeMoney(money, node.value || 0))}</div>`,
     node.count ? `<div class="tm-tooltip-row">Registros: ${esc(int(node.count))}</div>` : '',
     node.children?.length ? '<div class="tm-tooltip-hint">Click para ver el detalle</div>' : '',
   ];
   return lines.filter(Boolean).join('');
 }
 
-function labelLines(node, width, height, money) {
-  if (width < 84 || height < 42) return [];
-  const maxChars = Math.max(10, Math.floor(width / 8));
-  const lines = [truncateLabel(node.label, Math.min(32, maxChars))];
-  if (height >= 62) lines.push(money(node.value || 0));
-  return lines;
+function labelLines(node, width, height, money, isMobile, forceValue = false) {
+  const metrics = labelMetrics(width, height, isMobile, forceValue);
+  if (!metrics) return { lines: [], metrics: null };
+
+  const availableWidth = Math.max(0, width - metrics.inset * 2);
+  const maxChars = Math.max(forceValue ? 4 : 5, Math.floor(availableWidth / (metrics.fontSize * 0.58)));
+  const amount = wholeMoney(money, node.value || 0);
+  const lines = [fitLabel(node.label, maxChars, forceValue)];
+  const valueFitsWidth = approximateTextWidth(amount, metrics.fontSize) <= availableWidth;
+  const valueFitsHeight = height >= metrics.top + metrics.lineHeight + metrics.bottomInset;
+
+  if (forceValue || (valueFitsWidth && valueFitsHeight)) lines.push(amount);
+  return { lines, metrics };
 }
 
 function rectCornerRadius(width, height) {
@@ -385,6 +448,7 @@ export const treemap = (data, { colors = [], money, int }) => {
     hideTooltip();
     const currentNode = nodeByPath(tree, path);
     const nodes = (currentNode.children || []).filter((node) => (node.value || 0) > 0);
+    const forceValueLabels = path.length === 0;
 
     actions.replaceChildren();
     const trail = ['Resumen'];
@@ -394,7 +458,7 @@ export const treemap = (data, { colors = [], money, int }) => {
       if (trailNode?.label) trail.push(trailNode.label);
     });
     breadcrumb.textContent = trail.join(' / ');
-    summary.innerHTML = `<strong>${esc(currentNode.label)}</strong> · ${esc(money(currentNode.value || 0))}`;
+    summary.innerHTML = `<strong>${esc(currentNode.label)}</strong> · ${esc(wholeMoney(money, currentNode.value || 0))}`;
     note.textContent =
       path.length === 0
         ? 'Haz click en una categoría para ver su desglose.'
@@ -429,13 +493,20 @@ export const treemap = (data, { colors = [], money, int }) => {
       .sum((node) => node.value || 0)
       .sort((a, b) => d3.descending(a.value, b.value));
 
-    d3.treemap().size([dimensions.width, dimensions.height]).paddingInner(PADDING).paddingOuter(PADDING)(hierarchyRoot);
+    d3
+      .treemap()
+      .tile(d3.treemapBinary)
+      .size([dimensions.width, dimensions.height])
+      .paddingInner(PADDING)
+      .paddingOuter(PADDING)(hierarchyRoot);
 
     const svg = d3
       .create('svg')
       .attr('viewBox', [0, 0, dimensions.width, dimensions.height])
       .attr('aria-label', currentNode.label)
       .style('display', 'block');
+
+    const clipIdPrefix = `tm-clip-${Math.random().toString(36).slice(2, 10)}`;
 
     const groups = svg
       .selectAll('g')
@@ -461,19 +532,30 @@ export const treemap = (data, { colors = [], money, int }) => {
       const height = Math.max(0, leaf.y1 - leaf.y0);
       const fill = colorForNode(leaf.data, currentNode, colors, nodes);
       const labelColor = textColorFor(fill);
-      const lines = labelLines(leaf.data, width, height, money);
-      const labelFontSize = dimensions.isMobile ? 17 : 13;
-      const labelLineHeight = dimensions.isMobile ? 21 : 17;
-      const labelInset = dimensions.isMobile ? 12 : 10;
-      const labelTop = dimensions.isMobile ? 21 : 18;
+      const { lines, metrics } = labelLines(leaf.data, width, height, money, dimensions.isMobile, forceValueLabels);
+      const cornerRadius = rectCornerRadius(width, height);
       if (!lines.length) return;
 
-      const text = group
+      const clipId = `${clipIdPrefix}-${String(leaf.data.id).replace(/[^a-zA-Z0-9_-]/g, '-')}`;
+
+      group
+        .append('clipPath')
+        .attr('id', clipId)
+        .attr('clipPathUnits', 'userSpaceOnUse')
+        .append('rect')
+        .attr('width', width)
+        .attr('height', height)
+        .attr('rx', cornerRadius)
+        .attr('ry', cornerRadius);
+
+      const textLayer = group.append('g').attr('clip-path', `url(#${clipId})`);
+
+      const text = textLayer
         .append('text')
-        .attr('x', labelInset)
-        .attr('y', labelTop)
+        .attr('x', metrics.inset)
+        .attr('y', metrics.top)
         .attr('fill', labelColor)
-        .attr('font-size', labelFontSize)
+        .attr('font-size', metrics.fontSize)
         .attr('font-weight', 600)
         .attr('pointer-events', 'none');
 
@@ -481,8 +563,8 @@ export const treemap = (data, { colors = [], money, int }) => {
         .selectAll('tspan')
         .data(lines)
         .join('tspan')
-        .attr('x', labelInset)
-        .attr('dy', (_, lineIndex) => (lineIndex === 0 ? 0 : labelLineHeight))
+        .attr('x', metrics.inset)
+        .attr('dy', (_, lineIndex) => (lineIndex === 0 ? 0 : metrics.lineHeight))
         .attr('font-weight', (_, lineIndex) => (lineIndex === 0 ? 600 : 500))
         .text((line) => line);
     });
