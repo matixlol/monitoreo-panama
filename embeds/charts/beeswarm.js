@@ -27,7 +27,8 @@ const tooltipFor = (kind, d, money) => {
     `<div style="margin-bottom:4px">Aportante: ${esc(d.name)}</div>`,
     `<div style="margin-bottom:4px">Cargo: ${esc(d.position || 'Sin cargo')}</div>`,
     `<div style="margin-bottom:4px">Partido: ${esc(d.party || 'Sin partido')}</div>`,
-    `<div>Fondos: ${amount}</div>`,
+    `<div>Aportes para este cargo: ${amount}</div>`,
+    `<div style="margin-top:6px;opacity:.7">Monto filtrado por cargo</div>`,
     `<div style="margin-top:6px;opacity:.7">Click para abrir ficha</div>`,
   ].join('');
 };

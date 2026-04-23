@@ -412,6 +412,41 @@ function sortRowsByCachedTime(rows, cacheSymbol) {
   return rows.sort((a, b) => d3.descending(a[cacheSymbol].sortDate, b[cacheSymbol].sortDate));
 }
 
+function createOverviewDonorRows(donors) {
+  return donors
+    .flatMap((donor) =>
+      d3
+        .rollups(
+          donor.ingresos,
+          (values) => {
+            const partyCounts = new Map();
+
+            for (const row of values) {
+              incrementCount(partyCounts, row[INGRESO_ROW_CACHE].candidateParty);
+            }
+
+            const position = values[0]?.[INGRESO_ROW_CACHE].candidatePosition || 'Sin cargo';
+            const ingresoTotal = sum(values, (row) => row[INGRESO_ROW_CACHE].total);
+
+            return {
+              ...donor,
+              ingresos: sortRowsByCachedTime([...values], INGRESO_ROW_CACHE),
+              total: ingresoTotal,
+              ingresoTotal,
+              candidateCount: new Set(values.map((row) => row[INGRESO_ROW_CACHE].candidateId).filter(Boolean)).size,
+              parties: uniq(values.map((row) => row[INGRESO_ROW_CACHE].candidateParty)),
+              positions: position ? [position] : [],
+              position,
+              party: modeFromCounts(partyCounts, null) || 'Sin partido',
+            };
+          },
+          (row) => row[INGRESO_ROW_CACHE].candidatePosition || 'Sin cargo',
+        )
+        .map(([, value]) => value),
+    )
+    .sort((a, b) => d3.descending(a.ingresoTotal, b.ingresoTotal) || d3.ascending(a.name, b.name));
+}
+
 function buildStore({ ingresos = [], egresos = [] }) {
   const candidateBuckets = new Map();
   const donorBuckets = new Map();
@@ -526,12 +561,7 @@ function buildStore({ ingresos = [], egresos = [] }) {
     gender: modeFromCounts(candidateBuckets.get(d.id)?.genders || new Map(), null) || null,
   }));
 
-  const donorDots = donors.map((d) => ({
-    ...d,
-    ingresoTotal: d.total,
-    position: d.positions[0] || 'Sin cargo',
-    party: d.parties[0] || 'Sin partido',
-  }));
+  const donorDots = createOverviewDonorRows(donors);
 
   return {
     ingresos,

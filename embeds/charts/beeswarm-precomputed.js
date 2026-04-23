@@ -1,4 +1,4 @@
-export const DONOR_BEESWARM_PRECOMPUTE_VERSION = 'donor-force-v2';
+export const DONOR_BEESWARM_PRECOMPUTE_VERSION = 'donor-force-v3';
 
 const toFixedString = (value) => {
   const n = Number(value) || 0;

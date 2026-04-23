@@ -41,22 +41,34 @@ function buildDonorRows(ingresos) {
     donorBuckets.set(donorId, bucket);
   }
 
-  const donors = [...donorBuckets]
-    .map(([id, bucket]) => ({
-      id,
-      name: d3.mode(bucket.ingresos.map((row) => TEXT(row.contribuyenteNombre)).filter(Boolean)) || id,
-      parties: uniq(bucket.ingresos.map((row) => row.candidateParty)),
-      positions: uniq(bucket.ingresos.map((row) => row.candidatePosition)).sort(sortPos),
-      total: d3.sum(bucket.ingresos, (row) => num(row.total)),
-    }))
-    .sort((a, b) => d3.descending(a.total, b.total));
+  return [...donorBuckets]
+    .flatMap(([id, bucket]) => {
+      const name = d3.mode(bucket.ingresos.map((row) => TEXT(row.contribuyenteNombre)).filter(Boolean)) || id;
 
-  return donors.map((donor) => ({
-    ...donor,
-    ingresoTotal: donor.total,
-    position: donor.positions[0] || 'Sin cargo',
-    party: donor.parties[0] || 'Sin partido',
-  }));
+      return d3
+        .rollups(
+          bucket.ingresos,
+          (values) => {
+            const position = TEXT(values[0]?.candidatePosition) || 'Sin cargo';
+            const parties = uniq(values.map((row) => row.candidateParty));
+            const total = d3.sum(values, (row) => num(row.total));
+
+            return {
+              id,
+              name,
+              parties,
+              positions: position ? [position] : [],
+              total,
+              ingresoTotal: total,
+              position,
+              party: d3.mode(values.map((row) => TEXT(row.candidateParty)).filter(Boolean)) || 'Sin partido',
+            };
+          },
+          (row) => TEXT(row.candidatePosition) || 'Sin cargo',
+        )
+        .map(([, value]) => value);
+    })
+    .sort((a, b) => d3.descending(a.ingresoTotal, b.ingresoTotal) || d3.ascending(a.name, b.name));
 }
 
 function roundPosition(value) {
