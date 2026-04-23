@@ -353,6 +353,8 @@ function createDonorBucket() {
   return {
     ingresos: [],
     nameCounts: new Map(),
+    names: new Map(),
+    documents: new Map(),
     parties: new Map(),
     positions: new Map(),
     candidateIds: new Set(),
@@ -382,6 +384,8 @@ function getIngresoRowCache(row) {
     candidateProvince: provinceCached(row.candidateProvince),
     candidateDistrict: TEXT(row.candidateDistrict),
     candidateGender: TEXT(row.candidateGender),
+    contributorName: TEXT(row.contribuyenteNombre),
+    contributorDocument: TEXT(row.cedulaRuc),
     contributorLabel: TEXT(row.contribuyenteNombre) || TEXT(row.cedulaRuc),
     contributorKey: contributorKeyFromRow(row),
     sortDate: parsedDate,
@@ -473,6 +477,8 @@ function buildStore({ ingresos = [], egresos = [] }) {
       const bucket = put(donorBuckets, cached.donorId, createDonorBucket);
       bucket.ingresos.push(row);
       incrementCount(bucket.nameCounts, cached.contributorLabel);
+      rememberValue(bucket.names, cached.contributorName);
+      rememberValue(bucket.documents, cached.contributorDocument);
       rememberValue(bucket.parties, cached.candidateParty);
       rememberValue(bucket.positions, cached.candidatePosition);
       if (cached.candidateId) bucket.candidateIds.add(cached.candidateId);
@@ -531,6 +537,8 @@ function buildStore({ ingresos = [], egresos = [] }) {
       kind: 'aportante',
       id,
       name: modeFromCounts(bucket.nameCounts, id) || id,
+      names: rememberedValues(bucket.names),
+      documents: rememberedValues(bucket.documents),
       parties: rememberedValues(bucket.parties),
       positions: rememberedValues(bucket.positions).sort(sortPos),
       ingresos: sortRowsByCachedTime(bucket.ingresos, INGRESO_ROW_CACHE),
@@ -718,7 +726,10 @@ function filterRowsByDateRange(rows, [start, end]) {
 
 function renderExpenseTimelineChart(store, position = ALL, grain = 'mes') {
   const filteredRows = filterRowsByDateRange(getExpenseRows(store, position), TIMELINE_X_DOMAIN);
-  return wrapMobileScrollableChart(line(expenseTimeline(filteredRows, grain), chartOpts, { xDomain: TIMELINE_X_DOMAIN }), 'plot');
+  return wrapMobileScrollableChart(
+    line(expenseTimeline(filteredRows, grain), chartOpts, { xDomain: TIMELINE_X_DOMAIN }),
+    'plot',
+  );
 }
 
 function renderParityChart(store, position = POS[0]) {

@@ -122,15 +122,22 @@ function buildCandidateSearchRow(candidate) {
 }
 
 function buildDonorSearchRow(donor) {
-  const meta = [joinValues(donor.positions.filter(Boolean)), joinValues(donor.parties.filter(Boolean))]
-    .filter(Boolean)
-    .join(' · ');
+  const donorNameNorm = NORM(donor.name);
+  const aliases = (donor.names || []).filter((name) => NORM(name) && NORM(name) !== donorNameNorm);
+  const documents = (donor.documents || []).filter(Boolean);
+  const metaValues = [
+    aliases.length ? `También como ${joinValues(aliases)}` : '',
+    documents.length ? `Cédula/RUC ${joinValues(documents)}` : '',
+    joinValues(donor.positions.filter(Boolean)),
+    joinValues(donor.parties.filter(Boolean)),
+  ];
+  const meta = metaValues.filter(Boolean).join(' · ');
   return {
     id: donor.id,
     href: buildHashRoute('aportante', donor.id),
     name: TEXT(donor.name) || 'Sin nombre',
     meta,
-    searchText: NORM([TEXT(donor.name), meta].join(' ')),
+    searchText: NORM([TEXT(donor.name), ...(donor.names || []), ...(donor.documents || []), meta].join(' ')),
     summary: `${MONEY(donor.total)} aportados · ${INT(donor.candidateCount)} candidaturas`,
   };
 }
