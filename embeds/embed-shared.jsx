@@ -121,11 +121,16 @@ const PANAMA_MONTH_INDEX = {
 };
 const shortDate = (d) => `${`${d.getDate()}`.padStart(2, '0')} ${monthNames[d.getMonth()]}`;
 export const parseCsvText = (text) => d3.csvParse(text);
-export const TIMELINE_X_DOMAIN = [new Date(2023, 6, 1), new Date(2024, 7, 1)];
+const TIMELINE_START = new Date(2023, 8, 1);
+const TIMELINE_END_INCLUSIVE = new Date(2024, 5, 30);
+const TIMELINE_END_EXCLUSIVE = new Date(2024, 6, 1);
+
+export const TIMELINE_X_DOMAIN = [TIMELINE_START, TIMELINE_END_INCLUSIVE];
+export const TIMELINE_FILTER_RANGE = [TIMELINE_START, TIMELINE_END_EXCLUSIVE];
 
 function isInTimelineWindow(date) {
   const time = +date;
-  return Number.isFinite(time) && time >= +TIMELINE_X_DOMAIN[0] && time < +TIMELINE_X_DOMAIN[1];
+  return Number.isFinite(time) && time >= +TIMELINE_FILTER_RANGE[0] && time < +TIMELINE_FILTER_RANGE[1];
 }
 
 function clampTimelinePoints(points) {

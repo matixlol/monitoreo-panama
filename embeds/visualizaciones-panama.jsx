@@ -25,6 +25,7 @@ import {
   NORM,
   POS,
   SHORT,
+  TIMELINE_FILTER_RANGE,
   TEXT,
   TIMELINE_X_DOMAIN,
   candidateIdFromRow,
@@ -57,7 +58,6 @@ const CONTRIBUTOR_DOCUMENT_CACHE = new Map();
 const resolveModuleAssetUrl = (assetUrl) => new URL(assetUrl, import.meta.url).href;
 const DEFAULT_INGRESOS_URL = resolveModuleAssetUrl(ingresosDatasetUrl);
 const DEFAULT_EGRESOS_URL = resolveModuleAssetUrl(egresosDatasetUrl);
-const FIXED_EXPENSE_TIMELINE_DOMAIN = [new Date(2023, 8, 1), new Date(2024, 6, 31)];
 
 const provinceName = (id) => PANAMA_PROVINCE_NAMES.get(id);
 
@@ -701,17 +701,11 @@ function renderCandidateChart(store, position = POS[0]) {
   return beeswarm(getCandidatesRows(store, position), 'candidato', chartOpts);
 }
 
-const APORTE_TIMELINE_START = new Date(2023, 6, 1);
-const APORTE_TIMELINE_END = new Date(2024, 6, 31);
-
 function renderIncomeTimelineChart(store, position = ALL, grain = 'semana') {
   const points = incomeTimeline(getIncomeRows(store, position), grain).filter(
-    (point) => point.date >= APORTE_TIMELINE_START && point.date <= APORTE_TIMELINE_END,
+    (point) => point.date >= TIMELINE_FILTER_RANGE[0] && point.date < TIMELINE_FILTER_RANGE[1],
   );
-  return wrapMobileScrollableChart(
-    line(points, chartOpts, { xDomain: [APORTE_TIMELINE_START, APORTE_TIMELINE_END] }),
-    'plot',
-  );
+  return wrapMobileScrollableChart(line(points, chartOpts, { xDomain: TIMELINE_X_DOMAIN }), 'plot');
 }
 
 function filterRowsByDateRange(rows, [start, end]) {
@@ -722,11 +716,8 @@ function filterRowsByDateRange(rows, [start, end]) {
 }
 
 function renderExpenseTimelineChart(store, position = ALL, grain = 'mes') {
-  const filteredRows = filterRowsByDateRange(getExpenseRows(store, position), FIXED_EXPENSE_TIMELINE_DOMAIN);
-  return wrapMobileScrollableChart(
-    line(expenseTimeline(filteredRows, grain), chartOpts, { xDomain: FIXED_EXPENSE_TIMELINE_DOMAIN }),
-    'plot',
-  );
+  const filteredRows = filterRowsByDateRange(getExpenseRows(store, position), TIMELINE_X_DOMAIN);
+  return wrapMobileScrollableChart(line(expenseTimeline(filteredRows, grain), chartOpts, { xDomain: TIMELINE_X_DOMAIN }), 'plot');
 }
 
 function renderParityChart(store, position = POS[0]) {

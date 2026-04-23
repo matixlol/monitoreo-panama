@@ -1,3 +1,4 @@
+import * as d3 from 'd3';
 import * as Plot from '@observablehq/plot';
 
 const plotBase = {
@@ -24,11 +25,16 @@ function formatDateTick(value, spanDays) {
   return normalizeTickLabel(MONTH_YEAR_FORMAT.format(date));
 }
 
+function resolveDateTicks(spanDays) {
+  return spanDays > 45 ? d3.timeMonth.every(1) : undefined;
+}
+
 export const line = (points, { int, money, short }, { xDomain } = {}) => {
   if (!points.length) return null;
 
   const [domainStart, domainEnd] = xDomain || [points[0]?.date, points[points.length - 1]?.date];
   const spanDays = Math.abs((domainEnd - domainStart) / DAY_MS) || 0;
+  const dateTicks = resolveDateTicks(spanDays);
 
   return Plot.plot({
         ...plotBase,
@@ -38,6 +44,7 @@ export const line = (points, { int, money, short }, { xDomain } = {}) => {
         x: {
           label: null,
           tickFormat: (value) => formatDateTick(value, spanDays),
+          ...(dateTicks ? { ticks: dateTicks } : {}),
           ...(xDomain ? { domain: xDomain } : {}),
         },
         y: { label: null, grid: true, tickFormat: short, insetBottom: 8 },
