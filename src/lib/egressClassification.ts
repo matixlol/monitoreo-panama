@@ -69,7 +69,7 @@ const EXACT_DETAIL_SUMMARY_MAP: Record<string, string> = {
   'platos de comida': 'Alimentación',
   'registra gasto de alimentacion': 'Alimentación',
   'registra alimentacion': 'Alimentación',
-  'caja menuda gasto alimentacion gira': 'Caja Menuda Gasto Alimentacion Gira',
+  'caja menuda gasto alimentacion gira': 'Caja Menuda Gasto Alimentación Gira',
   'redes sociales': 'Redes Sociales',
   'manejo de redes sociales': 'Manejo De Redes Sociales',
   'administracion de redes': 'Manejo De Redes Sociales',
@@ -245,7 +245,12 @@ const SUMMARY_RULES: Array<{ label: string; patterns: RegExp[] }> = [
   },
   {
     label: 'Servicios De Contabilidad',
-    patterns: [/\bcontabil(?:idad|idades)?\b/u, /\bcontable(?:s)?\b/u, /\bcontador(?:es)?\b/u, /\bhonorario\s+contable\b/u],
+    patterns: [
+      /\bcontabil(?:idad|idades)?\b/u,
+      /\bcontable(?:s)?\b/u,
+      /\bcontador(?:es)?\b/u,
+      /\bhonorario\s+contable\b/u,
+    ],
   },
   {
     label: 'Servicios Administrativos',
@@ -315,7 +320,13 @@ const SUMMARY_RULES: Array<{ label: string; patterns: RegExp[] }> = [
   },
   {
     label: 'Copias E Impresiones',
-    patterns: [/\bimpresion(?:es)?\b/u, /\bimpresi[oó]n(?:es)?\b/u, /\bcopias?\b/u, /\bimprenta\b/u, /\bfotocopia(?:s)?\b/u],
+    patterns: [
+      /\bimpresion(?:es)?\b/u,
+      /\bimpresi[oó]n(?:es)?\b/u,
+      /\bcopias?\b/u,
+      /\bimprenta\b/u,
+      /\bfotocopia(?:s)?\b/u,
+    ],
   },
   {
     label: 'Evento',
@@ -346,12 +357,25 @@ const SUMMARY_RULES: Array<{ label: string; patterns: RegExp[] }> = [
   },
 ];
 
+const EGRESS_CATEGORY_LABELS: Record<string, string> = {
+  'alimentacion': 'Alimentación',
+  'transporte y movilizacion': 'Transporte y Movilización',
+  'personal de campana': 'Personal de Campaña',
+  'publicidad y promocion': 'Publicidad y Promoción',
+  'eventos y logistica electoral': 'Eventos y Logística Electoral',
+  'servicios y administracion': 'Servicios y Administración',
+  'operacion de campana': 'Operación de Campaña',
+};
+
 const normalizeSpaces = (text: string) => text.replace(/[\u00A0\s]+/g, ' ').trim();
 
 const toTitleCase = (text: string) =>
   text
     .toLocaleLowerCase('es')
-    .replace(/(^|[\s/\-(])([\p{L}\p{N}])/gu, (_, prefix: string, char: string) => `${prefix}${char.toLocaleUpperCase('es')}`);
+    .replace(
+      /(^|[\s/\-(])([\p{L}\p{N}])/gu,
+      (_, prefix: string, char: string) => `${prefix}${char.toLocaleUpperCase('es')}`,
+    );
 
 const normalizeMatchKey = (text: string) =>
   normalizeSpaces(text)
@@ -369,6 +393,12 @@ const cleanDetailText = (value: unknown) => {
   if (normalizeMatchKey(text) === 'undefined') return null;
   return text;
 };
+
+export function normalizeEgressCategoryLabel(value: unknown): string | null {
+  const text = cleanDetailText(value);
+  if (!text) return null;
+  return EGRESS_CATEGORY_LABELS[normalizeMatchKey(text)] ?? text;
+}
 
 function hasPositiveAmount(value: unknown): boolean {
   if (value === null || value === undefined) return false;
@@ -390,7 +420,7 @@ function summarizeFromAmounts(row: EgressLikeRow): string | null {
   }
   if (hasPositiveAmount(row.totalGastosPropaganda)) return 'Propaganda Electoral';
   if (hasPositiveAmount(row.totalGastosCampania) || hasPositiveAmount(row.totalDeGastosDePropagandaYCampania)) {
-    return 'Operacion De Campaña';
+    return 'Operación de Campaña';
   }
   return null;
 }
@@ -443,7 +473,7 @@ function textIncludesAny(text: string, words: string[]) {
 }
 
 export function categorizeEgress(row: EgressLikeRow): string {
-  const existing = cleanDetailText(row.GastoCategoria);
+  const existing = normalizeEgressCategoryLabel(row.GastoCategoria);
   if (existing) return existing;
 
   const detailSummary = summarizeDetalleGasto(row);
@@ -476,7 +506,7 @@ export function categorizeEgress(row: EgressLikeRow): string {
       'brindis',
     ])
   ) {
-    return 'Alimentacion';
+    return 'Alimentación';
   }
 
   if (
@@ -501,7 +531,7 @@ export function categorizeEgress(row: EgressLikeRow): string {
       'tolda',
     ])
   ) {
-    return 'Transporte y Movilizacion';
+    return 'Transporte y Movilización';
   }
 
   if (
@@ -521,7 +551,7 @@ export function categorizeEgress(row: EgressLikeRow): string {
       'personal',
     ])
   ) {
-    return 'Personal de Campana';
+    return 'Personal de Campaña';
   }
 
   if (
@@ -567,7 +597,7 @@ export function categorizeEgress(row: EgressLikeRow): string {
       'microperforados',
     ])
   ) {
-    return 'Publicidad y Promocion';
+    return 'Publicidad y Promoción';
   }
 
   if (
@@ -589,7 +619,7 @@ export function categorizeEgress(row: EgressLikeRow): string {
       'logistica',
     ])
   ) {
-    return 'Eventos y Logistica Electoral';
+    return 'Eventos y Logística Electoral';
   }
 
   if (
@@ -620,7 +650,7 @@ export function categorizeEgress(row: EgressLikeRow): string {
       'servicios de',
     ])
   ) {
-    return 'Servicios y Administracion';
+    return 'Servicios y Administración';
   }
 
   if (
@@ -650,22 +680,26 @@ export function categorizeEgress(row: EgressLikeRow): string {
     return 'Reembolsos y Caja Menuda';
   }
 
-  if (hasPositiveAmount(row.combustible) || hasPositiveAmount(row.movilizacion) || hasPositiveAmount(row.caravanaConcentraciones)) {
-    return 'Transporte y Movilizacion';
+  if (
+    hasPositiveAmount(row.combustible) ||
+    hasPositiveAmount(row.movilizacion) ||
+    hasPositiveAmount(row.caravanaConcentraciones)
+  ) {
+    return 'Transporte y Movilización';
   }
-  if (hasPositiveAmount(row.comidaBrindis)) return 'Alimentacion';
-  if (hasPositiveAmount(row.activistas)) return 'Personal de Campana';
+  if (hasPositiveAmount(row.comidaBrindis)) return 'Alimentación';
+  if (hasPositiveAmount(row.activistas)) return 'Personal de Campaña';
   if (hasPositiveAmount(row.alquilerLocalServiciosBasicos) || hasPositiveAmount(row.hospedaje)) {
     return 'Alquiler e Infraestructura';
   }
-  if (hasPositiveAmount(row.cargosBancarios)) return 'Servicios y Administracion';
+  if (hasPositiveAmount(row.cargosBancarios)) return 'Servicios y Administración';
   if (hasPositiveAmount(row.personalizacionArticulosPromocionales) || hasPositiveAmount(row.propagandaElectoral)) {
-    return 'Publicidad y Promocion';
+    return 'Publicidad y Promoción';
   }
-  if (hasPositiveAmount(row.totalGastosPropaganda)) return 'Publicidad y Promocion';
+  if (hasPositiveAmount(row.totalGastosPropaganda)) return 'Publicidad y Promoción';
   if (hasPositiveAmount(row.totalGastosCampania) || hasPositiveAmount(row.totalDeGastosDePropagandaYCampania)) {
-    return 'Operacion de Campana';
+    return 'Operación de Campaña';
   }
 
-  return 'Operacion de Campana';
+  return 'Operación de Campaña';
 }

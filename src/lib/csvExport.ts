@@ -1,4 +1,4 @@
-import { categorizeEgress, summarizeDetalleGasto } from './egressClassification';
+import { categorizeEgress, normalizeEgressCategoryLabel, summarizeDetalleGasto } from './egressClassification';
 
 type CsvIngressRow = {
   sourceRowId?: string | null;
@@ -208,9 +208,10 @@ const getCsvValue = (column: string, doc: CsvExportDocument, row: CsvIngressRow 
         ? row.detalleGastoResumido
         : summarizeDetalleGasto(row as CsvEgressRow);
     case 'GastoCategoria':
-      return 'GastoCategoria' in row && row.GastoCategoria !== undefined
-        ? row.GastoCategoria
-        : categorizeEgress(row as CsvEgressRow);
+      return (
+        normalizeEgressCategoryLabel('GastoCategoria' in row ? row.GastoCategoria : null) ??
+        categorizeEgress(row as CsvEgressRow)
+      );
     default:
       return (row as Record<string, unknown>)[column] ?? null;
   }
