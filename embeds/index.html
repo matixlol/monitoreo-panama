@@ -135,6 +135,26 @@
         <section class="mf-card">
           <div class="mf-head">
             <div>
+              <h4>Top donantes</h4>
+              <p class="mf-note">Top 5 de aportantes según la cobertura elegida, sumando todos los tipos de aporte y apilando por candidatura.</p>
+            </div>
+          </div>
+          <div class="mf-section-body">
+            <aside class="mf-code">
+              <pre>
+&lt;script type="module" src="https://fichas.panama.datos.party/visualizaciones-panama.js"&gt;&lt;/script&gt;
+&lt;panama-financiacion-top-donantes-chart&gt;&lt;/panama-financiacion-top-donantes-chart&gt;</pre
+              >
+            </aside>
+            <div class="mf-section-main">
+              <panama-financiacion-top-donantes-chart></panama-financiacion-top-donantes-chart>
+            </div>
+          </div>
+        </section>
+
+        <section class="mf-card">
+          <div class="mf-head">
+            <div>
               <h4>Promedio de ingresos por género</h4>
               <p class="mf-note">Comparación del ingreso promedio por candidatura entre mujeres y varones.</p>
             </div>
@@ -371,6 +391,7 @@
           [
             'panama-candidaturas-chart',
             'panama-financiacion-chart',
+            'panama-financiacion-top-donantes-chart',
             'panama-ingresos-genero-chart',
             'panama-gastos-tiempo-chart',
             'panama-ingresos-tiempo-chart',
