@@ -69,20 +69,19 @@ function buildLegend({
     margin: '0 auto',
   });
 
-  const topRow = document.createElement('div');
-  Object.assign(topRow.style, {
+  const barRow = document.createElement('div');
+  Object.assign(barRow.style, {
     display: 'flex',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: '10px',
     width: '100%',
   });
 
-  const scaleColumn = document.createElement('div');
-  Object.assign(scaleColumn.style, {
+  const lowerRows = document.createElement('div');
+  Object.assign(lowerRows.style, {
     display: 'grid',
     gap: '1px',
-    flex: '1 1 auto',
-    minWidth: '0',
+    width: '100%',
     padding: '0 8px',
     boxSizing: 'border-box',
   });
@@ -91,7 +90,8 @@ function buildLegend({
   barWrap.className = 'mf-legend-bar-wrap';
   Object.assign(barWrap.style, {
     position: 'relative',
-    width: '100%',
+    flex: '1 1 auto',
+    minWidth: '0',
     padding: '7px 0',
   });
 
@@ -216,7 +216,6 @@ function buildLegend({
     gap: '8px',
     flex: '0 0 auto',
     whiteSpace: 'nowrap',
-    paddingTop: '7px',
   });
 
   const swatch = document.createElement('span');
@@ -234,9 +233,9 @@ function buildLegend({
   text.textContent = 'Sin datos';
   note.append(swatch, text);
 
-  scaleColumn.append(barWrap, ticks, annotationRow);
-  topRow.append(scaleColumn, note);
-  scaleWrap.append(topRow);
+  barRow.append(barWrap, note);
+  lowerRows.append(ticks, annotationRow);
+  scaleWrap.append(barRow, lowerRows);
   legend.append(scaleWrap);
 
   return { legend, markerByProvince };
