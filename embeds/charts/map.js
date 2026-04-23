@@ -30,17 +30,30 @@ function legendBackground(scale, values) {
   return `linear-gradient(90deg, ${stops.join(', ')})`;
 }
 
-function buildLegend({ scale, valueFormat, explicitScale, min, rawMax }) {
+function valueOffsetPercent(value, start, span) {
+  return ((value - start) / span) * 100;
+}
+
+function buildLegend({
+  scale,
+  valueFormat,
+  explicitScale,
+  min,
+  rawMax,
+  annotations = [],
+  markerRows = [],
+}) {
   const values = legendValues({ scale, explicitScale, min, rawMax });
   const start = values[0] ?? min;
   const end = values[values.length - 1] ?? min;
   const span = end - start || 1;
+  const markerByProvince = new Map();
 
   const legend = document.createElement('div');
   legend.className = 'legend';
   Object.assign(legend.style, {
     display: 'grid',
-    gap: '8px',
+    gap: '4px',
     marginTop: '12px',
     color: '#667085',
     fontSize: '12px',
@@ -50,9 +63,10 @@ function buildLegend({ scale, valueFormat, explicitScale, min, rawMax }) {
   scaleWrap.className = 'mf-legend-scale';
   Object.assign(scaleWrap.style, {
     display: 'grid',
-    gap: '6px',
+    gap: '2px',
     width: '100%',
     maxWidth: '420px',
+    margin: '0 auto',
   });
 
   const topRow = document.createElement('div');
@@ -66,9 +80,19 @@ function buildLegend({ scale, valueFormat, explicitScale, min, rawMax }) {
   const scaleColumn = document.createElement('div');
   Object.assign(scaleColumn.style, {
     display: 'grid',
-    gap: '6px',
+    gap: '1px',
     flex: '1 1 auto',
     minWidth: '0',
+    padding: '0 8px',
+    boxSizing: 'border-box',
+  });
+
+  const barWrap = document.createElement('div');
+  barWrap.className = 'mf-legend-bar-wrap';
+  Object.assign(barWrap.style, {
+    position: 'relative',
+    width: '100%',
+    padding: '7px 0',
   });
 
   const bar = document.createElement('div');
@@ -81,12 +105,46 @@ function buildLegend({ scale, valueFormat, explicitScale, min, rawMax }) {
     background: legendBackground(scale, values),
   });
 
+  const markerLayer = document.createElement('div');
+  markerLayer.className = 'mf-legend-markers';
+  Object.assign(markerLayer.style, {
+    position: 'absolute',
+    inset: '0',
+    pointerEvents: 'none',
+  });
+
+  markerRows.forEach(({ provinceName, value }) => {
+    if (!provinceName || !Number.isFinite(value)) return;
+
+    const marker = document.createElement('span');
+    marker.className = 'mf-legend-marker';
+    Object.assign(marker.style, {
+      position: 'absolute',
+      top: '50%',
+      left: `${valueOffsetPercent(value, start, span)}%`,
+      width: '12px',
+      height: '12px',
+      borderRadius: '999px',
+      background: scale(value),
+      border: '2px solid #ffffff',
+      boxShadow: '0 1px 4px rgba(15,23,42,.18)',
+      transform: 'translate(-50%, -50%)',
+      transformOrigin: 'center',
+      transition: 'transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease',
+    });
+    markerLayer.append(marker);
+    markerByProvince.set(provinceName, marker);
+  });
+
+  barWrap.append(bar, markerLayer);
+
   const ticks = document.createElement('div');
   ticks.className = 'mf-legend-ticks';
   Object.assign(ticks.style, {
     position: 'relative',
     width: '100%',
-    minHeight: values.length === 1 ? 'auto' : '16px',
+    minHeight: values.length === 1 ? 'auto' : '14px',
+    lineHeight: '1',
   });
 
   values.forEach((value, index) => {
@@ -107,13 +165,47 @@ function buildLegend({ scale, valueFormat, explicitScale, min, rawMax }) {
       Object.assign(tick.style, {
         position: 'absolute',
         top: '0',
-        left: `${((value - start) / span) * 100}%`,
+        left: `${valueOffsetPercent(value, start, span)}%`,
         transform,
         whiteSpace: 'nowrap',
       });
     }
 
     ticks.append(tick);
+  });
+
+  const annotationRow = document.createElement('div');
+  annotationRow.className = 'mf-legend-annotations';
+  Object.assign(annotationRow.style, {
+    position: 'relative',
+    width: '100%',
+    minHeight: annotations.length ? '24px' : '0',
+  });
+
+  annotations.forEach(({ value, label, align = 'center', width = 120 }) => {
+    if (!Number.isFinite(value) || !label) return;
+
+    const annotation = document.createElement('span');
+    annotation.className = 'mf-legend-annotation';
+    annotation.textContent = label;
+
+    let transform = 'translateX(-50%)';
+    if (align === 'start') transform = 'none';
+    if (align === 'end') transform = 'translateX(-100%)';
+
+    Object.assign(annotation.style, {
+      position: 'absolute',
+      top: '0',
+      left: `${valueOffsetPercent(value, start, span)}%`,
+      width: `${width}px`,
+      transform,
+      textAlign: align,
+      fontSize: '11px',
+      lineHeight: '1.05',
+      color: '#475467',
+    });
+
+    annotationRow.append(annotation);
   });
 
   const note = document.createElement('div');
@@ -124,6 +216,7 @@ function buildLegend({ scale, valueFormat, explicitScale, min, rawMax }) {
     gap: '8px',
     flex: '0 0 auto',
     whiteSpace: 'nowrap',
+    paddingTop: '7px',
   });
 
   const swatch = document.createElement('span');
@@ -141,12 +234,12 @@ function buildLegend({ scale, valueFormat, explicitScale, min, rawMax }) {
   text.textContent = 'Sin datos';
   note.append(swatch, text);
 
-  scaleColumn.append(bar, ticks);
+  scaleColumn.append(barWrap, ticks, annotationRow);
   topRow.append(scaleColumn, note);
   scaleWrap.append(topRow);
   legend.append(scaleWrap);
 
-  return legend;
+  return { legend, markerByProvince };
 }
 
 function escapeHtml(value) {
@@ -171,7 +264,22 @@ function tooltipHtml(text) {
   ].join('');
 }
 
-function attachTooltip({ wrap, stage, svg, htmlByProvince }) {
+function setActiveMarker(markerByProvince, provinceName) {
+  for (const marker of markerByProvince.values()) {
+    marker.style.transform = 'translate(-50%, -50%)';
+    marker.style.borderColor = '#ffffff';
+    marker.style.boxShadow = '0 1px 4px rgba(15,23,42,.18)';
+  }
+
+  const activeMarker = markerByProvince.get(provinceName);
+  if (!activeMarker) return;
+
+  activeMarker.style.transform = 'translate(-50%, -50%) scale(1.45)';
+  activeMarker.style.borderColor = '#111827';
+  activeMarker.style.boxShadow = '0 3px 10px rgba(15,23,42,.28)';
+}
+
+function attachTooltip({ wrap, stage, svg, htmlByProvince, markerByProvince = new Map() }) {
   const tooltip = document.createElement('div');
   Object.assign(tooltip.style, {
     position: 'absolute',
@@ -193,6 +301,7 @@ function attachTooltip({ wrap, stage, svg, htmlByProvince }) {
   const hideTooltip = () => {
     tooltip.style.opacity = '0';
     tooltip.style.transform = 'translateY(4px)';
+    setActiveMarker(markerByProvince, null);
   };
 
   const showTooltip = (event, provinceName) => {
@@ -202,6 +311,7 @@ function attachTooltip({ wrap, stage, svg, htmlByProvince }) {
     tooltip.innerHTML = html;
     tooltip.style.opacity = '1';
     tooltip.style.transform = 'translateY(0)';
+    setActiveMarker(markerByProvince, provinceName);
 
     const stageBounds = stage.getBoundingClientRect();
     const tooltipBounds = tooltip.getBoundingClientRect();
@@ -231,7 +341,7 @@ function attachTooltip({ wrap, stage, svg, htmlByProvince }) {
   wrap.addEventListener('pointerleave', hideTooltip);
 }
 
-export const mapChart = ({ rows, valueKey, domain, colorScale, valueFormat, tooltip }) => {
+export const mapChart = ({ rows, valueKey, domain, colorScale, valueFormat, tooltip, legendOptions = {} }) => {
   const data = new Map(rows.filter((d) => d?.provincia).map((d) => [d.provincia, d]));
   const vals = rows.map((d) => d?.[valueKey]).filter(Number.isFinite);
   const [min, rawMax] = domain || [0, d3.max(vals) || 0];
@@ -264,10 +374,21 @@ export const mapChart = ({ rows, valueKey, domain, colorScale, valueFormat, tool
   });
   stage.append(svg);
 
+  const { legend, markerByProvince } = buildLegend({
+    scale,
+    valueFormat,
+    explicitScale,
+    min,
+    rawMax,
+    annotations: legendOptions.annotations,
+    markerRows: legendOptions.markerRows,
+  });
+
   attachTooltip({
     wrap,
     stage,
     svg,
+    markerByProvince,
     htmlByProvince: (provincia) => {
       const row = data.get(provincia);
       const value = row?.[valueKey];
@@ -275,6 +396,6 @@ export const mapChart = ({ rows, valueKey, domain, colorScale, valueFormat, tool
     },
   });
 
-  wrap.append(stage, buildLegend({ scale, valueFormat, explicitScale, min, rawMax }));
+  wrap.append(stage, legend);
   return wrap;
 };

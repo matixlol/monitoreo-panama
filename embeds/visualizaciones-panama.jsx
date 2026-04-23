@@ -607,7 +607,7 @@ function parityPositionLabel(position) {
 
 const PARITY_MAP_COLORS = {
   male: '#1d4ed8',
-  midpoint: '#e9e2cf',
+  midpoint: '#6b357a',
   female: '#b91c1c',
 };
 
@@ -702,13 +702,14 @@ function renderExpenseTimelineChart(store, position = ALL, grain = 'mes') {
 function renderParityChart(store, position = POS[0]) {
   const root = document.createElement('div');
   root.className = 'mf-parity-layout';
+  const rows = getParityRows(store, position);
 
   const mapWrap = document.createElement('div');
   mapWrap.className = 'mf-parity-layout__map';
   mapWrap.append(
     wrapMobileScrollableChart(
       mapChart({
-        rows: getParityRows(store, position),
+        rows,
         valueKey: 'paridad',
         domain: [0, 1],
         valueFormat: (v) => d3.format('.0%')(v),
@@ -717,6 +718,14 @@ function renderParityChart(store, position = POS[0]) {
           .domain([0, 0.5, 1])
           .range([PARITY_MAP_COLORS.male, PARITY_MAP_COLORS.midpoint, PARITY_MAP_COLORS.female])
           .interpolate(d3.interpolateRgb),
+        legendOptions: {
+          annotations: [
+            { value: 0, label: 'Todos varones', align: 'start', width: 110 },
+            { value: 0.5, label: 'Paridad de género', align: 'center', width: 140 },
+            { value: 1, label: 'Todas mujeres', align: 'end', width: 110 },
+          ],
+          markerRows: rows.map((row) => ({ provinceName: row.provincia, value: row.paridad })),
+        },
         tooltip: (row, value) =>
           `${row.provincia}\n${d3.format('.0%')(value)} mujeres\nMujeres: ${row.mujeres}\nHombres: ${row.hombres}\nTotal: ${row.totalCandidaturas}`,
       }),

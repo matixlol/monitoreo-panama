@@ -91,7 +91,7 @@ export function createPanamaMapSvg({
   const labels = svg.select('#etiquetas').attr('pointer-events', 'none');
   labels
     .selectAll('text')
-    .attr('font-size', 34)
+    .attr('font-size', 46)
     .attr('font-weight', 500)
     .attr('font-family', 'system-ui, sans-serif')
     .style('paint-order', 'stroke');
