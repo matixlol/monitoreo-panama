@@ -1,6 +1,7 @@
 import * as d3 from 'd3';
 import { easyBeeSwarm } from './easy-beeswarm.observable.js';
 import { getBeeswarmLayoutOptions } from './beeswarm-layout-config.js';
+import { getPartyColor } from './party-colors.js';
 
 const esc = (value) =>
   String(value ?? '')
@@ -244,8 +245,7 @@ export const beeswarm = (rows, kind, { buildHashRoute, money, precomputedPositio
   const isPresidentCandidates = kind === 'candidato' && isPresidentCandidateRows(chartRows);
 
   const colorDomain = kind === 'candidato' ? candidateLegendGroups(chartRows) : null;
-  const colorScale =
-    kind === 'candidato' ? d3.scaleOrdinal(d3.schemeTableau10).domain(colorDomain) : undefined;
+  const colorScale = kind === 'candidato' || kind === 'aportante' ? getPartyColor : undefined;
   const layoutOptions = getBeeswarmLayoutOptions(kind, {
     precomputedPositions,
     precomputedKey: (d) => d.id,
