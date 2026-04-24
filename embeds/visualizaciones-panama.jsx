@@ -707,7 +707,7 @@ function getFinancialRows(store, position, filter = 'all') {
 }
 
 function renderCandidateChart(store, position = POS[0]) {
-  return beeswarm(getCandidatesRows(store, position), 'candidato', chartOpts);
+  return wrapMobileScrollableChart(beeswarm(getCandidatesRows(store, position), 'candidato', chartOpts), 'beeswarm');
 }
 
 function renderIncomeTimelineChart(store, position = ALL, grain = 'semana') {

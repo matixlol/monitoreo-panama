@@ -11,7 +11,8 @@ const esc = (value) =>
 
 const amountOf = (d) => d.ingresoTotal ?? d.total ?? 0;
 const candidateGroupOf = (d) => d.group || d.party || 'Sin partido';
-const candidateLegendGroups = (rows) => Array.from(new Set(rows.map(candidateGroupOf)));
+const PRESIDENT_POSITION = 'Presidente';
+const OTHER_CANDIDATE_GROUP = 'Otros';
 const CANDIDATE_X_TICK_MIN = 6;
 const CANDIDATE_X_TICK_MAX = 8;
 const CANDIDATE_X_TICK_TARGET = 7;
@@ -19,6 +20,72 @@ const candidateTickNumber = new Intl.NumberFormat('es-PA', {
   minimumFractionDigits: 0,
   maximumFractionDigits: 1,
 });
+
+const isPresidentCandidateRows = (rows) => rows.length > 0 && rows.every((row) => row.position === PRESIDENT_POSITION);
+
+const centerCandidateGroups = (groups) => {
+  if (groups.length <= 2) return groups;
+
+  const ordered = Array(groups.length);
+  let left = Math.floor((groups.length - 1) / 2);
+  let right = left + 1;
+
+  groups.forEach((group, index) => {
+    if (index === 0) {
+      ordered[left] = group;
+      left -= 1;
+      return;
+    }
+
+    if (index % 2 === 1) {
+      ordered[left] = group;
+      left -= 1;
+      return;
+    }
+
+    ordered[right] = group;
+    right += 1;
+  });
+
+  return ordered.filter(Boolean);
+};
+
+const candidateLegendGroups = (rows) => {
+  const groupCounts = d3
+    .rollups(
+      rows,
+      (values) => values.length,
+      candidateGroupOf,
+    )
+    .sort(
+      (a, b) =>
+        (a[0] === OTHER_CANDIDATE_GROUP) - (b[0] === OTHER_CANDIDATE_GROUP) ||
+        d3.descending(a[1], b[1]) ||
+        d3.ascending(a[0], b[0]),
+    );
+
+  const centeredGroups = centerCandidateGroups(
+    groupCounts.filter(([group]) => group !== OTHER_CANDIDATE_GROUP).map(([group]) => group),
+  );
+  const otherGroups = groupCounts
+    .filter(([group]) => group === OTHER_CANDIDATE_GROUP)
+    .map(([group]) => group);
+
+  return [...centeredGroups, ...otherGroups];
+};
+
+const sortCandidateRows = (rows) => {
+  const groupOrder = candidateLegendGroups(rows);
+  const groupOrderIndex = new Map(groupOrder.map((group, index) => [group, index]));
+
+  return [...rows].sort(
+    (a, b) =>
+      (groupOrderIndex.get(candidateGroupOf(a)) ?? Number.MAX_SAFE_INTEGER) -
+        (groupOrderIndex.get(candidateGroupOf(b)) ?? Number.MAX_SAFE_INTEGER) ||
+      d3.descending(amountOf(a), amountOf(b)) ||
+      d3.ascending(a.name || '', b.name || ''),
+  );
+};
 
 const getCandidateTickValues = (xScale) => {
   for (let count = CANDIDATE_X_TICK_MAX; count >= CANDIDATE_X_TICK_MIN; count -= 1) {
@@ -169,95 +236,13 @@ const attachOpenFicha = (chart, kind, buildHashRoute) => {
   });
 };
 
-const mobileCandidateBeeswarm = (rows, kind, { buildHashRoute, money, short }) => {
-  const width = 720;
-  const sharedMargin = { top: 14, right: 8, bottom: 24, left: 32 };
-  const amounts = rows.map(amountOf);
-  const amountMax = d3.max(amounts) ?? 0;
-  const mobileRadiusRange = [4, amountMax > 500000 ? 18 : 22];
-  const xAxisOptions = getCandidateXAxisOptions(rows, width, sharedMargin, short, mobileRadiusRange);
-  const rScale = d3
-    .scaleSqrt()
-    .domain([0, amountMax || 1])
-    .range(mobileRadiusRange);
-  const groups = Array.from(d3.group(rows, candidateGroupOf), ([label, values]) => ({ label, values }));
-  const colorScale = d3.scaleOrdinal(d3.schemeTableau10).domain(groups.map((group) => group.label));
-
-  const container = d3
-    .create('div')
-    .classed('beeswarm-mobile-candidates', true)
-    .style('display', 'grid')
-    .style('gap', '4px')
-    .style('width', '100%')
-    .style('min-width', '0');
-
-  container.append('style').text(`
-    .beeswarm-mobile-candidates__group {
-      display: grid;
-      gap: 4px;
-    }
-
-    .beeswarm-mobile-candidates__label {
-      font: 700 12px/1.2 inherit;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      color: #344054;
-    }
-
-    .beeswarm-mobile-candidates__group .beeswarm {
-      max-width: none !important;
-    }
-  `);
-
-  groups.forEach(({ label, values }, index) => {
-    const isLast = index === groups.length - 1;
-    const margin = isLast ? sharedMargin : { ...sharedMargin, bottom: 8 };
-    const group = container.append('section').attr('class', 'beeswarm-mobile-candidates__group');
-    group.append('div').attr('class', 'beeswarm-mobile-candidates__label').text(label);
-
-    const chart = easyBeeSwarm(values, {
-      width,
-      height: isLast ? 118 : 86,
-      margin,
-      x: amountOf,
-      r: amountOf,
-      y: () => 'row',
-      color: () => label,
-      xScale: xAxisOptions.xScale,
-      rScale,
-      colorScale,
-      separateVertically: false,
-      showYAxis: false,
-      showXAxis: isLast,
-      xAxisPosition: 'bottom',
-      xTickCount: xAxisOptions.xTickCount,
-      xTickValues: xAxisOptions.xTickValues,
-      xTickFormat: xAxisOptions.xTickFormat,
-      xTickSize: isLast ? 8 : 0,
-      xAxisColor: xAxisOptions.xAxisColor,
-      xAxisWidth: xAxisOptions.xAxisWidth,
-      fontSize: 11,
-      labels: false,
-      circleStroke: 'rgba(255,255,255,0.85)',
-      circleStrokeWidth: 1,
-      tooltipHTML: (d) => tooltipFor(kind, d, money),
-    });
-
-    attachOpenFicha(chart, kind, buildHashRoute);
-    group.node().append(chart);
-  });
-
-  return container.node();
-};
-
 export const beeswarm = (rows, kind, { buildHashRoute, money, precomputedPositions, short }) => {
   if (!rows.length) return null;
 
-  if (kind === 'candidato' && typeof window !== 'undefined' && window.matchMedia('(max-width: 720px)').matches) {
-    return mobileCandidateBeeswarm(rows, kind, { buildHashRoute, money, short });
-  }
+  const chartRows = kind === 'candidato' ? sortCandidateRows(rows) : rows;
+  const isPresidentCandidates = kind === 'candidato' && isPresidentCandidateRows(chartRows);
 
-  const colorDomain = kind === 'candidato' ? candidateLegendGroups(rows) : null;
+  const colorDomain = kind === 'candidato' ? candidateLegendGroups(chartRows) : null;
   const colorScale =
     kind === 'candidato' ? d3.scaleOrdinal(d3.schemeTableau10).domain(colorDomain) : undefined;
   const layoutOptions = getBeeswarmLayoutOptions(kind, {
@@ -271,11 +256,20 @@ export const beeswarm = (rows, kind, { buildHashRoute, money, precomputedPositio
   if (kind === 'candidato') {
     Object.assign(
       layoutOptions,
-      getCandidateXAxisOptions(rows, layoutOptions.width, layoutOptions.margin, short, layoutOptions.rRange),
+      getCandidateXAxisOptions(chartRows, layoutOptions.width, layoutOptions.margin, short, layoutOptions.rRange),
     );
+
+    if (isPresidentCandidates) {
+      Object.assign(layoutOptions, {
+        separateVertically: false,
+        showYAxis: false,
+        centerYRatio: 0.5,
+        xAxisYRatio: 0.5,
+      });
+    }
   }
 
-  const chart = easyBeeSwarm(rows, layoutOptions);
+  const chart = easyBeeSwarm(chartRows, layoutOptions);
 
   attachOpenFicha(chart, kind, buildHashRoute);
 

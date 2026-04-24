@@ -12,6 +12,7 @@ const defaults = {
 
   // Modo
   separateVertically: true,
+  centerYRatio: null,
 
   // Accesores (genéricos)
   x: (d) => d.x,
@@ -45,6 +46,7 @@ const defaults = {
   showXAxis: true,
   showYAxis: true,
   xAxisPosition: 'bottom',
+  xAxisYRatio: null,
   yAxisPosition: 'right',
   xTickSize: null,
   yTickSize: null,
@@ -172,11 +174,14 @@ const runForceLayout = ({ config, innerHeight, x, r, y, nodes }) => {
   if (config.separateVertically) {
     simulation.force('y', d3.forceY((d) => y(d.__yv) + y.bandwidth() / 2).strength(config.yForceStrength));
   } else {
-    const centerY = config.showXAxis
-      ? config.xAxisPosition === 'bottom'
-        ? innerHeight * 0.4
-        : innerHeight * 0.6
-      : innerHeight / 2;
+    const centerY =
+      config.centerYRatio != null
+        ? innerHeight * config.centerYRatio
+        : config.showXAxis
+          ? config.xAxisPosition === 'bottom'
+            ? innerHeight * 0.4
+            : innerHeight * 0.6
+          : innerHeight / 2;
 
     simulation.force('y', d3.forceY(centerY).strength(config.yForceStrength));
   }
@@ -258,9 +263,11 @@ export const easyBeeSwarm = (data, options = {}) => {
   if (config.showXAxis) {
     const xAxisYPosition = config.separateVertically
       ? y.bandwidth() / 2
-      : config.xAxisPosition === 'bottom'
-        ? innerHeight * 0.8
-        : innerHeight * 0.2;
+      : config.xAxisYRatio != null
+        ? innerHeight * config.xAxisYRatio
+        : config.xAxisPosition === 'bottom'
+          ? innerHeight * 0.8
+          : innerHeight * 0.2;
 
     let xAxisCall = config.xAxisPosition === 'bottom' ? d3.axisBottom(x) : d3.axisTop(x);
 
@@ -280,8 +287,7 @@ export const easyBeeSwarm = (data, options = {}) => {
       );
     }
 
-    const xTickSize =
-      config.xTickSize ?? (config.separateVertically ? innerHeight - y.bandwidth() / 2 : innerHeight * 0.6);
+    const xTickSize = config.xTickSize ?? (config.separateVertically ? innerHeight - y.bandwidth() / 2 : innerHeight - xAxisYPosition);
 
     const xAxis = g
       .append('g')
