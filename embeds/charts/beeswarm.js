@@ -129,6 +129,7 @@ const getCandidateXAxisOptions = (rows, width, margin, short, rRange) => {
   const xTickValues = getCandidateTickValues(xScale);
 
   return {
+    rDomain: [0, amountMax || 1],
     xScale,
     xTickCount: xTickValues.length,
     xTickValues,
@@ -265,6 +266,8 @@ export const beeswarm = (rows, kind, { buildHashRoute, money, precomputedPositio
         showYAxis: false,
         centerYRatio: 0.5,
         xAxisYRatio: 0.5,
+        labelForceShow: true,
+        labelMaxLines: Infinity,
       });
     }
   }

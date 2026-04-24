@@ -24,6 +24,7 @@ const defaults = {
   xScale: null,
   yScale: null,
   rScale: null,
+  rDomain: null,
   colorScale: null,
 
   // Atajos de escala
@@ -76,6 +77,8 @@ const defaults = {
   labelColor: 'white',
   labelFontSize: 11,
   labelLineHeight: 1.2,
+  labelMaxLines: 3,
+  labelForceShow: false,
 
   // Tooltip + Delaunay
   tooltip: true,
@@ -109,6 +112,61 @@ const buildConfig = (options = {}) => ({
   margin: { ...defaults.margin, ...options.margin },
 });
 
+const textMetricsCanvas = typeof document === 'undefined' ? null : document.createElement('canvas');
+const textMetricsContext = textMetricsCanvas?.getContext('2d') ?? null;
+
+const measureTextWidth = (text, fontSize) => {
+  const value = `${text ?? ''}`;
+  if (!value) return 0;
+  if (!textMetricsContext) return value.length * fontSize * 0.6;
+
+  textMetricsContext.font = `${fontSize}px system-ui, -apple-system, Segoe UI, Roboto, sans-serif`;
+  return textMetricsContext.measureText(value).width;
+};
+
+const wrapTextToWidth = (text, maxWidth, maxLines, fontSize) => {
+  const value = `${text ?? ''}`.trim();
+  if (!value) return { lines: [''], truncated: false };
+
+  const words = value.split(/\s+/).filter(Boolean);
+  const lines = [];
+  let current = '';
+  let index = 0;
+
+  while (index < words.length && lines.length < maxLines) {
+    const candidate = current ? `${current} ${words[index]}` : words[index];
+    if (current && measureTextWidth(candidate, fontSize) > maxWidth) {
+      lines.push(current);
+      current = '';
+      continue;
+    }
+
+    current = candidate;
+    index += 1;
+  }
+
+  if (current && lines.length < maxLines) {
+    lines.push(current);
+  }
+
+  if (!lines.length) {
+    lines.push(words[0]);
+    index = Math.max(index, 1);
+  }
+
+  const truncated = index < words.length;
+  if (!truncated) return { lines, truncated: false };
+
+  const visibleLines = lines.slice(0, maxLines);
+  let lastLine = visibleLines.at(-1) ?? '';
+  while (lastLine && measureTextWidth(`${lastLine}…`, fontSize) > maxWidth) {
+    lastLine = lastLine.replace(/\s?\S+$/, '').trim();
+  }
+  visibleLines[visibleLines.length - 1] = lastLine ? `${lastLine}…` : '…';
+
+  return { lines: visibleLines, truncated: true };
+};
+
 const buildLayoutState = (data, options = {}) => {
   const config = buildConfig(options);
   const innerWidth = config.width - config.margin.left - config.margin.right;
@@ -120,7 +178,8 @@ const buildLayoutState = (data, options = {}) => {
   const C = data.map(config.color);
 
   const x = config.xScale ?? d3.scaleLinear().domain(d3.extent(X)).nice().range([0, innerWidth]);
-  const r = config.rScale ?? d3.scaleSqrt().domain(d3.extent(R)).range(config.rRange);
+  const rDomain = config.rDomain ?? d3.extent(R);
+  const r = config.rScale ?? d3.scaleSqrt().domain(rDomain).range(config.rRange);
   const y = config.separateVertically
     ? (
         config.yScale ??
@@ -315,61 +374,65 @@ export const easyBeeSwarm = (data, options = {}) => {
     .attr('stroke', config.circleStroke)
     .attr('stroke-width', config.circleStrokeWidth);
 
-  // ---- Labels internos (word wrap con foreignObject) ----
+  const delaunay = config.tooltip ? d3.Delaunay.from(
+    nodes,
+    (d) => d.x,
+    (d) => d.y,
+  ) : null;
+
+  // ---- Labels internos ----
   if (config.labels) {
-    const wrapText = (text, maxLines = 3) => {
-      if (!text) return [''];
-      const words = text.split(/\s+/);
-      const lines = [];
-      let current = '';
-
-      for (const word of words) {
-        if (current && word.length > 3) {
-          lines.push(current);
-          current = word;
-        } else {
-          current = current ? `${current} ${word}` : word;
-        }
-        if (lines.length === maxLines) break;
-      }
-      if (current && lines.length < maxLines) lines.push(current);
-
-      if (lines.join(' ') !== text && !lines.at(-1).endsWith(text.split(/\s+/).at(-1))) {
-        lines[lines.length - 1] = lines.at(-1).replace(/\s?\S+$/, '…');
-      }
-
-      return lines;
-    };
-
-    const lineHeight = config.labelFontSize * config.labelLineHeight;
-
+    const internalLineHeight = config.labelFontSize * config.labelLineHeight;
     g.selectAll('g.bubble-label')
-      .data(nodes.filter((d) => r(d.__rv) >= config.labelMinR))
+      .data(
+        nodes.flatMap((node) => {
+          const radius = r(node.__rv);
+          if (!config.labelForceShow && radius < config.labelMinR) return [];
+
+          const maxWidth = Math.max(radius * 1.6, 36);
+          const maxHeight = Math.max(radius * 1.5, internalLineHeight);
+          const wrapped = wrapTextToWidth(
+            config.labelAccessor(node),
+            maxWidth,
+            config.labelMaxLines,
+            config.labelFontSize,
+          );
+          const fitsHeight = wrapped.lines.length * internalLineHeight <= maxHeight;
+          const fitsWidth = wrapped.lines.every((line) => measureTextWidth(line, config.labelFontSize) <= maxWidth);
+
+          if (!config.labelForceShow && (!fitsHeight || !fitsWidth || wrapped.truncated)) return [];
+
+          return [{ node, lines: wrapped.lines }];
+        }),
+      )
       .join('g')
       .attr('class', 'bubble-label')
       .attr('pointer-events', 'none')
-      .attr('transform', (d) => `translate(${d.x}, ${d.y})`)
-      .selectAll('text')
-      .data((d) =>
-        wrapText(config.labelAccessor(d)).map((line, i, arr) => ({
-          line,
-          i,
-          total: arr.length,
-          d,
-        })),
-      )
-      .join('text')
-      .attr('text-anchor', 'middle')
-      .attr('y', ({ i, total }) => (-(total - 1) * lineHeight) / 2 + i * lineHeight)
-      .attr('dominant-baseline', 'middle')
-      .attr('fill', config.labelColor)
-      .attr('font-size', config.labelFontSize)
-      .attr('pointer-events', 'none')
-      .text(({ line }) => line);
+      .attr('transform', (d) => `translate(${d.node.x}, ${d.node.y})`)
+      .each(function (layout) {
+        const selection = d3.select(this);
+        selection.selectAll('*').remove();
+
+        const text = selection
+          .append('text')
+          .attr('text-anchor', 'middle')
+          .attr('dominant-baseline', 'middle')
+          .attr('fill', config.labelColor)
+          .attr('font-size', config.labelFontSize)
+          .attr('pointer-events', 'none');
+
+        layout.lines.forEach((line, i) => {
+          text
+            .append('tspan')
+            .attr('x', 0)
+            .attr('y', (-(layout.lines.length - 1) * internalLineHeight) / 2 + i * internalLineHeight)
+            .text(line);
+        });
+      });
   }
 
   // ---- Tooltip + Delaunay (Voronoi trick) ----
-  if (config.tooltip) {
+  if (config.tooltip && delaunay) {
     const tip = container
       .append('div')
       .style('position', 'absolute')
@@ -383,11 +446,6 @@ export const easyBeeSwarm = (data, options = {}) => {
       .style('font', '12px/1.3 system-ui, -apple-system, Segoe UI, Roboto, sans-serif')
       .style('z-index', 10);
 
-    const delaunay = d3.Delaunay.from(
-      nodes,
-      (d) => d.x,
-      (d) => d.y,
-    ); // nearest-neighbor [web:91]
     const overlay = g
       .append('rect')
       .attr('class', 'hover-overlay')
