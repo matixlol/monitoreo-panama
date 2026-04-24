@@ -283,7 +283,7 @@ function resolveDatasets(options = {}) {
   return { ingresos: window.documentosIngresos, egresos: window.documentosEgresos };
 }
 
-function topPartyRows(rows, n = 4) {
+function topPartyRows(rows, n = 20) {
   const top = new Set(
     d3
       .rollups(

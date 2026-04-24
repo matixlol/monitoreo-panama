@@ -49,7 +49,10 @@ const defaults = {
   xTickSize: null,
   yTickSize: null,
   xTickCount: 5,
+  xTickValues: null,
   xTickFormat: ',.0f', // 1,000
+  yPaddingTop: 0,
+  yPaddingBottom: 0,
 
   // Estilos
   xAxisColor: '#ccc',
@@ -117,7 +120,15 @@ const buildLayoutState = (data, options = {}) => {
   const x = config.xScale ?? d3.scaleLinear().domain(d3.extent(X)).nice().range([0, innerWidth]);
   const r = config.rScale ?? d3.scaleSqrt().domain(d3.extent(R)).range(config.rRange);
   const y = config.separateVertically
-    ? (config.yScale ?? d3.scaleBand().domain(Y).range([0, innerHeight]).paddingInner(0.2).paddingOuter(0.1))
+    ? (
+        config.yScale ??
+        d3
+          .scaleBand()
+          .domain(Y)
+          .range([config.yPaddingTop, innerHeight - config.yPaddingBottom])
+          .paddingInner(0.2)
+          .paddingOuter(0.1)
+      )
     : null;
   const z = config.colorScale ?? d3.scaleOrdinal(d3.schemeTableau10).domain(Array.from(new Set(C)));
 
@@ -256,6 +267,10 @@ export const easyBeeSwarm = (data, options = {}) => {
     // cantidad de ticks
     if (config.xTickCount) {
       xAxisCall = xAxisCall.ticks(config.xTickCount);
+    }
+
+    if (config.xTickValues?.length) {
+      xAxisCall = xAxisCall.tickValues(config.xTickValues);
     }
 
     // formato de ticks
