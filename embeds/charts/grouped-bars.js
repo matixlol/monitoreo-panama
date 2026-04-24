@@ -11,6 +11,7 @@ const plotBase = {
 const GROUP_STEP = 2.35;
 const BAR_WIDTH = 0.5;
 const SERIES_OFFSET = 0.3;
+const OUTER_PADDING = BAR_WIDTH / 2 + SERIES_OFFSET;
 
 function htmlNode(tag, className, text) {
   const node = document.createElement(tag);
@@ -90,7 +91,7 @@ export function groupedBarsChart(items, { int, compact = false } = {}) {
   const yMax = Math.max(1, maxValue * 1.08);
   const minBarEdge = d3.min(bars, (item) => item.x1) ?? 0;
   const maxBarEdge = d3.max(bars, (item) => item.x2) ?? 1;
-  const xMax = Math.max(1, (groups.length - 1) * GROUP_STEP + 1.2);
+  const xDomain = [minBarEdge - OUTER_PADDING, maxBarEdge + OUTER_PADDING];
 
   const root = htmlNode('div', 'mf-grouped-bars');
   const legend = htmlNode('div', 'mf-grouped-bars__legend');
@@ -113,7 +114,7 @@ export function groupedBarsChart(items, { int, compact = false } = {}) {
     marginRight: 12,
     x: {
       label: null,
-      domain: [-0.8, xMax],
+      domain: xDomain,
       ticks: tickValues,
       tickSize: 0,
       tickPadding: 5,
