@@ -101,6 +101,7 @@ const getCandidateTickValues = (xScale) => {
 
 const formatCandidateAmountTick = (value, short) => {
   const amount = +value || 0;
+  if (amount === 0) return '';
   const absolute = Math.abs(amount);
 
   if (absolute >= 1e6) {
@@ -111,6 +112,11 @@ const formatCandidateAmountTick = (value, short) => {
   }
 
   return short(value);
+};
+
+const formatBeeswarmAmountTick = (value, short) => {
+  const amount = +value || 0;
+  return amount === 0 ? '' : short(value);
 };
 
 const getCandidateXAxisOptions = (rows, width, margin, short, rRange) => {
@@ -250,7 +256,7 @@ export const beeswarm = (rows, kind, { buildHashRoute, money, precomputedPositio
     precomputedPositions,
     precomputedKey: (d) => d.id,
     tooltipHTML: (d) => tooltipFor(kind, d, money),
-    xTickFormat: short,
+    xTickFormat: (value) => formatBeeswarmAmountTick(value, short),
     colorScale,
   });
 
@@ -266,6 +272,7 @@ export const beeswarm = (rows, kind, { buildHashRoute, money, precomputedPositio
         showYAxis: false,
         centerYRatio: 0.5,
         xAxisYRatio: 0.5,
+        xGridFullHeight: true,
         labelForceShow: true,
         labelMaxLines: Infinity,
       });

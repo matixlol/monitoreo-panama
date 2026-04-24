@@ -48,6 +48,7 @@ const defaults = {
   showYAxis: true,
   xAxisPosition: 'bottom',
   xAxisYRatio: null,
+  xGridFullHeight: false,
   yAxisPosition: 'right',
   xTickSize: null,
   yTickSize: null,
@@ -355,7 +356,11 @@ export const easyBeeSwarm = (data, options = {}) => {
 
     xAxis.select('.domain').remove();
 
-    xAxis.selectAll('line').attr('stroke', config.xAxisColor).attr('stroke-width', config.xAxisWidth);
+    const xAxisLines = xAxis.selectAll('line').attr('stroke', config.xAxisColor).attr('stroke-width', config.xAxisWidth);
+
+    if (config.xGridFullHeight && !config.separateVertically) {
+      xAxisLines.attr('y1', -xAxisYPosition).attr('y2', innerHeight - xAxisYPosition);
+    }
 
     xAxis.selectAll('text').attr('fill', '#888').attr('font-size', config.fontSize);
   }
