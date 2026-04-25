@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import ingresosDatasetUrl from './data/documentos-ingresos.csv?url';
 import egresosDatasetUrl from './data/documentos-egresos.csv?url';
 import { INT } from './embed-shared.jsx';
+import { createZipBlob } from '../src/lib/zip';
+import { createXlsxBlobFromCsv } from '../src/lib/excelExport';
 
 function resolveAssetUrl(assetUrl) {
   return new URL(assetUrl, import.meta.url).href;
@@ -12,6 +14,9 @@ const EGRESOS_URL = resolveAssetUrl(egresosDatasetUrl);
 const BUTTON_LABEL = 'Descargar los datos';
 const INGRESO_FILENAME = 'documentos-ingresos.csv';
 const EGRESO_FILENAME = 'documentos-egresos.csv';
+const INGRESO_EXCEL_FILENAME = 'documentos-ingresos.xlsx';
+const EGRESO_EXCEL_FILENAME = 'documentos-egresos.xlsx';
+const ZIP_FILENAME = 'documentos-panama.zip';
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -24,11 +29,10 @@ function downloadBlob(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
-async function downloadDataset(url, filename) {
+async function fetchDatasetText(url, filename) {
   const response = await fetch(url);
   if (!response.ok) throw new Error(`No se pudo descargar ${filename}.`);
-  const blob = await response.blob();
-  downloadBlob(blob, filename);
+  return response.text();
 }
 
 function DownloadIcon() {
@@ -53,15 +57,28 @@ export function DownloadDataElementApp({ store, loading = false, error = null })
   const metaText = useMemo(() => {
     if (!store) return '';
     const declarations = INT((store.ingresos?.length || 0) + (store.egresos?.length || 0));
-    return `${declarations} declaraciones en 2 archivos CSV`;
+    return `${declarations} declaraciones en un ZIP con CSV y Excel`;
   }, [store]);
 
   const handleDownload = async () => {
     setDownloadError('');
     setDownloading(true);
     try {
-      await downloadDataset(INGRESOS_URL, INGRESO_FILENAME);
-      await downloadDataset(EGRESOS_URL, EGRESO_FILENAME);
+      const [ingresosCsv, egresosCsv] = await Promise.all([
+        fetchDatasetText(INGRESOS_URL, INGRESO_FILENAME),
+        fetchDatasetText(EGRESOS_URL, EGRESO_FILENAME),
+      ]);
+      const [ingresosExcel, egresosExcel] = await Promise.all([
+        createXlsxBlobFromCsv(ingresosCsv),
+        createXlsxBlobFromCsv(egresosCsv),
+      ]);
+      const zipBlob = await createZipBlob([
+        { name: INGRESO_FILENAME, data: ingresosCsv },
+        { name: EGRESO_FILENAME, data: egresosCsv },
+        { name: INGRESO_EXCEL_FILENAME, data: ingresosExcel },
+        { name: EGRESO_EXCEL_FILENAME, data: egresosExcel },
+      ]);
+      downloadBlob(zipBlob, ZIP_FILENAME);
     } catch (nextError) {
       setDownloadError(String(nextError?.message || nextError));
     } finally {

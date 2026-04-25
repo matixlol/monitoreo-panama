@@ -112,9 +112,6 @@ const INGRESS_CSV_COLUMNS = [
   'contribuyenteNombre',
   'representanteLegal',
   'cedulaRuc',
-  'direccion',
-  'telefono',
-  'correoElectronico',
   'donacionesPrivadasEfectivo',
   'donacionesPrivadasChequeAch',
   'donacionesPrivadasEspecie',
@@ -152,6 +149,8 @@ const EGRESS_CSV_COLUMNS = [
   'humanUnreadableFields',
 ];
 
+const HIDDEN_CONTACT_FIELD_NAMES = new Set(['direccion', 'telefono', 'correoElectronico']);
+
 function sanitizeCsvString(value: string): string {
   // Strip non-printable control characters that occasionally leak from OCR or source data.
   return value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '');
@@ -168,6 +167,11 @@ const serializeCsvValue = (value: unknown) => {
   }
   return stringValue;
 };
+
+function removeHiddenContactFieldNames(value: unknown): unknown {
+  if (!Array.isArray(value)) return value;
+  return value.filter((fieldName) => !HIDDEN_CONTACT_FIELD_NAMES.has(String(fieldName)));
+}
 
 const getCsvValue = (column: string, doc: CsvExportDocument, row: CsvIngressRow | CsvEgressRow) => {
   switch (column) {
@@ -212,6 +216,9 @@ const getCsvValue = (column: string, doc: CsvExportDocument, row: CsvIngressRow 
         normalizeEgressCategoryLabel('GastoCategoria' in row ? row.GastoCategoria : null) ??
         categorizeEgress(row as CsvEgressRow)
       );
+    case 'unreadableFields':
+    case 'humanUnreadableFields':
+      return removeHiddenContactFieldNames((row as Record<string, unknown>)[column]);
     default:
       return (row as Record<string, unknown>)[column] ?? null;
   }

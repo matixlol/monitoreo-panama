@@ -9,6 +9,8 @@ import {
   findCandidateByFilename,
   getBundledLocalExportAugmentation,
 } from '../../lib/csvExportSupport';
+import { createZipBlob } from '../../lib/zip';
+import { createXlsxBlobFromCsv } from '../../lib/excelExport';
 import type { Id } from '../../../convex/_generated/dataModel';
 import { formatPanamaCurrency } from '@/lib/currency';
 
@@ -250,45 +252,55 @@ function DocumentsPage() {
         const dateStamp = new Date().toISOString().slice(0, 10);
         const ingressFileName = `documentos-ingresos-${dateStamp}.csv`;
         const egressFileName = `documentos-egresos-${dateStamp}.csv`;
-        const ingressStream = createIngressCsvStream(exportPayload);
-        const egressStream = createEgressCsvStream(exportPayload);
+        const ingressExcelFileName = `documentos-ingresos-${dateStamp}.xlsx`;
+        const egressExcelFileName = `documentos-egresos-${dateStamp}.xlsx`;
+        const zipFileName = `documentos-panama-${dateStamp}.zip`;
+        const ingressCsv = await new Response(createIngressCsvStream(exportPayload)).text();
+        const egressCsv = await new Response(createEgressCsvStream(exportPayload)).text();
+        const [ingressExcel, egressExcel] = await Promise.all([
+          createXlsxBlobFromCsv(ingressCsv),
+          createXlsxBlobFromCsv(egressCsv),
+        ]);
+        const zipBlob = await createZipBlob([
+          {
+            name: ingressFileName,
+            data: ingressCsv,
+          },
+          {
+            name: egressFileName,
+            data: egressCsv,
+          },
+          {
+            name: ingressExcelFileName,
+            data: ingressExcel,
+          },
+          {
+            name: egressExcelFileName,
+            data: egressExcel,
+          },
+        ]);
 
         const pickerWindow = window;
         if (hasFilePicker(pickerWindow)) {
-          const saveStream = async (stream: ReadableStream<Uint8Array>, suggestedName: string) => {
-            const handle = await pickerWindow.showSaveFilePicker({
-              suggestedName,
-              types: [
-                {
-                  description: 'CSV',
-                  accept: { 'text/csv': ['.csv'] },
-                },
-              ],
-            });
-            const writable = await handle.createWritable();
-            const reader = stream.getReader();
-            while (true) {
-              const { value, done } = await reader.read();
-              if (done) break;
-              await writable.write(new Uint8Array(value));
-            }
-            await writable.close();
-          };
-
-          await saveStream(ingressStream, ingressFileName);
-          await saveStream(egressStream, egressFileName);
+          const handle = await pickerWindow.showSaveFilePicker({
+            suggestedName: zipFileName,
+            types: [
+              {
+                description: 'ZIP',
+                accept: { 'application/zip': ['.zip'] },
+              },
+            ],
+          });
+          const writable = await handle.createWritable();
+          await writable.write(zipBlob);
+          await writable.close();
         } else {
-          const downloadStream = async (stream: ReadableStream<Uint8Array>, fileName: string) => {
-            const blob = await new Response(stream).blob();
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = fileName;
-            link.click();
-            URL.revokeObjectURL(url);
-          };
-          await downloadStream(ingressStream, ingressFileName);
-          await downloadStream(egressStream, egressFileName);
+          const url = URL.createObjectURL(zipBlob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = zipFileName;
+          link.click();
+          URL.revokeObjectURL(url);
         }
       } catch (error) {
         setExportError(error instanceof Error ? error.message : 'Export failed');
