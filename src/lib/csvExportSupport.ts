@@ -1,5 +1,6 @@
 import documentsIndex from '../data/documents-index.json';
 import bundledLocalExportData from '../data/local-export-data.json';
+import { getCandidatePartyOverride } from './candidatePartyOverrides';
 import { autofixCsvExportDates } from './csvDateAutofix';
 import type { CsvExportDocument } from './csvExport';
 
@@ -268,12 +269,13 @@ export function enrichCsvExportData(exportData: CsvExportDocument[]): CsvExportD
   return autofixCsvExportDates(
     exportData.map((doc) => {
       const candidate = findCandidateByFilename(doc.name);
+      const candidateName = candidate?.candidateName ?? doc.candidateName ?? null;
       return {
         ...doc,
         pdfUrl: candidate?.pdfUrl ?? doc.pdfUrl ?? null,
-        candidateName: candidate?.candidateName ?? doc.candidateName ?? null,
+        candidateName,
         candidatePosition: candidate?.position ?? doc.candidatePosition ?? null,
-        candidateParty: candidate?.party ?? doc.candidateParty ?? null,
+        candidateParty: getCandidatePartyOverride(candidateName) ?? candidate?.party ?? doc.candidateParty ?? null,
         candidateProvince: candidate?.province ?? doc.candidateProvince ?? null,
         candidateDistrict: candidate?.district ?? doc.candidateDistrict ?? null,
         candidateGender: candidate?.candidateGender ?? doc.candidateGender ?? null,
