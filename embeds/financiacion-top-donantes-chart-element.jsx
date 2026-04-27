@@ -19,12 +19,10 @@ const REST_COLOR = '#d0d5dd';
 const TOP_DONANTES_CHART_CSS = `
   .mf-top-donor-breakdown{
     display:grid;
-    grid-template-columns:minmax(200px,236px) minmax(360px,1fr);
+    grid-template-columns:minmax(200px,236px) minmax(0,1fr);
     gap:28px;
     align-items:start;
-    width:min(100%,820px);
-    max-width:100%;
-    margin:0 auto;
+    width:100%;
   }
   .mf-top-donor-breakdown__visual{
     display:flex;

@@ -2,7 +2,7 @@ import * as d3 from 'd3';
 import * as Plot from '@observablehq/plot';
 
 const plotBase = {
-  style: { maxWidth: '100%', height: 'auto', overflow: 'visible' },
+  style: { width: '100%', maxWidth: '100%', height: 'auto', overflow: 'visible' },
   marginBottom: 44,
   marginTop: 10,
   color: { legend: false },

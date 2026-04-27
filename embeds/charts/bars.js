@@ -1,7 +1,7 @@
 import * as Plot from '@observablehq/plot';
 
 const plotBase = {
-  style: { maxWidth: '100%', height: 'auto', overflow: 'visible' },
+  style: { width: '100%', maxWidth: '100%', height: 'auto', overflow: 'visible' },
   marginBottom: 40,
   marginTop: 10,
   color: { legend: false },

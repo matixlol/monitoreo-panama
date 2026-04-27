@@ -10,9 +10,7 @@ const INGRESOS_GENERO_CHART_CSS = `
   .mf-gender-income{
     display:grid;
     gap:18px;
-    width:min(100%,760px);
-    max-width:100%;
-    margin:0 auto;
+    width:100%;
   }
   .mf-gender-income__summary{
     display:grid;

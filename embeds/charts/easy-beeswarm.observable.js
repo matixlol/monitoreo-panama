@@ -280,7 +280,6 @@ export const easyBeeSwarm = (data, options = {}) => {
     .create('div')
     .style('position', 'relative')
     .style('width', '100%')
-    .style('max-width', `${config.width}px`)
     .style('min-width', '0')
     .classed('beeswarm', true);
 

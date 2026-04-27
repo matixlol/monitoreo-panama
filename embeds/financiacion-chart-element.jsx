@@ -97,12 +97,10 @@ const FINANCIACION_CHART_CSS = `
   }
   .mf-income-breakdown{
     display:grid;
-    grid-template-columns:minmax(200px,236px) minmax(360px,440px);
+    grid-template-columns:minmax(200px,236px) minmax(0,1fr);
     gap:28px;
     align-items:center;
-    width:min(100%,760px);
-    max-width:100%;
-    margin:0 auto;
+    width:100%;
   }
   .mf-income-breakdown__visual{
     display:flex;
