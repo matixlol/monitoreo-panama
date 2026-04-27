@@ -3,7 +3,7 @@ import * as Plot from '@observablehq/plot';
 
 const plotBase = {
   style: { width: '100%', maxWidth: '100%', height: 'auto', overflow: 'visible' },
-  marginBottom: 44,
+  marginBottom: 56,
   marginTop: 10,
   color: { legend: false },
 };
@@ -11,6 +11,7 @@ const plotBase = {
 const DAY_MONTH_FORMAT = new Intl.DateTimeFormat('es-PA', { day: '2-digit', month: 'short' });
 const MONTH_FORMAT = new Intl.DateTimeFormat('es-PA', { month: 'short' });
 const MONTH_YEAR_FORMAT = new Intl.DateTimeFormat('es-PA', { month: 'short', year: 'numeric' });
+const YEAR_FORMAT = new Intl.DateTimeFormat('es-PA', { year: 'numeric' });
 const DAY_MS = 1000 * 60 * 60 * 24;
 
 function normalizeTickLabel(value) {
@@ -21,7 +22,10 @@ function formatDateTick(value, spanDays) {
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(+date)) return value;
   if (spanDays <= 45) return normalizeTickLabel(DAY_MONTH_FORMAT.format(date));
-  if (spanDays <= 400) return normalizeTickLabel(MONTH_FORMAT.format(date));
+  if (spanDays <= 400) {
+    const monthLabel = normalizeTickLabel(MONTH_FORMAT.format(date));
+    return date.getMonth() === 0 ? `${monthLabel}\n${YEAR_FORMAT.format(date)}` : monthLabel;
+  }
   return normalizeTickLabel(MONTH_YEAR_FORMAT.format(date));
 }
 
