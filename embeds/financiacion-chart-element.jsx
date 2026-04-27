@@ -241,6 +241,12 @@ const FINANCIACION_CHART_CSS = `
     0%{opacity:.35;transform:translateY(4px)}
     100%{opacity:1;transform:translateY(0)}
   }
+  @media (min-width:1100px){
+    .mf-income-breakdown{
+      margin-inline:auto;
+      padding-inline:18%;
+    }
+  }
   @media (max-width:720px){
     .wc-panel{
       gap:14px;

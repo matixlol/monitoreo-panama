@@ -91,6 +91,12 @@ const INGRESOS_GENERO_CHART_CSS = `
     border-radius:999px;
     transition:width .32s ease;
   }
+  @media (min-width:1100px){
+    .mf-gender-income{
+      margin-inline:auto;
+      padding-inline:18%;
+    }
+  }
   @media (max-width:720px){
     .mf-gender-income{
       gap:16px;

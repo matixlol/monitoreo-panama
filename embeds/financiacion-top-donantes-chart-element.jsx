@@ -179,6 +179,12 @@ const TOP_DONANTES_CHART_CSS = `
     line-height:1.35;
     color:#667085;
   }
+  @media (min-width:1100px){
+    .mf-top-donor-breakdown{
+      margin-inline:auto;
+      padding-inline:18%;
+    }
+  }
   @media (max-width:720px){
     .mf-top-donor-breakdown{
       grid-template-columns:1fr;

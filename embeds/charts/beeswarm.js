@@ -279,6 +279,17 @@ export const beeswarm = (rows, kind, { buildHashRoute, money, precomputedPositio
     }
   }
 
+  if (kind === 'aportante') {
+    Object.assign(layoutOptions, {
+      showYAxis: false,
+      margin: {
+        ...layoutOptions.margin,
+        left: 24,
+        right: 24,
+      },
+    });
+  }
+
   const chart = easyBeeSwarm(chartRows, layoutOptions);
 
   attachOpenFicha(chart, kind, buildHashRoute);
