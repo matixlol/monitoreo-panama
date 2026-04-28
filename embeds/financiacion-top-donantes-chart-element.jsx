@@ -532,7 +532,7 @@ function TopDonorsChart({ store, position }) {
             </button>
           );
         })}
-        <p className="mf-top-donor-breakdown__note">La dona muestra los cinco aportantes mas grandes y agrega el resto en un solo segmento gris.</p>
+        
       </div>
     </div>
   );
