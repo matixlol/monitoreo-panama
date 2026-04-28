@@ -673,7 +673,7 @@ export function categorizeEgress(row: EgressLikeRow): string {
   }
 
   if (textIncludesAny(combined, ['donacion', 'aporte', 'contribucion'])) {
-    return 'Donaciones y Aportes';
+    return 'Donaciones';
   }
 
   if (textIncludesAny(combined, ['caja menuda', 'fondo de emergencia', 'reembolso', 'abono a', 'yappy'])) {

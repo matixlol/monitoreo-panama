@@ -1572,7 +1572,7 @@ function defineChartElements() {
   );
   defineChartElement(
     'panama-aportantes-chart',
-    'Aportantes',
+    'Donantes',
     ['position', 'ingresos-url', 'egresos-url'],
     (el, store) => renderDonorsChart(store, attr(el, 'position', POS[0])),
     (el) => [

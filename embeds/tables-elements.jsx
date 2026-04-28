@@ -959,7 +959,7 @@ function TransactionsTable({ element, store }) {
       {
         id: 'counterparty',
         accessorKey: 'counterparty',
-        header: 'Aportante / proveedor',
+        header: 'Donante / proveedor',
         cell: ({ row }) => (
           <>
             <div>{row.original.counterparty}</div>

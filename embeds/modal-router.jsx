@@ -67,7 +67,7 @@ function PdfLinkCell({ url, source }) {
 
 function modalKindLabel(kind) {
   if (kind === 'candidato') return 'Candidato';
-  if (kind === 'aportante') return 'Aportante';
+  if (kind === 'aportante') return 'Donante';
   if (kind === 'proveedor') return 'Proveedor';
   return 'Ficha';
 }
@@ -145,7 +145,7 @@ function CandidateModal({ entity }) {
   const balanceStat = candidateBalanceStat(entity);
   const ingresoColumns = [
     { header: 'Fecha', key: 'fecha' },
-    { header: 'Aportante', key: 'aportante', strong: true },
+    { header: 'Donante', key: 'aportante', strong: true },
     { header: 'Cédula / RUC', key: 'cedula' },
     { header: 'Tipo', key: 'tipo' },
     { header: 'Monto', key: 'monto' },
@@ -193,7 +193,7 @@ function CandidateModal({ entity }) {
       />
       <Stats
         items={[
-          { value: INT(entity.contributorCount), label: plural(entity.contributorCount, 'Aportante', 'Aportantes') },
+          { value: INT(entity.contributorCount), label: plural(entity.contributorCount, 'Donante', 'Donantes') },
           { value: MONEY(entity.ingresoTotal), label: 'Ingresos totales' },
           { value: MONEY(entity.egresoTotal), label: 'Gastos totales' },
           balanceStat,
@@ -327,7 +327,7 @@ function DonorModal({ entity }) {
     <div className="mf-modal-stack">
       <Meta
         items={[
-          { label: 'Aportante', values: [entity.name] },
+          { label: 'Donante', values: [entity.name] },
           { label: plural(entity.parties.length, 'Partido', 'Partidos'), values: entity.parties },
           { label: plural(entity.positions.length, 'Candidatura', 'Candidaturas'), values: entity.positions },
         ]}
@@ -335,10 +335,10 @@ function DonorModal({ entity }) {
       <Stats
         items={[
           { value: INT(entity.candidateCount), label: plural(entity.candidateCount, 'Candidatura', 'Candidaturas') },
-          { value: MONEY(entity.total), label: 'Aportes totales' },
+          { value: MONEY(entity.total), label: 'Donaciones totales' },
         ]}
       />
-      <Section title="Aportes por tipo" titleAs="h4">
+      <Section title="Donaciones por tipo" titleAs="h4">
         {incomeBreakdown(entity.ingresos).length ? (
           <>
             <FinanciacionChartStyles />
@@ -349,7 +349,7 @@ function DonorModal({ entity }) {
         )}
       </Section>
       <Section
-        title="Tabla de aportes"
+        title="Tabla de donaciones"
         controls={
           tableRows.length ? (
             <CsvDownloadButton
@@ -371,7 +371,7 @@ function DonorModal({ entity }) {
           }))}
         />
       </Section>
-      <Section title="Aportes por partido" titleAs="h4">
+      <Section title="Donaciones por partido" titleAs="h4">
         {partyBreakdown(entity.ingresos).length ? (
           <PlotFigure renderNode={() => bars(partyBreakdown(entity.ingresos), chartOpts)} deps={[entity.ingresos]} />
         ) : (
