@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 import { Tooltip as TooltipPrimitive } from 'radix-ui';
+import { getPartyColor } from './charts/party-colors.js';
 
 export const COLORS = ['#2f80ed', '#7db3f3', '#9ac7ff', '#b9d5fa', '#dceafd', '#9bc493', '#c8b0a3', '#e29196'];
 export const POS = ['Presidente', 'Diputado(a)', 'Alcalde'];
@@ -384,7 +385,7 @@ export function partyBreakdown(rows) {
       (values) => sum(values, (r) => num(r.total)),
       (r) => TEXT(r.candidateParty) || 'Sin partido',
     )
-    .map(([label, value], i) => ({ id: slugify(label) || `p-${i}`, label, value, color: COLORS[i % COLORS.length] }))
+    .map(([label, value], i) => ({ id: slugify(label) || `p-${i}`, label, value, color: getPartyColor(label) }))
     .sort((a, b) => d3.descending(a.value, b.value));
 }
 

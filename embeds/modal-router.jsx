@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import * as d3 from 'd3';
-import { bars } from './charts/bars.js';
 import { line } from './charts/line.js';
 import { treemap } from './charts/treemap.js';
 import { FinanciacionChartStyles, IncomeBreakdownChart } from './financiacion-chart-element.jsx';
@@ -304,6 +303,12 @@ function CandidateModal({ entity }) {
 
 function DonorModal({ entity }) {
   const incomeRows = sortRowsByDate(entity.ingresos);
+  const partyItems = partyBreakdown(entity.ingresos).map((item) => ({
+    key: item.id,
+    label: item.label,
+    value: item.value,
+    color: item.color,
+  }));
   const columns = [
     { header: 'Fecha', key: 'fecha' },
     { header: 'Candidatura', key: 'candidato', strong: true },
@@ -345,7 +350,7 @@ function DonorModal({ entity }) {
             <IncomeBreakdownChart items={incomeBreakdown(entity.ingresos)} />
           </>
         ) : (
-          <Empty text="Este aportante no tiene aportes clasificados." />
+          <Empty text="Este donante no tiene donaciones clasificadas." />
         )}
       </Section>
       <Section
@@ -362,7 +367,7 @@ function DonorModal({ entity }) {
         }
       >
         <Table
-          emptyText="Este aportante no tiene registros cargados."
+          emptyText="Este donante no tiene registros cargados."
           columns={columns}
           rows={tableRows.map((row) => ({
             ...row,
@@ -372,10 +377,13 @@ function DonorModal({ entity }) {
         />
       </Section>
       <Section title="Donaciones por partido" titleAs="h4">
-        {partyBreakdown(entity.ingresos).length ? (
-          <PlotFigure renderNode={() => bars(partyBreakdown(entity.ingresos), chartOpts)} deps={[entity.ingresos]} />
+        {partyItems.length ? (
+          <>
+            <FinanciacionChartStyles />
+            <IncomeBreakdownChart items={partyItems} ariaLabel="Distribución de donaciones por partido" />
+          </>
         ) : (
-          <Empty text="No hay partidos suficientes para desglosar los aportes." />
+          <Empty text="No hay partidos suficientes para desglosar las donaciones." />
         )}
       </Section>
     </div>

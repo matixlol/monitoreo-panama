@@ -288,7 +288,19 @@ export function FinanciacionChartStyles() {
 }
 
 function normalizeBreakdownItems(items) {
-  const byKey = new Map(items.map((item) => [item.key, item]));
+  const normalizedItems = items.map((item, index) => ({
+    ...item,
+    key: item.key ?? item.id ?? `item-${index}`,
+  }));
+  const incomeTypeKeys = new Set(INCOME_TYPES.map((type) => type.key));
+  const isIncomeTypeBreakdown =
+    normalizedItems.length > 0 && normalizedItems.every((item) => incomeTypeKeys.has(item.key));
+
+  if (!isIncomeTypeBreakdown) {
+    return normalizedItems;
+  }
+
+  const byKey = new Map(normalizedItems.map((item) => [item.key, item]));
   return INCOME_TYPES.map((type) => {
     const match = byKey.get(type.key);
     return {
@@ -396,7 +408,7 @@ function Segment({ item, active, dimmed, strokeDasharray, strokeDashoffset, onSe
   );
 }
 
-export function IncomeBreakdownChart({ items }) {
+export function IncomeBreakdownChart({ items, ariaLabel = 'Distribución de ingresos' }) {
   const rootRef = useRef(null);
   const rows = useMemo(() => normalizeBreakdownItems(items), [items]);
   const total = useMemo(() => rows.reduce((acc, item) => acc + (+item.value || 0), 0), [rows]);
@@ -445,7 +457,7 @@ export function IncomeBreakdownChart({ items }) {
             viewBox={`0 0 ${SIZE} ${SIZE}`}
             className="mf-income-breakdown__svg"
             role="img"
-            aria-label={`Distribución de ingresos. Total ${formatEmbedCurrency(total, 0)}.`}
+            aria-label={`${ariaLabel}. Total ${formatEmbedCurrency(total, 0)}.`}
           >
             <circle
               cx={CENTER}
