@@ -17,6 +17,7 @@ const OTHER_CANDIDATE_GROUP = 'Otros';
 const CANDIDATE_X_TICK_MIN = 6;
 const CANDIDATE_X_TICK_MAX = 8;
 const CANDIDATE_X_TICK_TARGET = 7;
+const DONOR_LEFT_MARGIN = 96;
 const candidateTickNumber = new Intl.NumberFormat('es-PA', {
   minimumFractionDigits: 0,
   maximumFractionDigits: 1,
@@ -284,7 +285,7 @@ export const beeswarm = (rows, kind, { buildHashRoute, money, precomputedPositio
       showYAxis: false,
       margin: {
         ...layoutOptions.margin,
-        left: 24,
+        left: DONOR_LEFT_MARGIN,
         right: 24,
       },
     });
