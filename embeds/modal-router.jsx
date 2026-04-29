@@ -267,7 +267,11 @@ function CandidateModal({ entity }) {
       >
         {expenseTimeline(expenseRows, 'día').length ? (
           <PlotFigure
-            renderNode={() => line(expenseTimeline(expenseRows, 'día'), chartOpts, { xDomain: TIMELINE_X_DOMAIN })}
+            renderNode={() =>
+              line(expenseTimeline(expenseRows, 'día'), chartOpts, {
+                xDomain: TIMELINE_X_DOMAIN,
+                milestones: store.milestones,
+              })}
             deps={[expenseRows]}
           />
         ) : (

@@ -57,9 +57,19 @@ export function formatEmbedNumber(value, fractionDigits = 2) {
 
 export const MONEY = (v) => formatEmbedCurrencyAuto(v);
 export const INT = (v) => formatEmbedNumber(v, 0);
+function formatCompactWhole(value, suffix) {
+  return `${d3.format('d')(Math.round(value))}${suffix}`;
+}
+
 export const SHORT = (v) => {
   const n = +v || 0;
-  return Math.abs(n) >= 1e6 ? `B/. ${d3.format('.2s')(n)}` : formatEmbedCurrency(n, 0);
+  const abs = Math.abs(n);
+  const sign = n < 0 ? '-' : '';
+
+  if (abs >= 1e9) return `B/. ${sign}${formatCompactWhole(abs / 1e9, 'B')}`;
+  if (abs >= 1e6) return `B/. ${sign}${formatCompactWhole(abs / 1e6, 'M')}`;
+  if (abs >= 1e3) return `B/. ${sign}${formatCompactWhole(abs / 1e3, 'k')}`;
+  return formatEmbedCurrency(n, 0);
 };
 export const TEXT = (v) => (typeof v === 'string' ? v.trim() : v == null ? '' : `${v}`.trim());
 export const NORM = (v) =>

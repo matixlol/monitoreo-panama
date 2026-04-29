@@ -2,6 +2,7 @@ import { createRoot } from 'react-dom/client';
 import * as d3 from 'd3';
 import ingresosDatasetUrl from './data/documentos-ingresos.csv?url';
 import egresosDatasetUrl from './data/documentos-egresos.csv?url';
+import timelineDatesDatasetUrl from './data/DATA FECHAS.csv?url';
 import donorBeeswarmLayout from './data/donor-beeswarm.json';
 import { beeswarm } from './charts/beeswarm.js';
 import { createDonorBeeswarmSignature } from './charts/beeswarm-precomputed.js';
@@ -59,6 +60,7 @@ const CONTRIBUTOR_DOCUMENT_CACHE = new Map();
 const resolveModuleAssetUrl = (assetUrl) => new URL(assetUrl, import.meta.url).href;
 const DEFAULT_INGRESOS_URL = resolveModuleAssetUrl(ingresosDatasetUrl);
 const DEFAULT_EGRESOS_URL = resolveModuleAssetUrl(egresosDatasetUrl);
+const DEFAULT_TIMELINE_DATES_URL = resolveModuleAssetUrl(timelineDatesDatasetUrl);
 
 const provinceName = (id) => PANAMA_PROVINCE_NAMES.get(id);
 
@@ -257,18 +259,67 @@ function inject() {
   cssDone = true;
 }
 
-async function loadCsvDatasets({ ingresosUrl, egresosUrl, assignToWindow = true }) {
-  const [ingresosResponse, egresosResponse] = await Promise.all([fetch(ingresosUrl), fetch(egresosUrl)]);
-  if (!ingresosResponse.ok || !egresosResponse.ok) throw new Error('No se pudieron cargar los CSVs');
-  const [ingresos, egresos] = await Promise.all([
+function parseTimelineMilestoneDate(value) {
+  const text = TEXT(value);
+  if (!text) return null;
+  const date = new Date(`${text}T00:00:00`);
+  return Number.isNaN(+date) ? null : date;
+}
+
+function normalizeTimelineMilestones(rows = []) {
+  return rows
+    .flatMap((row) => {
+      const event = TEXT(row.Evento);
+      const startDate = parseTimelineMilestoneDate(row.fechaInicio);
+      const endDate = parseTimelineMilestoneDate(row.fechaFin);
+      const milestones = [];
+
+      if (startDate) {
+        milestones.push({
+          date: startDate,
+          label: endDate ? `Inicio de ${event}` : event,
+        });
+      }
+
+      if (endDate) {
+        milestones.push({
+          date: endDate,
+          label: startDate ? `Fin de ${event}` : event,
+        });
+      }
+
+      return milestones;
+    })
+    .filter((milestone) => milestone.date && milestone.label)
+    .sort((a, b) => d3.ascending(a.date, b.date) || d3.ascending(a.label, b.label));
+}
+
+async function loadCsvDatasets({
+  ingresosUrl,
+  egresosUrl,
+  timelineDatesUrl = DEFAULT_TIMELINE_DATES_URL,
+  assignToWindow = true,
+}) {
+  const [ingresosResponse, egresosResponse, timelineDatesResponse] = await Promise.all([
+    fetch(ingresosUrl),
+    fetch(egresosUrl),
+    fetch(timelineDatesUrl),
+  ]);
+  if (!ingresosResponse.ok || !egresosResponse.ok || !timelineDatesResponse.ok) {
+    throw new Error('No se pudieron cargar los CSVs');
+  }
+  const [ingresos, egresos, timelineDates] = await Promise.all([
     ingresosResponse.text().then(parseCsvText),
     egresosResponse.text().then(parseCsvText),
+    timelineDatesResponse.text().then(parseCsvText),
   ]);
+  const milestones = normalizeTimelineMilestones(timelineDates);
   if (assignToWindow && typeof window !== 'undefined') {
     window.documentosIngresos = ingresos;
     window.documentosEgresos = egresos;
+    window.timelineMilestones = milestones;
   }
-  return { ingresos, egresos };
+  return { ingresos, egresos, milestones };
 }
 
 function resolveDatasets(options = {}) {
@@ -280,7 +331,11 @@ function resolveDatasets(options = {}) {
   ) {
     throw new Error('Faltan window.documentosIngresos o window.documentosEgresos.');
   }
-  return { ingresos: window.documentosIngresos, egresos: window.documentosEgresos };
+  return {
+    ingresos: window.documentosIngresos,
+    egresos: window.documentosEgresos,
+    milestones: Array.isArray(window.timelineMilestones) ? window.timelineMilestones : [],
+  };
 }
 
 function topPartyRows(rows, n = 20) {
@@ -452,7 +507,7 @@ function createOverviewDonorRows(donors) {
     .sort((a, b) => d3.descending(a.ingresoTotal, b.ingresoTotal) || d3.ascending(a.name, b.name));
 }
 
-function buildStore({ ingresos = [], egresos = [] }) {
+function buildStore({ ingresos = [], egresos = [], milestones = [] }) {
   const candidateBuckets = new Map();
   const donorBuckets = new Map();
   const providerBuckets = new Map();
@@ -575,6 +630,7 @@ function buildStore({ ingresos = [], egresos = [] }) {
   return {
     ingresos,
     egresos,
+    milestones,
     candidates,
     donors,
     providers,
@@ -714,7 +770,10 @@ function renderIncomeTimelineChart(store, position = ALL, grain = 'semana') {
   const points = incomeTimeline(getIncomeRows(store, position), grain).filter(
     (point) => point.date >= TIMELINE_FILTER_RANGE[0] && point.date < TIMELINE_FILTER_RANGE[1],
   );
-  return wrapMobileScrollableChart(line(points, chartOpts, { xDomain: TIMELINE_X_DOMAIN }), 'plot');
+  return wrapMobileScrollableChart(
+    line(points, chartOpts, { xDomain: TIMELINE_X_DOMAIN, milestones: store.milestones }),
+    'plot',
+  );
 }
 
 function filterRowsByDateRange(rows, [start, end]) {
@@ -727,7 +786,10 @@ function filterRowsByDateRange(rows, [start, end]) {
 function renderExpenseTimelineChart(store, position = ALL, grain = 'mes') {
   const filteredRows = filterRowsByDateRange(getExpenseRows(store, position), TIMELINE_X_DOMAIN);
   return wrapMobileScrollableChart(
-    line(expenseTimeline(filteredRows, grain), chartOpts, { xDomain: TIMELINE_X_DOMAIN }),
+    line(expenseTimeline(filteredRows, grain), chartOpts, {
+      xDomain: TIMELINE_X_DOMAIN,
+      milestones: store.milestones,
+    }),
     'plot',
   );
 }
