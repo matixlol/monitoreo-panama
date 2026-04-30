@@ -20,10 +20,14 @@ const FINANCIACION_CHART_CSS = `
   *{box-sizing:border-box}
   .wc-panel{
     display:grid;
-    gap:16px;
+    gap:10px;
     padding:16px;
     background:#f8f8f8;
     border-radius:12px;
+  }
+  .wc-panel h4{
+    margin:0;
+    
   }
   .wc-body{
     min-width:0;
