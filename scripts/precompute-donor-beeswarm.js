@@ -30,38 +30,96 @@ const num = (value) => {
   return Number.isFinite(n) ? n : 0;
 };
 
+function normalizeContributorDocument(value) {
+  const text = TEXT(value);
+  const normalized = text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[ÃÂ]/g, '')
+    .toUpperCase();
+  const compact = normalized.replace(/\bDV\b/g, '').replace(/[^A-Z0-9]+/g, '');
+  const digitsOnly = compact.replace(/[^0-9]+/g, '');
+  const isValid =
+    compact &&
+    !/^0+$/.test(compact) &&
+    /\d/.test(compact) &&
+    digitsOnly.length >= 3 &&
+    compact.length >= 5 &&
+    !['ANULADO', 'NULL', 'NULO', 'NONE', 'NA', 'N A', 'SN', 'S N'].includes(compact);
+
+  return isValid ? compact : '';
+}
+
+function contributorKeyFromRow(row) {
+  const documentId = normalizeContributorDocument(row?.cedulaRuc);
+  if (documentId) return `doc:${documentId}`;
+  const contributorName = NORM(row?.contribuyenteNombre);
+  return contributorName ? `name:${contributorName}` : '';
+}
+
+function contributorIdFromRow(row) {
+  const key = contributorKeyFromRow(row);
+  return key ? slugify(key) : '';
+}
+
+function incrementCount(map, key) {
+  const value = TEXT(key);
+  if (!value) return;
+  map.set(value, (map.get(value) || 0) + 1);
+}
+
+function modeFromCounts(map, fallback = '') {
+  let bestValue = fallback;
+  let bestCount = -1;
+
+  for (const [value, count] of map) {
+    if (count > bestCount) {
+      bestValue = value;
+      bestCount = count;
+    }
+  }
+
+  return bestValue;
+}
+
 function buildDonorRows(ingresos) {
   const donorBuckets = new Map();
 
   for (const row of ingresos) {
-    const donorId = slugify(row.contribuyenteNombre);
+    const donorId = contributorIdFromRow(row);
     if (!donorId) continue;
-    const bucket = donorBuckets.get(donorId) || { ingresos: [] };
+    const bucket = donorBuckets.get(donorId) || { ingresos: [], nameCounts: new Map() };
     bucket.ingresos.push(row);
+    incrementCount(bucket.nameCounts, TEXT(row.contribuyenteNombre) || TEXT(row.cedulaRuc));
     donorBuckets.set(donorId, bucket);
   }
 
   return [...donorBuckets]
     .flatMap(([id, bucket]) => {
-      const name = d3.mode(bucket.ingresos.map((row) => TEXT(row.contribuyenteNombre)).filter(Boolean)) || id;
+      const name = modeFromCounts(bucket.nameCounts, id) || id;
 
       return d3
         .rollups(
           bucket.ingresos,
           (values) => {
             const position = TEXT(values[0]?.candidatePosition) || 'Sin cargo';
-            const parties = uniq(values.map((row) => row.candidateParty));
+            const partyCounts = new Map();
+
+            for (const row of values) {
+              incrementCount(partyCounts, row.candidateParty);
+            }
+
             const total = d3.sum(values, (row) => num(row.total));
 
             return {
               id,
               name,
-              parties,
+              parties: uniq(values.map((row) => row.candidateParty)),
               positions: position ? [position] : [],
               total,
               ingresoTotal: total,
               position,
-              party: d3.mode(values.map((row) => TEXT(row.candidateParty)).filter(Boolean)) || 'Sin partido',
+              party: modeFromCounts(partyCounts, null) || 'Sin partido',
             };
           },
           (row) => TEXT(row.candidatePosition) || 'Sin cargo',
