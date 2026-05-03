@@ -7,20 +7,7 @@ export const COLORS = ['#2f80ed', '#7db3f3', '#9ac7ff', '#b9d5fa', '#dceafd', '#
 export const POS = ['Presidente', 'Diputado(a)', 'Alcalde'];
 export const ALL = 'Todas';
 
-const embedCurrencyFormatters = {
-  whole: new Intl.NumberFormat('es-PA', {
-    style: 'currency',
-    currency: 'PAB',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }),
-  cents: new Intl.NumberFormat('es-PA', {
-    style: 'currency',
-    currency: 'PAB',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }),
-};
+const EMBED_CURRENCY_PREFIX = 'B/. ';
 
 const embedNumberFormatters = {
   whole: new Intl.NumberFormat('es-PA', {
@@ -42,8 +29,10 @@ function hasCents(value) {
 }
 
 export function formatEmbedCurrency(value, fractionDigits = 2) {
-  const formatter = fractionDigits === 0 ? embedCurrencyFormatters.whole : embedCurrencyFormatters.cents;
-  return normalizeCurrencySpacing(formatter.format(+value || 0));
+  const amount = +value || 0;
+  const formatter = fractionDigits === 0 ? embedNumberFormatters.whole : embedNumberFormatters.cents;
+  const sign = amount < 0 ? '-' : '';
+  return `${EMBED_CURRENCY_PREFIX}${sign}${normalizeCurrencySpacing(formatter.format(Math.abs(amount)))}`;
 }
 
 export function formatEmbedCurrencyAuto(value) {

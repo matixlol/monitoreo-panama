@@ -1,5 +1,11 @@
 import { MONTH_NAMES } from './search';
 
+const PANAMA_CURRENCY_PREFIX = 'B/. ';
+const panamaCurrencyNumberFormatter = new Intl.NumberFormat('es-PA', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
 export const STATUS_LABELS: Record<string, string> = {
   pending: 'Pendiente',
   sent: 'Presentado',
@@ -81,11 +87,8 @@ export function monthLabel(month?: number | null, isSummary?: boolean | null) {
 
 export function currency(value?: number | null) {
   if (typeof value !== 'number' || Number.isNaN(value)) return 'B/. 0.00';
-  return new Intl.NumberFormat('es-PA', {
-    style: 'currency',
-    currency: 'PAB',
-    minimumFractionDigits: 2,
-  }).format(value);
+  const sign = value < 0 ? '-' : '';
+  return `${PANAMA_CURRENCY_PREFIX}${sign}${panamaCurrencyNumberFormatter.format(Math.abs(value)).replace(/\u00A0/g, ' ')}`;
 }
 
 export function formatScalar(value: unknown) {
