@@ -134,7 +134,7 @@ function CsvDownloadButton({ columns, rows, filename, label }) {
   );
 }
 
-function CandidateModal({ entity }) {
+function CandidateModal({ entity, store }) {
   const [pos, setPos] = useState('total');
   const displayName = candidateDisplayName(entity);
   const fullName = candidateFullName(entity);
@@ -515,7 +515,7 @@ export function ModalRouter({ store, emptyHash }) {
   let body = <Empty text="Ruta no soportada." />;
   if (route.kind !== 'unknown') {
     if (!entity) body = <Empty text="No encontré esa ficha." />;
-    else if (entity.kind === 'candidato') body = <CandidateModal entity={entity} />;
+    else if (entity.kind === 'candidato') body = <CandidateModal entity={entity} store={store} />;
     else if (entity.kind === 'aportante') body = <DonorModal entity={entity} />;
     else body = <ProviderModal entity={entity} />;
   }
