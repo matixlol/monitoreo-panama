@@ -439,14 +439,16 @@ export function expenseTimeline(rows, grain = 'día') {
 }
 
 export function parseHashRoute(hash) {
+  const routeKinds = ['candidato', 'aportante', 'proveedor'];
   const parts = TEXT(hash).replace(/^#/, '').split('/').filter(Boolean);
   if (!parts.length || parts[0] === '') return { kind: 'none' };
-  if (parts[0] === 'ficha' && ['candidato', 'aportante', 'proveedor'].includes(parts[1]) && parts[2]) {
+  if (parts[0] === 'ficha' && routeKinds.includes(parts[1]) && parts[2]) {
     return { kind: parts[1], id: decodeURIComponent(parts.slice(2).join('/')) };
   }
-  if (['candidato', 'aportante', 'proveedor'].includes(parts[0]) && parts[1]) {
+  if (routeKinds.includes(parts[0]) && parts[1]) {
     return { kind: parts[0], id: decodeURIComponent(parts.slice(1).join('/')) };
   }
+  if (parts[0] !== 'ficha' && !routeKinds.includes(parts[0])) return { kind: 'none' };
   return { kind: 'unknown', raw: hash };
 }
 
