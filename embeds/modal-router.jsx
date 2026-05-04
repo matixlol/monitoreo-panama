@@ -534,8 +534,8 @@ export function ModalRouter({ store, emptyHash }) {
             <h1 className="modal-title mf-modal-title" id={titleId}>
               {title}
             </h1>
-            <button className="close mf-modal-close" type="button" aria-label="Cerrar" onClick={close}>
-              <span aria-hidden="true">&times;</span>
+            <button className="mf-modal-close" type="button" aria-label="Cerrar ficha" onClick={close}>
+              Cerrar ficha
             </button>
           </div>
           <div className="modal-body mf-modal-body">{body}</div>
