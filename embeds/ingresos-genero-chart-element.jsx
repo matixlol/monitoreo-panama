@@ -69,6 +69,9 @@ const INGRESOS_GENERO_CHART_CSS = `
     font-size:.92rem;
     line-height:1.3;
     color:#667085;
+    font-weight:300;
+        letter-spacing:0;
+
   }
   .mf-gender-income__value{
     font-size:1.02rem;
@@ -132,8 +135,8 @@ function genderIncomeRows(candidates) {
     },
     male: {
       key: 'male',
-      label: 'Candidatos varones',
-      shortLabel: 'Varones',
+      label: 'Candidatos hombres',
+      shortLabel: 'Hombres',
       color: MALE_COLOR,
       rows: [],
     },
@@ -176,7 +179,7 @@ function comparisonSummary(rows) {
     return {
       eyebrow: 'Comparación incompleta',
       headline: `${available.label} promedian ${formatEmbedCurrency(available.value, 0)}.`,
-      note: 'Faltan candidaturas del otro grupo para calcular la brecha entre mujeres y varones.',
+      note: 'Faltan candidaturas del otro grupo para calcular la brecha entre mujeres y hombres.',
     };
   }
 
@@ -184,8 +187,8 @@ function comparisonSummary(rows) {
   if (Math.abs(delta) < 0.5) {
     return {
       eyebrow: 'Brecha promedio',
-      headline: 'Mujeres y varones muestran prácticamente el mismo promedio de ingresos.',
-      note: `${female.count} mujeres comparadas con ${male.count} varones en esta cobertura.`,
+      headline: 'Mujeres y hombres muestran prácticamente el mismo promedio de ingresos.',
+      note: `${female.count} mujeres y ${male.count} hombres.`,
     };
   }
 
@@ -194,7 +197,7 @@ function comparisonSummary(rows) {
   return {
     eyebrow: 'Brecha promedio',
     headline: `${leader.shortLabel} promedian ${formatEmbedCurrency(Math.abs(delta), 0)} más que ${trailer.shortLabel.toLowerCase()}.`,
-    note: `${female.count} mujeres comparadas con ${male.count} varones en esta cobertura.`,
+    note: `${female.count} mujeres - ${male.count} hombres.`,
   };
 }
 
@@ -210,7 +213,6 @@ function GenderIncomeBars({ candidates }) {
       <div className="mf-gender-income__summary">
         <div className="mf-gender-income__eyebrow">{summary.eyebrow}</div>
         <div className="mf-gender-income__headline">{summary.headline}</div>
-        <div className="mf-gender-income__note">{summary.note}</div>
       </div>
 
       <div className="mf-gender-income__list" role="list" aria-label="Promedio de ingresos por género">
@@ -221,10 +223,10 @@ function GenderIncomeBars({ candidates }) {
             <div className="mf-gender-income__item" key={row.key} role="listitem">
               <div className="mf-gender-income__row">
                 <div className="mf-gender-income__label-wrap">
-                  <div className="mf-gender-income__label">{row.label}</div>
-                  <div className="mf-gender-income__meta">
-                    {formatEmbedNumber(row.count, 0)} candidaturas con género registrado
-                  </div>
+                  <div className="mf-gender-income__label">{row.label} <span className="mf-gender-income__meta">
+                    ({formatEmbedNumber(row.count, 0)} candidaturas)
+                  </span></div>
+                  
                 </div>
                 <div className="mf-gender-income__value">{formatEmbedCurrency(row.value, 0)}</div>
               </div>

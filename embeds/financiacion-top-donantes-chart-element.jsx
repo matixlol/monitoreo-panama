@@ -454,7 +454,7 @@ function TopDonorsChart({ store, position }) {
             viewBox={`0 0 ${SIZE} ${SIZE}`}
             className="mf-top-donor-breakdown__svg"
             role="img"
-            aria-label={`Top donantes en ${coverageLabel(position)}. Total ${formatEmbedCurrency(breakdown.total, 0)}.`}
+            aria-label={`Mayores donantes en ${coverageLabel(position)}. Total ${formatEmbedCurrency(breakdown.total, 0)}.`}
           >
             <circle cx={CENTER} cy={CENTER} r={RADIUS} fill="none" stroke="#edf2f8" strokeWidth={STROKE_WIDTH} />
             <g transform={`rotate(-90 ${CENTER} ${CENTER})`}>
@@ -553,7 +553,7 @@ export function FinanciacionTopDonantesChartElementApp({ element, store, loading
       <FinanciacionChartStyles />
       <style>{TOP_DONANTES_CHART_CSS}</style>
       <section className="wc-panel">
-        <h4>Top donantes</h4>
+        <h4>Mayores donantes</h4>
         <div className="wc-body wc-body--bare">
           {loading ? <div className="loading">Cargando…</div> : null}
           {!loading && error ? <div className="error">{error}</div> : null}
